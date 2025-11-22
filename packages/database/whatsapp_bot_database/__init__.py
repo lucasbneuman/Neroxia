@@ -1,5 +1,6 @@
 """Database models and CRUD operations package."""
 
+from .connection import AsyncSessionLocal, engine, get_db
 from .crud import (
     cancel_user_pending_follow_ups,
     create_follow_up,
@@ -23,6 +24,10 @@ from .crud import (
 from .models import Base, Config, FollowUp, Message, User
 
 __all__ = [
+    # Connection
+    "engine",
+    "AsyncSessionLocal",
+    "get_db",
     # Models
     "Base",
     "User",
