@@ -46,7 +46,8 @@
       "Bash(curl:*)",
       "Bash(\"apps\\bot-engine\\src\\__init__.py\")",
       "Bash(chmod:*)",
-      "Bash(pip show:*)"
+      "Bash(pip show:*)",
+      "Bash(powershell -Command:*)"
     ],
     "deny": [],
     "ask": []

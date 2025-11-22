@@ -1,80 +1,221 @@
-from datetime import datetime, timedelta
+"""Authentication router using Supabase Auth."""
+
 from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, status, Header
+from pydantic import BaseModel, EmailStr
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jose import JWTError, jwt
-from pydantic import BaseModel
-
-# Configuration
-SECRET_KEY = "your-secret-key-keep-it-secret"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+from ..core.supabase import supabase, verify_supabase_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+# Pydantic models
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
 
 
-class Token(BaseModel):
+class SignupRequest(BaseModel):
+    email: EmailStr
+    password: str
+    name: Optional[str] = None
+
+
+class TokenResponse(BaseModel):
     access_token: str
-    token_type: str
-    token: str  # For frontend compatibility
+    refresh_token: str
+    token_type: str = "bearer"
+    user: dict
 
 
-class TokenData(BaseModel):
-    username: Optional[str] = None
+class RefreshRequest(BaseModel):
+    refresh_token: str
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+class UserResponse(BaseModel):
+    id: str
+    email: str
+    user_metadata: dict
+    created_at: str
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-        token_data = TokenData(username=username)
-    except JWTError:
-        raise credentials_exception
-    return token_data
-
-
-@router.post("/login", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    # TODO: Implement real user verification against database
-    # For now, accept any login for migration testing
-    
-    # Mock user verification
-    if not form_data.username:
+# Dependency to get current user from token
+async def get_current_user(authorization: Optional[str] = Header(None)):
+    """Extract and verify user from Authorization header."""
+    if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Missing authorization header",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": form_data.username}, expires_delta=access_token_expires
-    )
+    # Extract token from "Bearer <token>"
+    try:
+        scheme, token = authorization.split()
+        if scheme.lower() != "bearer":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication scheme",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header format",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     
-    # Return both standard access_token and 'token' for frontend convenience
-    return {
-        "access_token": access_token, 
-        "token_type": "bearer",
-        "token": access_token
-    }
+    # Verify token with Supabase
+    user = await verify_supabase_token(token)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return user
+
+
+@router.post("/login", response_model=TokenResponse)
+async def login(credentials: LoginRequest):
+    """
+    Login with email and password using Supabase Auth.
+    
+    Returns access token, refresh token, and user data.
+    """
+    try:
+        response = supabase.auth.sign_in_with_password({
+            "email": credentials.email,
+            "password": credentials.password,
+        })
+        
+        if not response.session or not response.user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password",
+            )
+        
+        return {
+            "access_token": response.session.access_token,
+            "refresh_token": response.session.refresh_token,
+            "token_type": "bearer",
+            "user": {
+                "id": response.user.id,
+                "email": response.user.email,
+                "user_metadata": response.user.user_metadata or {},
+                "created_at": response.user.created_at,
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Login failed: {str(e)}",
+        )
+
+
+@router.post("/signup", response_model=TokenResponse)
+async def signup(credentials: SignupRequest):
+    """
+    Sign up a new user with email and password.
+    
+    Returns access token, refresh token, and user data.
+    """
+    try:
+        # Prepare user metadata
+        user_metadata = {}
+        if credentials.name:
+            user_metadata["name"] = credentials.name
+        
+        response = supabase.auth.sign_up({
+            "email": credentials.email,
+            "password": credentials.password,
+            "options": {
+                "data": user_metadata
+            }
+        })
+        
+        if not response.session or not response.user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Signup failed. Email may already be registered.",
+            )
+        
+        return {
+            "access_token": response.session.access_token,
+            "refresh_token": response.session.refresh_token,
+            "token_type": "bearer",
+            "user": {
+                "id": response.user.id,
+                "email": response.user.email,
+                "user_metadata": response.user.user_metadata or {},
+                "created_at": response.user.created_at,
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Signup failed: {str(e)}",
+        )
+
+
+@router.post("/logout")
+async def logout(current_user: dict = Depends(get_current_user)):
+    """
+    Logout current user by invalidating the session.
+    """
+    try:
+        supabase.auth.sign_out()
+        return {"message": "Successfully logged out"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Logout failed: {str(e)}",
+        )
+
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_token(request: RefreshRequest):
+    """
+    Refresh access token using refresh token.
+    """
+    try:
+        response = supabase.auth.refresh_session(request.refresh_token)
+        
+        if not response.session or not response.user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token",
+            )
+        
+        return {
+            "access_token": response.session.access_token,
+            "refresh_token": response.session.refresh_token,
+            "token_type": "bearer",
+            "user": {
+                "id": response.user.id,
+                "email": response.user.email,
+                "user_metadata": response.user.user_metadata or {},
+                "created_at": response.user.created_at,
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Token refresh failed: {str(e)}",
+        )
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_profile(current_user: dict = Depends(get_current_user)):
+    """
+    Get current authenticated user's profile.
+    """
+    return current_user
+

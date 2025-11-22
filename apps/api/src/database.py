@@ -1,19 +1,8 @@
-import os
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+"""Database session dependency for FastAPI.
 
-# Point to the root directory database
-# In production this should be an absolute path or a real database URL
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///../../sales_bot.db")
+This module imports the shared database connection from packages/database.
+"""
 
-engine = create_async_engine(DATABASE_URL, echo=False)
-AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+from whatsapp_bot_database.connection import get_db, engine, AsyncSessionLocal
 
-
-async def get_db():
-    """Dependency for getting async database session."""
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
+__all__ = ["get_db", "engine", "AsyncSessionLocal"]
