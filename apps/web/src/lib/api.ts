@@ -22,7 +22,16 @@ api.interceptors.request.use((config) => {
 
 // Auth API
 export const login = async (username: string, password: string) => {
-  const response = await api.post('/auth/login', { username, password });
+  // OAuth2 expects form data, not JSON
+  const formData = new URLSearchParams();
+  formData.append('username', username);
+  formData.append('password', password);
+
+  const response = await api.post('/auth/login', formData, {
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+  });
   return response.data;
 };
 
