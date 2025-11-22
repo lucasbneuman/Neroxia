@@ -1,6 +1,6 @@
-# 🤖 WhatsApp Sales Bot
+# 🤖 WhatsApp Sales Bot SaaS Platform
 
-Sistema inteligente de ventas conversacional para WhatsApp con IA, construido con LangGraph, OpenAI y Gradio.
+Plataforma SaaS multi-tenant de ventas conversacionales para WhatsApp con IA, construida con arquitectura de microservicios, LangGraph, FastAPI y Next.js.
 
 ## ✨ Características
 
@@ -34,8 +34,9 @@ Sistema inteligente de ventas conversacional para WhatsApp con IA, construido co
 ## 🚀 Quick Start
 
 ### 1. Requisitos Previos
-- Python 3.11+
-- Cuenta OpenAI con API key
+- **Python 3.11+** (Backend & Bot-Engine)
+- **Node.js 18+** (Frontend)
+- **Cuenta OpenAI** con API key
 - (Opcional) Cuenta Twilio para WhatsApp
 - (Opcional) Cuenta HubSpot para CRM
 
@@ -46,17 +47,27 @@ Sistema inteligente de ventas conversacional para WhatsApp con IA, construido co
 git clone https://github.com/lucasbneuman/whatsapp_sales_bot.git
 cd whatsapp_sales_bot
 
-# Crear entorno virtual
-python -m venv venv
+# Instalar shared packages
+cd packages/shared
+pip install -e .
+cd ../database
+pip install -e .
+cd ../..
 
-# Activar entorno virtual
-# Windows:
-venv\Scripts\activate
-# Linux/Mac:
-source venv/bin/activate
-
-# Instalar dependencias
+# Instalar API dependencies
+cd apps/api
 pip install -r requirements.txt
+cd ../..
+
+# Instalar Bot-Engine dependencies
+cd apps/bot-engine
+pip install -r requirements.txt
+cd ../..
+
+# Instalar Frontend dependencies
+cd apps/web
+npm install
+cd ../..
 ```
 
 ### 3. Configuración
@@ -68,9 +79,12 @@ Crear archivo `.env` en la raíz del proyecto:
 OPENAI_API_KEY=sk-...
 
 # Base de Datos
-DATABASE_URL=sqlite+aiosqlite:///./sales_bot.db
+DATABASE_URL=sqlite+aiosqlite:///./data/sales_bot.db
 
-# Twilio WhatsApp (Opcional - para producción)
+# JWT Authentication
+JWT_SECRET=your-secret-key-change-in-production
+
+# Twilio WhatsApp (Opcional)
 TWILIO_ACCOUNT_SID=AC...
 TWILIO_AUTH_TOKEN=...
 TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
@@ -78,75 +92,67 @@ TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
 # HubSpot CRM (Opcional)
 HUBSPOT_ACCESS_TOKEN=pat-na1-...
 
-# Gradio Authentication (IMPORTANTE - Cambiar en producción!)
-GRADIO_USERNAME=admin
-GRADIO_PASSWORD=your-secure-password-here
-
 # Logging
 LOG_LEVEL=INFO
-
-# Server (Opcional - solo para desarrollo local)
-# En producción (Render, Railway, Heroku), PORT se asigna automáticamente
-HOST=0.0.0.0
-PORT=7860
 ```
 
 **⚠️ IMPORTANTE - Seguridad:**
-- Cambia `GRADIO_USERNAME` y `GRADIO_PASSWORD` antes de deployar a producción
-- Usa una contraseña segura (mínimo 12 caracteres, mezcla de letras/números/símbolos)
-- En Render, configura estas variables en el dashboard (no subas el .env a Git)
+- Cambia `JWT_SECRET` antes de deployar a producción
+- Usa un secreto fuerte (mínimo 32 caracteres aleatorios)
+- No subas el .env a Git
 
 ### 4. Ejecución
 
-#### Opción 1: Solo Gradio UI (Testing/Configuración)
+#### Opción 1: Script de Desarrollo Rápido ⭐ (Recomendado)
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\start_dev.ps1
+```
+
+**Linux/Mac:**
 ```bash
-python app.py
+chmod +x scripts/start_dev.sh
+./scripts/start_dev.sh
 ```
-- Panel de control en `http://localhost:7860`
-- Ideal para testing local y configuración
 
-#### Opción 2: WhatsApp + Gradio UI (Producción Completa) ⭐
+Esto iniciará automáticamente:
+- **API Backend**: `http://localhost:8000`
+- **API Docs**: `http://localhost:8000/docs`
+- **Frontend**: `http://localhost:3000`
+
+#### Opción 2: Iniciar Servicios Manualmente
+
+**Terminal 1 - Backend API:**
 ```bash
-python main.py
-```
-- **Gradio UI**: `http://localhost:7860/`
-- **WhatsApp Webhook**: `http://localhost:7860/webhook/whatsapp`
-- **Health Check**: `http://localhost:7860/health`
-- Las conversaciones de WhatsApp se ven **en tiempo real** en Gradio
-
-**Recomendado para Render/Producción**: `python main.py`
-
-**Nota**: En producción (Render, Railway, Heroku), la plataforma asigna automáticamente el `PORT`. No es necesario configurarlo manualmente.
-
-**Pestañas Gradio disponibles:**
-- 💬 **Chats**: Visualización de conversaciones en vivo (incluye WhatsApp)
-- ⚙️ **Configuración**: Prompts, voces TTS, documentos RAG
-- 🧪 **Pruebas**: Simulador de conversaciones con datos recolectados
-
-### 🔒 Autenticación
-
-La interfaz de Gradio está protegida con autenticación básica:
-
-**Credenciales por defecto** (⚠️ CAMBIAR EN PRODUCCIÓN):
-- Usuario: `admin`
-- Contraseña: `change-this-password-in-production`
-
-**Para cambiar las credenciales:**
-
-1. **Desarrollo local**: Edita `.env`
-```env
-GRADIO_USERNAME=tu_usuario
-GRADIO_PASSWORD=tu_contraseña_segura
+cd apps/api
+python -m uvicorn src.main:app --reload --port 8000
 ```
 
-2. **Producción (Render)**: Agrega las variables en el dashboard
-   - Settings → Environment → Add Environment Variable
-   - `GRADIO_USERNAME` = tu usuario
-   - `GRADIO_PASSWORD` = tu contraseña segura
+**Terminal 2 - Frontend:**
+```bash
+cd apps/web
+npm run dev
+```
 
-**Desactivar autenticación** (solo para desarrollo local):
-- Elimina o comenta `GRADIO_USERNAME` y `GRADIO_PASSWORD` del `.env`
-- La aplicación mostrará una advertencia pero funcionará sin login
+#### Opción 3: Docker Compose (Producción)
+
+```bash
+docker-compose up --build
+```
+
+### 5. Testing de Integración
+
+```bash
+# Ejecutar test de integración
+python scripts/test_integration.py
+```
+
+Esto verificará:
+- ✅ Shared packages funcionando
+- ✅ Database operations
+- ✅ Bot-engine workflow
+- ✅ Message processing end-to-end
 
 ---
 
@@ -250,49 +256,118 @@ router_node (Conditional routing)
 
 ---
 
-## 📁 Estructura del Proyecto
+## 📁 Estructura del Proyecto (Microservicios)
 
 ```
 whatsapp_sales_bot/
-├── app.py                    # Aplicación Gradio principal
-├── whatsapp_webhook.py       # Webhook para Twilio WhatsApp
-├── requirements.txt          # Dependencias
-├── .env                      # Variables de entorno (crear)
-├── database/
-│   ├── models.py            # SQLAlchemy models
-│   ├── crud.py              # Database operations
-│   └── database.py          # DB connection
-├── graph/
-│   ├── state.py             # ConversationState definition
-│   ├── nodes.py             # 11 workflow nodes
-│   └── workflow.py          # LangGraph compilation
-├── services/
-│   ├── llm_service.py       # OpenAI GPT + data extraction
-│   ├── rag_service.py       # ChromaDB + RAG
-│   ├── tts_service.py       # Text-to-Speech
-│   └── hubspot_sync.py      # HubSpot CRM sync
-├── utils/
-│   ├── config_manager.py    # Configuration management
-│   └── logging_config.py    # Logging setup
-├── HUBSPOT_SETUP.md         # HubSpot integration guide
-└── test_hubspot.py          # HubSpot integration test
+├── apps/
+│   ├── api/                          # Backend API (FastAPI)
+│   │   ├── src/
+│   │   │   ├── main.py              # FastAPI application
+│   │   │   ├── database.py          # DB session management
+│   │   │   └── routers/
+│   │   │       ├── auth.py          # Authentication endpoints
+│   │   │       ├── conversations.py # Conversations management
+│   │   │       └── bot.py           # Bot message processing
+│   │   └── requirements.txt
+│   │
+│   ├── web/                          # Frontend (Next.js)
+│   │   ├── src/
+│   │   │   ├── app/                 # Next.js app router
+│   │   │   ├── components/          # React components
+│   │   │   └── lib/                 # API client & utilities
+│   │   ├── package.json
+│   │   └── next.config.js
+│   │
+│   └── bot-engine/                   # Bot Engine (LangGraph)
+│       ├── src/
+│       │   ├── graph/               # LangGraph workflow
+│       │   │   ├── state.py         # Conversation state
+│       │   │   ├── nodes.py         # 11 workflow nodes
+│       │   │   └── workflow.py      # Graph compilation
+│       │   ├── services/            # Bot services
+│       │   │   ├── llm_service.py   # OpenAI GPT
+│       │   │   ├── rag_service.py   # ChromaDB RAG
+│       │   │   ├── tts_service.py   # Text-to-Speech
+│       │   │   └── hubspot_sync.py  # HubSpot CRM
+│       │   └── main.py
+│       └── requirements.txt
+│
+├── packages/                         # Shared packages
+│   ├── database/                    # Database models & CRUD
+│   │   └── src/
+│   │       └── whatsapp_bot_database/
+│   │           ├── models.py        # SQLAlchemy models
+│   │           └── crud.py          # Database operations
+│   │
+│   └── shared/                      # Shared utilities
+│       └── src/
+│           └── whatsapp_bot_shared/
+│               ├── logging_config.py # Logging setup
+│               └── helpers.py        # Common functions
+│
+├── scripts/
+│   ├── test_integration.py          # Integration tests
+│   ├── start_dev.sh                 # Dev startup (Linux/Mac)
+│   └── start_dev.ps1                # Dev startup (Windows)
+│
+├── docker-compose.yml               # Docker orchestration
+├── .env                             # Environment variables
+└── README.md
 ```
+
+### 🏗️ Arquitectura de Microservicios
+
+**Frontend (Next.js)** ← HTTP → **API (FastAPI)** ← Import → **Bot-Engine (LangGraph)**
+                                        ↓
+                                  **Shared Packages**
+                                  - Database Models
+                                  - Utilities & Logging
 
 ---
 
 ## 🧪 Testing
 
-### Test HubSpot Integration
+### Test de Integración Completa
 
 ```bash
-python test_hubspot.py
+python scripts/test_integration.py
 ```
 
 Verifica:
-- ✅ Creación de contactos con todos los campos
-- ✅ Actualización de contactos existentes
-- ✅ Validación de datos
-- ✅ Sincronización de notas
+- ✅ Shared packages (logging, helpers)
+- ✅ Database package (models, CRUD)
+- ✅ Bot-engine workflow (LangGraph)
+- ✅ Message processing end-to-end
+
+### Test API Endpoints
+
+```bash
+# Inicia el API
+cd apps/api
+python -m uvicorn src.main:app --reload --port 8000
+
+# En otra terminal, verifica endpoints
+curl http://localhost:8000/health
+curl http://localhost:8000/bot/health
+```
+
+Visita la documentación interactiva:
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
+### Test Frontend
+
+```bash
+cd apps/web
+npm run dev
+```
+
+Abre `http://localhost:3000` y verifica:
+- ✅ Login page
+- ✅ Dashboard con conversaciones
+- ✅ Chat interface
+- ✅ Handoff controls
 
 ---
 
@@ -366,8 +441,26 @@ Este proyecto está bajo la licencia MIT. Ver archivo `LICENSE` para más detall
 
 ---
 
-**Version**: 1.1.0 - HubSpot CRM Integration
-**Last Updated**: 2025-11-21
+**Version**: 2.0.0 - Microservices Architecture
+**Last Updated**: 2025-11-22
 **Author**: Lucas Neuman
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+---
+
+## 🔄 Changelog
+
+### v2.0.0 - Microservices Architecture (2025-11-22)
+- ✨ Complete migration to microservices architecture
+- 🏗️ Separated Frontend (Next.js), API (FastAPI), and Bot-Engine (LangGraph)
+- 📦 Created shared packages for database and utilities
+- 🐳 Added Docker Compose for production deployment
+- 🚀 Added development startup scripts for Windows & Linux/Mac
+- ✅ Added comprehensive integration tests
+- 📚 Updated documentation for new architecture
+
+### v1.1.0 - HubSpot CRM Integration (2025-11-21)
+- 🔗 HubSpot CRM integration with auto-sync
+- ✅ Data validation before sync
+- 📊 Custom fields and lifecycle stages mapping

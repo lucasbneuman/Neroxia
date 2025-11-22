@@ -19,7 +19,7 @@
 
 ## Next Steps
 - [ ] Test the application locally
-- [ ] Connect to backend API when ready
+- [x] Connect to backend API when ready
 - [ ] Add React Query for data fetching
 - [ ] Add real-time updates with WebSocket
 - [ ] Improve error handling
