@@ -49,6 +49,67 @@ async def get_conversations(
     return result
 
 
+@router.get("/pending", response_model=List[dict])
+async def get_pending_conversations(
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get conversations that need attention (NEEDS_ATTENTION or MANUAL mode)."""
+    users = await crud.get_all_active_users(db, limit=100)
+    
+    # Filter for conversations needing attention
+    result = []
+    for user in users:
+        if user.conversation_mode in ["NEEDS_ATTENTION", "MANUAL"]:
+            # Get last message
+            last_message = "No messages"
+            if user.last_message_at:
+                recent = await crud.get_recent_messages(db, user.id, count=1)
+                if recent:
+                    last_message = recent[0].message_text
+            
+            result.append({
+                "phone": user.phone,
+                "name": user.name or "Unknown",
+                "lastMessage": last_message,
+                "timestamp": user.last_message_at,
+                "mode": user.conversation_mode,
+                "stage": user.stage,
+                "sentiment": user.sentiment
+            })
+    
+    return result
+
+
+@router.get("/{phone}", response_model=dict)
+async def get_user_details(
+    phone: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get detailed user information including collected data."""
+    formatted_phone = format_phone_number(phone)
+    user = await crud.get_user_by_phone(db, formatted_phone)
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "id": user.id,
+        "phone": user.phone,
+        "name": user.name,
+        "email": user.email,
+        "stage": user.stage,
+        "sentiment": user.sentiment,
+        "intent_score": user.intent_score,
+        "conversation_mode": user.conversation_mode,
+        "conversation_summary": user.conversation_summary,
+        "last_message_at": user.last_message_at,
+        "created_at": user.created_at,
+        "updated_at": user.updated_at
+    }
+
+
 @router.get("/{phone}/messages", response_model=List[dict])
 async def get_messages(
     phone: str, 
