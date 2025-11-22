@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from .routers import auth, conversations, bot
+from .routers import auth, conversations, bot, config, rag, followups, handoff
 
 # Load environment variables
 load_dotenv()
@@ -30,8 +30,12 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth.router)
+app.include_router(config.router)
 app.include_router(conversations.router)
 app.include_router(bot.router)
+app.include_router(rag.router)
+app.include_router(followups.router)
+app.include_router(handoff.router)
 
 
 @app.get("/")
