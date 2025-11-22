@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Integration test for WhatsApp Sales Bot SaaS Platform.
 
@@ -32,16 +33,16 @@ async def test_shared_package():
 
         # Test logger
         logger = get_logger("test")
-        logger.info(" Logger initialized successfully")
+        logger.info("[OK] Logger initialized successfully")
 
         # Test phone formatter
         phone = format_phone_number("1234567890")
-        print(f" Phone formatter works: {phone}")
+        print(f"[OK] Phone formatter works: {phone}")
 
-        print(" Shared package test PASSED")
+        print("[OK] Shared package test PASSED")
         return True
     except Exception as e:
-        print(f"L Shared package test FAILED: {e}")
+        print(f"[FAIL] Shared package test FAILED: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -58,7 +59,7 @@ async def test_database_package():
         from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
         from sqlalchemy.orm import sessionmaker
 
-        print(" Database models imported successfully")
+        print("[OK] Database models imported successfully")
         print(f"   - Base: {Base}")
         print(f"   - User: {User}")
         print(f"   - Message: {Message}")
@@ -73,17 +74,17 @@ async def test_database_package():
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
-        print(" Database tables created successfully")
+        print("[OK] Database tables created successfully")
 
         # Test CRUD operations
         async with async_session() as session:
             # Create user
             user = await crud.create_user(session, phone="+1234567890")
-            print(f" User created: {user.phone}")
+            print(f"[OK] User created: {user.phone}")
 
             # Get user
             retrieved = await crud.get_user_by_phone(session, "+1234567890")
-            print(f" User retrieved: {retrieved.phone}")
+            print(f"[OK] User retrieved: {retrieved.phone}")
 
             # Create message
             message = await crud.create_message(
@@ -92,13 +93,13 @@ async def test_database_package():
                 message_text="Hello, bot!",
                 sender="user"
             )
-            print(f" Message created: {message.message_text}")
+            print(f"[OK] Message created: {message.message_text}")
 
-        print(" Database package test PASSED")
+        print("[OK] Database package test PASSED")
         return True
 
     except Exception as e:
-        print(f"L Database package test FAILED: {e}")
+        print(f"[FAIL] Database package test FAILED: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -116,11 +117,11 @@ async def test_bot_engine():
         from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
         from sqlalchemy.orm import sessionmaker
 
-        print(" Bot-engine imports successful")
+        print("[OK] Bot-engine imports successful")
 
         # Check graph compilation
         graph = get_sales_graph()
-        print(f" Sales graph compiled: {type(graph)}")
+        print(f"[OK] Sales graph compiled: {type(graph)}")
 
         # Setup test database
         engine = create_async_engine("sqlite+aiosqlite:///:memory:")
@@ -144,7 +145,7 @@ async def test_bot_engine():
             }
 
             # Process test message
-            print("\n=è Processing test message: 'Hola'")
+            print("\n[>>] Processing test message: 'Hola'")
             result = await process_message(
                 user_phone="+5491234567890",
                 message="Hola",
@@ -154,17 +155,17 @@ async def test_bot_engine():
                 db_user=user
             )
 
-            print("\n=é Bot Response:")
+            print("\n[<<] Bot Response:")
             print(f"   Response: {result.get('current_response', 'No response')}")
             print(f"   Stage: {result.get('stage', 'unknown')}")
             print(f"   Intent Score: {result.get('intent_score', 0.0)}")
             print(f"   Sentiment: {result.get('sentiment', 'neutral')}")
 
-            print("\n Bot-engine workflow test PASSED")
+            print("\n[OK] Bot-engine workflow test PASSED")
             return True
 
     except Exception as e:
-        print(f"L Bot-engine test FAILED: {e}")
+        print(f"[FAIL] Bot-engine test FAILED: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -192,10 +193,10 @@ async def main():
     print(f"Passed: {passed}/{total}")
 
     if passed == total:
-        print("\n ALL TESTS PASSED!")
+        print("\n[OK] ALL TESTS PASSED!")
         return 0
     else:
-        print(f"\nL {total - passed} TEST(S) FAILED")
+        print(f"\n[FAIL] {total - passed} TEST(S) FAILED")
         return 1
 
 
