@@ -6,9 +6,9 @@ from typing import Dict, Any
 from langchain_core.messages import AIMessage, HumanMessage
 
 from .state import ConversationState
-from ..services.llm_service import get_llm_service
-from ..services.rag_service import get_rag_service
-from ..services.hubspot_sync import get_hubspot_service
+from services.llm_service import get_llm_service
+from services.rag_service import get_rag_service
+from services.hubspot_sync import get_hubspot_service
 from whatsapp_bot_shared import get_logger
 
 logger = get_logger(__name__)

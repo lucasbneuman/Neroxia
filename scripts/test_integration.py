@@ -6,19 +6,19 @@ Tests that all packages work together:
 - Shared utilities
 - Database operations
 - Bot-engine workflow
+
+NOTE: This test requires the shared packages to be installed in editable mode:
+  cd packages/shared && pip install -e .
+  cd packages/database && pip install -e .
 """
 
 import asyncio
 import sys
 from pathlib import Path
 
-# Add packages to Python path
+# Add bot-engine to path (it's not a traditional package)
 root_dir = Path(__file__).parent.parent
-packages_dir = root_dir / "packages"
 bot_engine_dir = root_dir / "apps" / "bot-engine" / "src"
-
-sys.path.insert(0, str(packages_dir / "shared" / "src"))
-sys.path.insert(0, str(packages_dir / "database" / "src"))
 sys.path.insert(0, str(bot_engine_dir))
 
 
@@ -112,6 +112,7 @@ async def test_bot_engine():
     print("=" * 60)
 
     try:
+        # Import from bot-engine (added to sys.path above)
         from graph.workflow import process_message, get_sales_graph
         from whatsapp_bot_database import Base, crud
         from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession

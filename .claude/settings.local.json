@@ -45,7 +45,8 @@
       "Bash(curl -s https://whatsapp-sales-bot-duuw.onrender.com/)",
       "Bash(curl:*)",
       "Bash(\"apps\\bot-engine\\src\\__init__.py\")",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(pip show:*)"
     ],
     "deny": [],
     "ask": []
