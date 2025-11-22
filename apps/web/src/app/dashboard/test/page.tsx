@@ -1,0 +1,113 @@
+"use client"
+
+import { useState } from "react"
+import type { Message, CollectedData } from "@/types"
+import { processTestMessage } from "@/lib/api"
+import { TestChat } from "@/components/test/TestChat"
+import { CollectedDataPanel } from "@/components/test/CollectedDataPanel"
+
+const DEFAULT_DATA: CollectedData = {
+    user_id: "USRPRUEBAS_00",
+    name: "Aún no mencionó su nombre",
+    email: "No proporcionado",
+    phone: "+1234567890",
+    last_contact: "-",
+    intent: "-",
+    sentiment: "-",
+    stage: "-",
+    needs: "-",
+    requests_human: "No",
+    notes: "-",
+}
+
+export default function TestPage() {
+    const [messages, setMessages] = useState<Message[]>([])
+    const [collectedData, setCollectedData] = useState<CollectedData>(DEFAULT_DATA)
+    const [loading, setLoading] = useState(false)
+
+    const handleSendMessage = async (message: string) => {
+        // Add user message immediately
+        const userMessage: Message = {
+            id: messages.length + 1,
+            user_id: 0,
+            message_text: message,
+            sender: "user",
+            created_at: new Date().toISOString(),
+        }
+
+        setMessages([...messages, userMessage])
+        setLoading(true)
+
+        try {
+            const result = await processTestMessage(
+                collectedData.phone,
+                message,
+                messages
+            )
+
+            if (result.success && result.data) {
+                // Add bot response
+                const botMessage: Message = {
+                    id: messages.length + 2,
+                    user_id: 0,
+                    message_text: result.data.response,
+                    sender: "bot",
+                    created_at: new Date().toISOString(),
+                }
+
+                setMessages((prev) => [...prev, botMessage])
+
+                // Update collected data
+                if (result.data.collected_data) {
+                    setCollectedData(result.data.collected_data)
+                }
+            }
+        } catch (error) {
+            console.error("Error processing message:", error)
+            // Add error message
+            const errorMessage: Message = {
+                id: messages.length + 2,
+                user_id: 0,
+                message_text: `Error: ${error instanceof Error ? error.message : "Error desconocido"}`,
+                sender: "bot",
+                created_at: new Date().toISOString(),
+            }
+            setMessages((prev) => [...prev, errorMessage])
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleClear = () => {
+        setMessages([])
+        setCollectedData(DEFAULT_DATA)
+    }
+
+    return (
+        <div className="h-full p-6">
+            <div className="mb-6">
+                <h1 className="text-2xl font-bold text-black">🧪 Pruebas</h1>
+                <p className="text-gray-600 text-sm mt-1">
+                    Prueba tu chatbot y observa los datos recolectados en tiempo real
+                </p>
+            </div>
+
+            <div className="grid grid-cols-12 gap-6" style={{ height: "calc(100vh - 200px)" }}>
+                {/* Left Column: Collected Data (narrower) */}
+                <div className="col-span-3">
+                    <CollectedDataPanel data={collectedData} />
+                </div>
+
+                {/* Right Column: Test Chat (wider) */}
+                <div className="col-span-9">
+                    <TestChat
+                        messages={messages}
+                        onSendMessage={handleSendMessage}
+                        onClear={handleClear}
+                        loading={loading}
+                    />
+                </div>
+            </div>
+        </div>
+    )
+}
