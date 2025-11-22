@@ -38,7 +38,12 @@
       "Bash(requirements_full.txt)",
       "Bash(git push:*)",
       "Bash(git remote add:*)",
-      "Bash(venvScriptspython.exe test_hubspot.py)"
+      "Bash(venvScriptspython.exe test_hubspot.py)",
+      "Bash(venv\\Scripts\\python.exe:*)",
+      "Bash(pip install:*)",
+      "Bash(./venv/Scripts/python.exe:*)",
+      "Bash(curl -s https://whatsapp-sales-bot-duuw.onrender.com/)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

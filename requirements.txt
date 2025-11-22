@@ -4,7 +4,7 @@ uvicorn[standard]==0.27.0
 python-multipart>=0.0.9
 
 # Gradio UI
-gradio==4.44.1
+gradio>=4.44.1,<5.0.0
 
 # LangChain & LangGraph
 langchain-core==0.3.72
