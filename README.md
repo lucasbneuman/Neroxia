@@ -413,6 +413,43 @@ Abre `http://localhost:3000` y verifica:
 
 ---
 
+## 🤖 Agent Coordination System
+
+**For AI Agents & Contributors**: Este proyecto usa un sistema de coordinación para múltiples agentes trabajando simultáneamente.
+
+### Quick Start para Agentes
+
+```bash
+# 1. Lee la documentación del sistema
+cd .agents/
+cat README.md
+
+# 2. Verifica tareas activas
+cat TASK_LOG.md
+
+# 3. Verifica bugs conocidos
+cat BUG_TRACKER.md
+
+# 4. Sigue el protocolo
+# Ver .agents/AGENT_PROTOCOL.md para workflow completo
+```
+
+### Archivos Clave
+
+| Archivo | Propósito |
+|---------|-----------|
+| `.agents/README.md` | Introducción al sistema |
+| `.agents/AGENT_PROTOCOL.md` | Workflow de 4 pasos (obligatorio) |
+| `.agents/AGENT_ROLES.md` | Roles y responsabilidades |
+| `.agents/TASK_LOG.md` | Tareas activas en tiempo real |
+| `.agents/BUG_TRACKER.md` | Bugs y fixes en tiempo real |
+
+### Regla de Oro
+
+**SIEMPRE** lee `.agents/TASK_LOG.md` antes de comenzar cualquier trabajo para evitar conflictos.
+
+---
+
 ## 🤝 Contribuciones
 
 Las contribuciones son bienvenidas! Por favor:
