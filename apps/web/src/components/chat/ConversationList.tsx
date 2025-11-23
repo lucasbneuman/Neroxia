@@ -105,16 +105,23 @@ export function ConversationList({
             </div>
 
             {conversations.map((conversation) => {
-                const displayName = conversation.user.name || conversation.user.phone
-                const isSelected = conversation.user.phone === selectedPhone
-                const lastMessagePreview = conversation.last_message.length > 50
+                // Skip conversations without user data (Bug #2 fix)
+                if (!conversation.user) {
+                    console.warn('Conversation missing user data:', conversation)
+                    return null
+                }
+
+                // Safe access with optional chaining and fallbacks
+                const displayName = conversation.user?.name || conversation.user?.phone || 'Unknown'
+                const isSelected = conversation.user?.phone === selectedPhone
+                const lastMessagePreview = conversation.last_message?.length > 50
                     ? conversation.last_message.substring(0, 50) + "..."
-                    : conversation.last_message
+                    : conversation.last_message || ''
 
                 return (
                     <div
                         key={conversation.user.id}
-                        onClick={() => onSelectConversation(conversation.user.phone)}
+                        onClick={() => conversation.user?.phone && onSelectConversation(conversation.user.phone)}
                         className={cn(
                             "p-3 border-b border-gray-200 cursor-pointer transition-colors hover:bg-gray-100",
                             isSelected && "bg-gray-100",
@@ -123,10 +130,10 @@ export function ConversationList({
                     >
                         <div className="flex justify-between items-start mb-1">
                             <span className="text-sm text-black">
-                                {getModeIndicator(conversation.user.conversation_mode)} {displayName}
+                                {getModeIndicator(conversation.user?.conversation_mode || 'AUTO')} {displayName}
                             </span>
                             <span className="text-xs text-gray-500">
-                                {formatTimestamp(conversation.user.last_message_at)}
+                                {formatTimestamp(conversation.user?.last_message_at)}
                             </span>
                         </div>
                         <div className="text-xs text-gray-600">
