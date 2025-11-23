@@ -2,7 +2,7 @@
 
 import sys
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -26,11 +26,18 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/bot", tags=["bot"])
 
 
+class HistoryMessage(BaseModel):
+    """Message in conversation history."""
+    text: str
+    sender: str  # 'user' or 'bot'
+
+
 class MessageRequest(BaseModel):
     """Message processing request."""
     phone: str
     message: str
     config: Dict[str, Any] = {}
+    history: Optional[List[HistoryMessage]] = None  # Optional history for test chat
 
 
 class MessageResponse(BaseModel):
@@ -68,17 +75,26 @@ async def process_bot_message(
             user = await crud.create_user(db, phone=request.phone)
             logger.info(f"Created new user: {request.phone}")
 
-        # Load conversation history (get recent messages)
-        messages_data = await crud.get_user_messages(db, user.id, limit=20)
-
-        # Convert to LangChain message format
+        # Load conversation history
         from langchain_core.messages import HumanMessage, AIMessage
         conversation_history = []
-        for msg in reversed(messages_data):  # Oldest first
-            if msg.sender == "user":
-                conversation_history.append(HumanMessage(content=msg.message_text))
-            elif msg.sender == "bot":
-                conversation_history.append(AIMessage(content=msg.message_text))
+        
+        if request.history:
+            # Use provided history (for test chat)
+            logger.info(f"Using provided history: {len(request.history)} messages")
+            for msg in request.history:
+                if msg.sender == "user":
+                    conversation_history.append(HumanMessage(content=msg.text))
+                elif msg.sender == "bot":
+                    conversation_history.append(AIMessage(content=msg.text))
+        else:
+            # Load from database (for real conversations)
+            messages_data = await crud.get_user_messages(db, user.id, limit=20)
+            for msg in reversed(messages_data):  # Oldest first
+                if msg.sender == "user":
+                    conversation_history.append(HumanMessage(content=msg.message_text))
+                elif msg.sender == "bot":
+                    conversation_history.append(AIMessage(content=msg.message_text))
 
         # Load configuration (use provided config or load from DB)
         config = request.config
