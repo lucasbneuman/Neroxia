@@ -164,6 +164,11 @@
   - Status: Fixed .env loading, database URL driver, created diagnostic tools and setup guide
   - Notes: API now loads correctly, ready for user to add real Supabase keys
 
+- ✅ **[Frontend Agent]** Update login for email-based authentication - 2025-11-22
+  - Files: `apps/web/src/lib/api.ts`, `apps/web/src/app/login/page.tsx`, `scripts/create_admin_user.py`
+  - Status: Frontend now uses email instead of username, created user creation script
+  - Notes: Successfully created admin user (admin@example.com / admin123), login now functional
+
 - ✅ **[Backend Agent]** Make Twilio and HubSpot Configuration Dynamic - 2025-11-22
   - Files: `apps/api/src/routers/integrations.py`, `apps/api/src/main.py`, `apps/bot-engine/src/services/config_manager.py`, `apps/bot-engine/src/services/twilio_service.py`, `apps/bot-engine/src/services/hubspot_sync.py`
   - Status: Completed - Integrations can now be configured from frontend
