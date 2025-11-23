@@ -104,17 +104,28 @@ async def process_bot_message(
             config = config_data or {}
 
         # Process message through workflow
-        result = await process_message(
-            user_phone=request.phone,
-            message=request.message,
-            conversation_history=conversation_history,
-            config=config,
-            db_session=db,
-            db_user=user
-        )
+        logger.info(f"Calling process_message with phone={request.phone}, history_len={len(conversation_history)}")
+        
+        try:
+            result = await process_message(
+                user_phone=request.phone,
+                message=request.message,
+                conversation_history=conversation_history,
+                config=config,
+                db_session=db,
+                db_user=user
+            )
+            logger.info(f"process_message completed successfully")
+        except Exception as workflow_error:
+            logger.error(f"Workflow execution error: {workflow_error}", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Bot workflow error: {str(workflow_error)}"
+            )
 
         # Extract response
         bot_response = result.get("current_response", "I'm sorry, I couldn't process that.")
+        logger.info(f"Bot response: {bot_response[:100]}...")
 
         # Save user message to database
         await crud.create_message(
