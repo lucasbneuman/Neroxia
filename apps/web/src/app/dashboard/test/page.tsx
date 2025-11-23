@@ -45,22 +45,29 @@ export default function TestPage() {
                 messages
             )
 
-            if (result.success && result.data) {
+            // Backend returns direct response object, not wrapped in APIResponse
+            // Response format: { response: string, user_phone: string, user_name: string|null, ... }
+            if (result && result.response) {
                 // Add bot response
                 const botMessage: Message = {
                     id: messages.length + 2,
                     user_id: 0,
-                    message_text: result.data.response,
+                    message_text: result.response,
                     sender: "bot",
                     created_at: new Date().toISOString(),
                 }
 
                 setMessages((prev) => [...prev, botMessage])
 
-                // Update collected data
-                if (result.data.collected_data) {
-                    setCollectedData(result.data.collected_data)
+                // Update collected data from response
+                const updatedData: CollectedData = {
+                    ...collectedData,
+                    name: result.user_name || collectedData.name,
+                    intent: result.intent_score?.toString() || collectedData.intent,
+                    sentiment: result.sentiment || collectedData.sentiment,
+                    stage: result.stage || collectedData.stage,
                 }
+                setCollectedData(updatedData)
             }
         } catch (error) {
             console.error("Error processing message:", error)

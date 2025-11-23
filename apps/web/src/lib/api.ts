@@ -113,12 +113,13 @@ export const processTestMessage = async (
   phone: string,
   message: string,
   history: Message[]
-): Promise<APIResponse<{ response: string; collected_data: CollectedData }>> => {
+): Promise<any> => {
   const response = await api.post('/bot/process', {
     phone,
     message,
     history,
   });
+  // Backend returns direct response object: { response, user_phone, user_name, intent_score, sentiment, stage, conversation_mode }
   return response.data;
 };
 
