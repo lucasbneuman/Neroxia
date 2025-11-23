@@ -114,10 +114,17 @@ export const processTestMessage = async (
   message: string,
   history: Message[]
 ): Promise<any> => {
+  // Transform frontend Message[] to backend HistoryMessage[] format
+  // Frontend has 'message_text', backend expects 'text'
+  const transformedHistory = history.map(msg => ({
+    text: msg.message_text,  // Convert message_text → text
+    sender: msg.sender
+  }));
+
   const response = await api.post('/bot/process', {
     phone,
     message,
-    history,
+    history: transformedHistory,  // Send transformed history
   });
   // Backend returns direct response object: { response, user_phone, user_name, intent_score, sentiment, stage, conversation_mode }
   return response.data;
