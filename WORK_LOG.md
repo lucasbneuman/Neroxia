@@ -34,18 +34,39 @@
 
 > **Active tasks being worked on RIGHT NOW**
 
-- 🔄 **[Development Agent]** Fix React Hydration Error (Bug #1) - 2025-11-23 12:05:00
-  - **Files**: `apps/web/src/app/login/page.tsx`, `apps/web/src/lib/supabase.ts`, `apps/web/src/app/layout.tsx`, `apps/web/src/components/ErrorBoundary.tsx`
-  - **Status**: 🔄 In Progress - Planning implementation
-  - **Priority**: P0 (Critical Blocker)
-  - **Description**: Fixing React hydration mismatch error that prevents all users from logging in. Implementing client-side rendering for auth, adding error boundaries, and improving error handling.
-  - **Related**: QA_REPORT.md Bug #1, TEST_CASES.md TC-AUTH-001, IMPROVEMENT_PROPOSALS.md #1-2
+- 🔄 **[QA Agent]** Continued Frontend Testing After Bug #1 Fix - 2025-11-23 12:17:00
+  - **Files**: `QA_REPORT.md`, `WORK_LOG.md`
+  - **Status**: 🔄 In Progress - Testing post-fix, found Bug #2
+  - **Priority**: P0 (Critical)
+  - **Description**: Testing frontend functionality after Bug #1 (hydration) was fixed. Discovered new Bug #2 in ConversationList component.
+  - **Progress**:
+    - ✅ Verified Bug #1 is fixed (login works, no hydration error)
+    - ✅ ErrorBoundary is working correctly
+    - 🔴 Found Bug #2: TypeError in ConversationList.tsx line 108
+    - ✅ Documented Bug #2 with root cause and 4 solutions
+  - **Related**: QA_REPORT.md Bug #2, ConversationList.tsx
 
 ---
 
 ## ✅ Completed Tasks
 
 > **Tasks that have been finished and verified**
+
+### Phase 9: Bug Fixes & Improvements
+- ✅ **[Development Agent]** Fix React Hydration Error (Bug #1) - 2025-11-23
+  - **Files**: `apps/web/src/app/login/page.tsx`, `apps/web/src/lib/supabase.ts`, `apps/web/src/app/layout.tsx`, `apps/web/src/components/ErrorBoundary.tsx`
+  - **Status**: ✅ Completed - 2025-11-23 12:20:00
+  - **Priority**: P0 (Critical Blocker)
+  - **Description**: Fixed React hydration mismatch error that prevented all users from logging in. Implemented client-side rendering for auth, added error boundaries, and improved error handling.
+  - **Changes**:
+    1. Created `ErrorBoundary.tsx` component for global error handling
+    2. Fixed Supabase client to use `createClientComponentClient()` (client-side only)
+    3. Updated `layout.tsx` to wrap children with ErrorBoundary
+    4. Installed `@supabase/auth-helpers-nextjs` package
+    5. Updated app metadata (title, description)
+  - **Related**: QA_REPORT.md Bug #1, TEST_CASES.md TC-AUTH-001, IMPROVEMENT_PROPOSALS.md #1-2
+  - **Commit**: f1982... "fix(web): resolve React hydration error on login (Bug #1)"
+  - **Notes**: Ready for QA testing. All users should now be able to log in successfully.
 
 ### Phase 0: Preparation
 - ✅ **[Architect Agent]** Create folder structure - 2025-11-22
