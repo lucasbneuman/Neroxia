@@ -1,8 +1,19 @@
 """Database connection configuration for PostgreSQL/Supabase."""
 
 import os
+from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+# Look for .env in project root (4 levels up from this file)
+env_path = Path(__file__).parent.parent.parent.parent / '.env'
+if env_path.exists():
+    load_dotenv(env_path)
+else:
+    # Fallback: try loading from current directory
+    load_dotenv()
 
 # Read database URL from environment
 # For Supabase: postgresql+asyncpg://user:pass@host:port/database
