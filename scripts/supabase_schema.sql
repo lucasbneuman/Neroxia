@@ -1,110 +1,100 @@
--- =====================================================
--- Supabase Database Schema for WhatsApp Sales Bot
--- =====================================================
--- This script creates all necessary tables, indexes, and
--- Row Level Security (RLS) policies for the application.
--- =====================================================
+-- ============================================================================
+-- WhatsApp Sales Bot - Database Schema for Supabase
+-- ============================================================================
+-- Run this script in Supabase SQL Editor to create all required tables
+-- Dashboard > SQL Editor > New Query > Paste this script > Run
+-- ============================================================================
 
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Drop existing tables if they exist (careful in production!)
+DROP TABLE IF EXISTS messages CASCADE;
+DROP TABLE IF EXISTS follow_ups CASCADE;
+DROP TABLE IF EXISTS configs CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
 
--- =====================================================
+-- ============================================================================
 -- USERS TABLE
--- =====================================================
--- Stores WhatsApp contacts and their conversation state
-CREATE TABLE IF NOT EXISTS users (
+-- ============================================================================
+CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     phone VARCHAR(20) UNIQUE NOT NULL,
     name VARCHAR(100),
     email VARCHAR(100),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
     
     -- Conversation tracking
-    intent_score FLOAT DEFAULT 0.0 CHECK (intent_score >= 0 AND intent_score <= 1),
-    sentiment VARCHAR(20) DEFAULT 'neutral' CHECK (sentiment IN ('positive', 'neutral', 'negative')),
-    stage VARCHAR(50) DEFAULT 'welcome' CHECK (stage IN ('welcome', 'qualifying', 'nurturing', 'closing', 'sold', 'follow_up')),
-    conversation_mode VARCHAR(20) DEFAULT 'AUTO' CHECK (conversation_mode IN ('AUTO', 'MANUAL', 'NEEDS_ATTENTION')),
+    intent_score FLOAT DEFAULT 0.0,
+    sentiment VARCHAR(20) DEFAULT 'neutral',
+    stage VARCHAR(50) DEFAULT 'welcome',
+    conversation_mode VARCHAR(20) DEFAULT 'AUTO',
     conversation_summary TEXT,
     
     -- HubSpot Integration
     hubspot_contact_id VARCHAR(50),
     hubspot_lifecyclestage VARCHAR(50),
-    hubspot_synced_at TIMESTAMP WITH TIME ZONE,
+    hubspot_synced_at TIMESTAMP,
     
     -- Activity tracking
     total_messages INTEGER DEFAULT 0,
-    last_message_at TIMESTAMP WITH TIME ZONE
+    last_message_at TIMESTAMP
 );
 
 -- Create indexes for users table
-CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
-CREATE INDEX IF NOT EXISTS idx_users_hubspot_contact_id ON users(hubspot_contact_id);
-CREATE INDEX IF NOT EXISTS idx_users_stage ON users(stage);
-CREATE INDEX IF NOT EXISTS idx_users_conversation_mode ON users(conversation_mode);
+CREATE INDEX idx_users_phone ON users(phone);
+CREATE INDEX idx_users_hubspot_contact_id ON users(hubspot_contact_id);
 
--- =====================================================
+-- ============================================================================
 -- MESSAGES TABLE
--- =====================================================
--- Stores conversation history
-CREATE TABLE IF NOT EXISTS messages (
+-- ============================================================================
+CREATE TABLE messages (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     message_text TEXT NOT NULL,
-    sender VARCHAR(10) NOT NULL CHECK (sender IN ('user', 'bot')),
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
-    message_metadata JSONB,
-    
-    CONSTRAINT fk_messages_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    sender VARCHAR(10) NOT NULL,
+    timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+    message_metadata JSONB
 );
 
 -- Create indexes for messages table
-CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id);
-CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp);
-CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender);
+CREATE INDEX idx_messages_user_id ON messages(user_id);
+CREATE INDEX idx_messages_timestamp ON messages(timestamp);
 
--- =====================================================
--- CONFIGS TABLE
--- =====================================================
--- Stores application configuration as key-value pairs
-CREATE TABLE IF NOT EXISTS configs (
-    id SERIAL PRIMARY KEY,
-    key VARCHAR(100) UNIQUE NOT NULL,
-    value JSONB NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
-);
-
--- Create index for configs table
-CREATE INDEX IF NOT EXISTS idx_configs_key ON configs(key);
-
--- =====================================================
+-- ============================================================================
 -- FOLLOW_UPS TABLE
--- =====================================================
--- Stores scheduled follow-up messages
-CREATE TABLE IF NOT EXISTS follow_ups (
+-- ============================================================================
+CREATE TABLE follow_ups (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    scheduled_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    scheduled_time TIMESTAMP NOT NULL,
     message TEXT NOT NULL,
-    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'cancelled')),
+    status VARCHAR(20) DEFAULT 'pending',
     follow_up_count INTEGER DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
-    job_id VARCHAR(100),
-    
-    CONSTRAINT fk_followups_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    job_id VARCHAR(100)
 );
 
 -- Create indexes for follow_ups table
-CREATE INDEX IF NOT EXISTS idx_followups_user_id ON follow_ups(user_id);
-CREATE INDEX IF NOT EXISTS idx_followups_scheduled_time ON follow_ups(scheduled_time);
-CREATE INDEX IF NOT EXISTS idx_followups_status ON follow_ups(status);
+CREATE INDEX idx_follow_ups_user_id ON follow_ups(user_id);
+CREATE INDEX idx_follow_ups_scheduled_time ON follow_ups(scheduled_time);
 
--- =====================================================
--- TRIGGERS
--- =====================================================
--- Auto-update updated_at timestamp
+-- ============================================================================
+-- CONFIGS TABLE
+-- ============================================================================
+CREATE TABLE configs (
+    id SERIAL PRIMARY KEY,
+    key VARCHAR(100) UNIQUE NOT NULL,
+    value JSONB NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
 
--- Function to update updated_at column
+-- Create index for configs table
+CREATE INDEX idx_configs_key ON configs(key);
+
+-- ============================================================================
+-- TRIGGERS FOR UPDATED_AT
+-- ============================================================================
+
+-- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -114,120 +104,72 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger for users table
-DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at
     BEFORE UPDATE ON users
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Trigger for configs table
-DROP TRIGGER IF EXISTS update_configs_updated_at ON configs;
 CREATE TRIGGER update_configs_updated_at
     BEFORE UPDATE ON configs
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- =====================================================
--- ROW LEVEL SECURITY (RLS)
--- =====================================================
--- Enable RLS on all tables
-
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE configs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE follow_ups ENABLE ROW LEVEL SECURITY;
-
--- =====================================================
--- RLS POLICIES
--- =====================================================
--- These policies allow authenticated users to access data
--- Adjust based on your specific security requirements
-
--- Users table policies
-CREATE POLICY "Allow authenticated users to read users"
-    ON users FOR SELECT
-    TO authenticated
-    USING (true);
-
-CREATE POLICY "Allow authenticated users to insert users"
-    ON users FOR INSERT
-    TO authenticated
-    WITH CHECK (true);
-
-CREATE POLICY "Allow authenticated users to update users"
-    ON users FOR UPDATE
-    TO authenticated
-    USING (true);
-
--- Messages table policies
-CREATE POLICY "Allow authenticated users to read messages"
-    ON messages FOR SELECT
-    TO authenticated
-    USING (true);
-
-CREATE POLICY "Allow authenticated users to insert messages"
-    ON messages FOR INSERT
-    TO authenticated
-    WITH CHECK (true);
-
--- Configs table policies
-CREATE POLICY "Allow authenticated users to read configs"
-    ON configs FOR SELECT
-    TO authenticated
-    USING (true);
-
-CREATE POLICY "Allow authenticated users to insert configs"
-    ON configs FOR INSERT
-    TO authenticated
-    WITH CHECK (true);
-
-CREATE POLICY "Allow authenticated users to update configs"
-    ON configs FOR UPDATE
-    TO authenticated
-    USING (true);
-
--- Follow-ups table policies
-CREATE POLICY "Allow authenticated users to read follow_ups"
-    ON follow_ups FOR SELECT
-    TO authenticated
-    USING (true);
-
-CREATE POLICY "Allow authenticated users to insert follow_ups"
-    ON follow_ups FOR INSERT
-    TO authenticated
-    WITH CHECK (true);
-
-CREATE POLICY "Allow authenticated users to update follow_ups"
-    ON follow_ups FOR UPDATE
-    TO authenticated
-    USING (true);
-
-CREATE POLICY "Allow authenticated users to delete follow_ups"
-    ON follow_ups FOR DELETE
-    TO authenticated
-    USING (true);
-
--- =====================================================
--- INITIAL DATA (Optional)
--- =====================================================
--- Insert default configuration if needed
+-- ============================================================================
+-- INSERT DEFAULT CONFIGURATIONS
+-- ============================================================================
 
 INSERT INTO configs (key, value) VALUES
-    ('bot_name', '"Sales Assistant"'::jsonb),
-    ('welcome_message', '"¡Hola! Soy tu asistente de ventas. ¿En qué puedo ayudarte hoy?"'::jsonb),
-    ('business_hours', '{"start": "09:00", "end": "18:00", "timezone": "America/Argentina/Buenos_Aires"}'::jsonb)
+    ('system_prompt', '"You are a friendly and professional sales assistant. Your goal is to help customers find the right product and complete their purchase smoothly."'),
+    ('welcome_message', '"Hello! 👋 How can I help you today?"'),
+    ('payment_link', '"https://example.com/pay"'),
+    ('response_delay_minutes', '0.5'),
+    ('text_audio_ratio', '0'),
+    ('use_emojis', 'true'),
+    ('tts_voice', '"nova"'),
+    ('multi_part_messages', 'false'),
+    ('max_words_per_response', '100'),
+    ('product_name', '""'),
+    ('product_description', '""'),
+    ('product_features', '""'),
+    ('product_benefits', '""'),
+    ('product_price', '""'),
+    ('product_target_audience', '""'),
+    ('welcome_prompt', '""'),
+    ('intent_prompt', '""'),
+    ('sentiment_prompt', '""'),
+    ('data_extraction_prompt', '""'),
+    ('closing_prompt', '""')
 ON CONFLICT (key) DO NOTHING;
 
--- =====================================================
+-- ============================================================================
 -- VERIFICATION QUERIES
--- =====================================================
--- Run these to verify the schema was created correctly
+-- ============================================================================
 
--- Check all tables
--- SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
+-- Check that all tables were created
+SELECT 
+    schemaname,
+    tablename,
+    tableowner
+FROM pg_tables
+WHERE schemaname = 'public'
+    AND tablename IN ('users', 'messages', 'follow_ups', 'configs')
+ORDER BY tablename;
 
--- Check all indexes
--- SELECT indexname, tablename FROM pg_indexes WHERE schemaname = 'public';
+-- Check row counts
+SELECT 
+    'users' as table_name, COUNT(*) as row_count FROM users
+UNION ALL
+SELECT 'messages', COUNT(*) FROM messages
+UNION ALL
+SELECT 'follow_ups', COUNT(*) FROM follow_ups
+UNION ALL
+SELECT 'configs', COUNT(*) FROM configs;
 
--- Check RLS policies
--- SELECT tablename, policyname FROM pg_policies WHERE schemaname = 'public';
+-- ============================================================================
+-- SUCCESS MESSAGE
+-- ============================================================================
+
+SELECT '✅ Database schema created successfully!' as status,
+       'All tables, indexes, and triggers are in place.' as message,
+       NOW() as created_at;

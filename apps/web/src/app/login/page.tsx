@@ -9,7 +9,7 @@ import { useAuthStore } from '@/stores/auth-store';
 export default function LoginPage() {
     const router = useRouter();
     const setToken = useAuthStore((state) => state.setToken);
-    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -20,12 +20,11 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            // TODO: Connect to real backend API
-            const data = await login(username, password);
-            setToken(data.token);
+            const data = await login(email, password);
+            setToken(data.access_token);
             router.push('/dashboard/chat');
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Login failed. Please try again.');
+            setError(err.response?.data?.detail || 'Login failed. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -46,18 +45,18 @@ export default function LoginPage() {
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                     <div className="space-y-4">
                         <div>
-                            <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                                Username
+                            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                                Email
                             </label>
                             <input
-                                id="username"
-                                name="username"
-                                type="text"
+                                id="email"
+                                name="email"
+                                type="email"
                                 required
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                placeholder="Enter your username"
+                                placeholder="admin@example.com"
                             />
                         </div>
 

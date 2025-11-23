@@ -22,16 +22,11 @@ api.interceptors.request.use((config) => {
 });
 
 // Auth API
-export const login = async (username: string, password: string) => {
-  // OAuth2 expects form data, not JSON
-  const formData = new URLSearchParams();
-  formData.append('username', username);
-  formData.append('password', password);
-
-  const response = await api.post('/auth/login', formData, {
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
+export const login = async (email: string, password: string) => {
+  // Supabase expects JSON with email (not form data)
+  const response = await api.post('/auth/login', {
+    email,
+    password,
   });
   return response.data;
 };
