@@ -33,12 +33,12 @@ export const login = async (email: string, password: string) => {
 
 // Configuration API
 export const getConfig = async (): Promise<Config> => {
-  const response = await api.get('/config');
+  const response = await api.get('/config/');
   return response.data;
 };
 
 export const saveConfig = async (config: Partial<Config>): Promise<APIResponse> => {
-  const response = await api.put('/config', config);
+  const response = await api.put('/config/', config);
   return response.data;
 };
 
