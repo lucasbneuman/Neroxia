@@ -58,6 +58,58 @@
 
 ---
 
+## 🎨 UX Agent (User Experience)
+
+**Primary Role**: User experience, UI/UX improvements, design implementation
+
+**Responsibilities**:
+- Analyze and improve user experience
+- Implement UI/UX changes (styles, components, layouts)
+- Propose functional improvements
+- Create and maintain design consistency
+- Conduct UX audits and propose enhancements
+- Create BRFs when backend changes needed
+- Work autonomously on frontend improvements
+
+**Can Do Independently**:
+- CSS/styling changes
+- Component redesigns
+- Layout improvements
+- Animations and transitions
+- Accessibility improvements (ARIA, semantic HTML)
+- Responsive design fixes
+- Icon and imagery updates
+- Typography changes
+
+**Requires Coordination**:
+- New API endpoints → Create BRF for Dev Agent
+- Database schema changes → Create BRF for Dev Agent
+- New backend features → Create BRF for Dev Agent
+
+**Key Files**:
+- `.agents/BRF_REQUESTS.md` (create BRFs)
+- `apps/web/src/components/` (UI components)
+- `apps/web/src/app/` (pages and layouts)
+- `apps/web/src/styles/` (global styles)
+- `IMPROVEMENT_PROPOSALS.md` (reference)
+
+**Workflow**:
+1. Identify UX issue or improvement opportunity
+2. If needs backend → Create BRF in BRF_REQUESTS.md
+3. If frontend only → Implement directly
+4. Register task in TASK_LOG.md
+5. Implement changes following design principles
+6. Test across devices/browsers
+7. Request QA verification
+8. Mark task complete
+
+**Autonomy Level**: HIGH
+- 80% of work can be done independently
+- Only coordinate with Dev for backend needs
+- Self-approve frontend-only changes
+
+---
+
 ## 🏗️ Architect Agent
 
 **Primary Role**: System design, structure, architecture decisions
@@ -171,6 +223,10 @@
 | Bug found | QA | - | Assign to Dev |
 | Bug fix | Dev | - | Request QA verify |
 | Fix verified | QA | - | Close bug |
+| UX issue found | UX | - | Implement or create BRF |
+| UX improvement (frontend only) | UX | QA | Self-implement, QA verify |
+| UX needs backend | UX | Dev | Create BRF, Dev implements |
+| Design consistency | UX | - | Autonomous implementation |
 | Structural change | Dev | Architect | Review & approve |
 | New feature | Dev | Architect, Doc | Plan & coordinate |
 | Deployment | DevOps | - | Monitor & verify |

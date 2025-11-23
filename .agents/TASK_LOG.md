@@ -42,6 +42,18 @@
 - **Related**: Bug #1 in BUG_TRACKER.md
 - **Next Steps**: Test login flow once Dev completes
 
+### [QA Agent] UI/UX and Accessibility Testing - 🔄 IN PROGRESS
+- **Started**: 2025-11-23 14:18:00
+- **Agent**: QA Agent
+- **Priority**: 🟡 Medium
+- **Files**:
+  - `QA_REPORT.md`
+  - `TEST_CASES.md`
+  - `.agents/BUG_TRACKER.md` (if new bugs found)
+- **Description**: Test UI/UX aspects, accessibility, responsive design, and untested features
+- **Related**: TEST_CASES.md sections TC-UI-*, TC-PERF-*
+- **Status**: Testing areas not blocked by existing bugs
+
 ---
 
 ## ✅ Recently Completed Tasks (Last 3)

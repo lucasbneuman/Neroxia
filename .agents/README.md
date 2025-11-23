@@ -14,7 +14,8 @@
 ├── AGENT_PROTOCOL.md         ← HOW to work (workflow steps)
 ├── AGENT_ROLES.md            ← WHO does WHAT (responsibilities)
 ├── TASK_LOG.md               ← LIVE active tasks (current work)
-└── BUG_TRACKER.md            ← LIVE bugs & fixes (issues)
+├── BUG_TRACKER.md            ← LIVE bugs & fixes (issues)
+└── BRF_REQUESTS.md           ← LIVE backend requests from UX (coordination)
 ```
 
 ---
@@ -67,6 +68,13 @@
 - **When**: When bugs found or fixed
 - **Who**: QA creates, Dev fixes, Coordinator triages
 - **Format**: Bugs by priority + workflow status
+- **Update Frequency**: Real-time
+
+### BRF_REQUESTS.md
+- **What**: LIVE backend requests from UX Agent
+- **When**: UX needs backend changes (APIs, DB, features)
+- **Who**: UX creates, Dev implements, QA verifies
+- **Format**: BRF requests with API specs + acceptance criteria
 - **Update Frequency**: Real-time
 
 ---
@@ -159,6 +167,32 @@
 5. Ensure protocol compliance
 ```
 
+### UX Agent Improves Experience (Frontend Only)
+
+```
+1. Identify UX issue or improvement
+2. Verify it's frontend-only (no backend needed)
+3. Register task in TASK_LOG.md
+4. Implement changes (CSS, components, layouts)
+5. Test across devices/browsers
+6. Request QA verification
+7. Mark task COMPLETED
+```
+
+### UX Agent Needs Backend Changes
+
+```
+1. Identify UX improvement needing backend
+2. Create BRF in BRF_REQUESTS.md with API specs
+3. Register task in TASK_LOG.md as BLOCKED
+4. Notify Coordinator if P0/P1
+5. Wait for Dev Agent to implement BRF
+6. Once Dev marks BRF IMPLEMENTED:
+   - Implement frontend changes
+   - Request QA end-to-end verification
+7. Mark task COMPLETED
+```
+
 ---
 
 ## ⚠️ Critical Rules
@@ -202,6 +236,8 @@
 | Known issues | BUG_TRACKER.md | By priority |
 | Report bug | BUG_TRACKER.md | Bug template |
 | Register task | TASK_LOG.md | Task template |
+| Request backend (UX) | BRF_REQUESTS.md | BRF template |
+| Implement BRF (Dev) | BRF_REQUESTS.md | Active BRFs |
 
 ---
 
