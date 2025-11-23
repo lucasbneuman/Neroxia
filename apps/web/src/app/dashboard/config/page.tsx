@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import type { Config } from "@/types"
 import { getConfig, saveConfig } from "@/lib/api"
+import { useConfigStore } from "@/stores/config-store"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -13,27 +14,9 @@ import { FileUpload } from "@/components/config/FileUpload"
 
 export default function ConfigPage() {
     const [activeTab, setActiveTab] = useState<"chatbot" | "product" | "knowledge">("chatbot")
-    const [loading, setLoading] = useState(true)
-    const [saving, setSaving] = useState(false)
-    const [status, setStatus] = useState("")
 
-    const [config, setConfig] = useState<Partial<Config>>({
-        system_prompt: "",
-        welcome_message: "",
-        payment_link: "",
-        response_delay_minutes: 0.5,
-        text_audio_ratio: 0,
-        use_emojis: true,
-        tts_voice: "nova",
-        multi_part_messages: false,
-        max_words_per_response: 100,
-        product_name: "",
-        product_description: "",
-        product_features: "",
-        product_benefits: "",
-        product_price: "",
-        product_target_audience: "",
-    })
+    // Use Zustand store for config state
+    const { config, loading, saving, status, setConfig, updateConfig, setLoading, setSaving, setStatus } = useConfigStore()
 
     useEffect(() => {
         loadConfig()
@@ -129,7 +112,7 @@ export default function ConfigPage() {
                             </label>
                             <Textarea
                                 value={config.system_prompt}
-                                onChange={(e) => setConfig({ ...config, system_prompt: e.target.value })}
+                                onChange={(e) => updateConfig({ system_prompt: e.target.value })}
                                 placeholder="Eres un asistente de ventas profesional..."
                                 rows={4}
                             />
@@ -144,7 +127,7 @@ export default function ConfigPage() {
                             </label>
                             <Textarea
                                 value={config.welcome_message}
-                                onChange={(e) => setConfig({ ...config, welcome_message: e.target.value })}
+                                onChange={(e) => updateConfig({ welcome_message: e.target.value })}
                                 placeholder="¡Hola! Soy tu asistente virtual. ¿En qué puedo ayudarte hoy?"
                                 rows={2}
                             />
@@ -159,7 +142,7 @@ export default function ConfigPage() {
                             </label>
                             <Input
                                 value={config.payment_link}
-                                onChange={(e) => setConfig({ ...config, payment_link: e.target.value })}
+                                onChange={(e) => updateConfig({ payment_link: e.target.value })}
                                 placeholder="https://tu-sitio.com/pagar"
                             />
                             <p className="text-xs text-gray-600 mt-1">
@@ -174,7 +157,7 @@ export default function ConfigPage() {
                                 <SliderControl
                                     label="Delay de Respuesta"
                                     value={config.response_delay_minutes || 0.5}
-                                    onChange={(value) => setConfig({ ...config, response_delay_minutes: value })}
+                                    onChange={(value) => updateConfig({ response_delay_minutes: value })}
                                     min={0}
                                     max={10}
                                     step={0.1}
@@ -185,7 +168,7 @@ export default function ConfigPage() {
                                 <SliderControl
                                     label="Máximo de Palabras por Respuesta"
                                     value={config.max_words_per_response || 100}
-                                    onChange={(value) => setConfig({ ...config, max_words_per_response: value })}
+                                    onChange={(value) => updateConfig({ max_words_per_response: value })}
                                     min={5}
                                     max={500}
                                     step={5}
@@ -198,7 +181,7 @@ export default function ConfigPage() {
                                     <Checkbox
                                         checked={config.use_emojis}
                                         onCheckedChange={(checked) =>
-                                            setConfig({ ...config, use_emojis: checked as boolean })
+                                            updateConfig({ use_emojis: checked as boolean })
                                         }
                                     />
                                     <label className="text-sm text-black">Usar Emojis</label>
@@ -208,7 +191,7 @@ export default function ConfigPage() {
                                     <Checkbox
                                         checked={config.multi_part_messages}
                                         onCheckedChange={(checked) =>
-                                            setConfig({ ...config, multi_part_messages: checked as boolean })
+                                            updateConfig({ multi_part_messages: checked as boolean })
                                         }
                                     />
                                     <label className="text-sm text-black">Mensajes en Múltiples Partes</label>
@@ -222,7 +205,7 @@ export default function ConfigPage() {
                             <SliderControl
                                 label="Ratio Texto/Audio"
                                 value={config.text_audio_ratio || 0}
-                                onChange={(value) => setConfig({ ...config, text_audio_ratio: value })}
+                                onChange={(value) => updateConfig({ text_audio_ratio: value })}
                                 min={0}
                                 max={100}
                                 step={10}
@@ -233,7 +216,7 @@ export default function ConfigPage() {
                             <div className="mt-6">
                                 <VoiceSelector
                                     value={config.tts_voice || "nova"}
-                                    onChange={(voice) => setConfig({ ...config, tts_voice: voice as any })}
+                                    onChange={(voice) => updateConfig({ tts_voice: voice as any })}
                                 />
                             </div>
                         </div>
@@ -253,7 +236,7 @@ export default function ConfigPage() {
                             </label>
                             <Input
                                 value={config.product_name}
-                                onChange={(e) => setConfig({ ...config, product_name: e.target.value })}
+                                onChange={(e) => updateConfig({ product_name: e.target.value })}
                                 placeholder="Ej: Curso de Marketing Digital"
                             />
                             <p className="text-xs text-gray-600 mt-1">¿Qué vendes?</p>
@@ -265,7 +248,7 @@ export default function ConfigPage() {
                             </label>
                             <Textarea
                                 value={config.product_description}
-                                onChange={(e) => setConfig({ ...config, product_description: e.target.value })}
+                                onChange={(e) => updateConfig({ product_description: e.target.value })}
                                 placeholder="Curso completo de marketing digital con más de 50 horas de contenido..."
                                 rows={4}
                             />
@@ -278,7 +261,7 @@ export default function ConfigPage() {
                             </label>
                             <Textarea
                                 value={config.product_features}
-                                onChange={(e) => setConfig({ ...config, product_features: e.target.value })}
+                                onChange={(e) => updateConfig({ product_features: e.target.value })}
                                 placeholder="- 50+ horas de video&#10;- Certificado al finalizar&#10;- Acceso de por vida&#10;- Soporte 24/7"
                                 rows={5}
                             />
@@ -291,7 +274,7 @@ export default function ConfigPage() {
                             </label>
                             <Textarea
                                 value={config.product_benefits}
-                                onChange={(e) => setConfig({ ...config, product_benefits: e.target.value })}
+                                onChange={(e) => updateConfig({ product_benefits: e.target.value })}
                                 placeholder="- Aprenderás a crear campañas efectivas&#10;- Aumentarás tus ventas online&#10;- Dominarás las redes sociales"
                                 rows={5}
                             />
@@ -305,7 +288,7 @@ export default function ConfigPage() {
                                 </label>
                                 <Input
                                     value={config.product_price}
-                                    onChange={(e) => setConfig({ ...config, product_price: e.target.value })}
+                                    onChange={(e) => updateConfig({ product_price: e.target.value })}
                                     placeholder="Ej: $99 USD, Desde $50, Consultar"
                                 />
                                 <p className="text-xs text-gray-600 mt-1">Precio o rango de precio (opcional)</p>
@@ -317,7 +300,7 @@ export default function ConfigPage() {
                                 </label>
                                 <Input
                                     value={config.product_target_audience}
-                                    onChange={(e) => setConfig({ ...config, product_target_audience: e.target.value })}
+                                    onChange={(e) => updateConfig({ product_target_audience: e.target.value })}
                                     placeholder="Ej: Emprendedores, Pequeños negocios"
                                 />
                                 <p className="text-xs text-gray-600 mt-1">¿A quién está dirigido?</p>
