@@ -21,6 +21,11 @@ class TwilioService:
     ):
         """
         Initialize Twilio service.
+        
+        Credentials can be provided via:
+        1. Direct parameters (highest priority)
+        2. Database configuration (via ConfigManager.get_twilio_config)
+        3. Environment variables (fallback)
 
         Args:
             account_sid: Twilio account SID

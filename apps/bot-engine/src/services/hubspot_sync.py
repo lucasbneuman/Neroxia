@@ -27,6 +27,11 @@ class HubSpotService:
     def __init__(self, api_key: Optional[str] = None):
         """
         Initialize HubSpot service.
+        
+        Credentials can be provided via:
+        1. Direct parameter (highest priority)
+        2. Database configuration (via ConfigManager.get_hubspot_config)
+        3. Environment variables (fallback)
 
         Args:
             api_key: HubSpot API key (Private App Access Token)

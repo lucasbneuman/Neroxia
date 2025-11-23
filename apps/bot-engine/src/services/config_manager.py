@@ -158,6 +158,73 @@ class ConfigManager:
         # Load all into cache
         await self.load_all_configs(db)
 
+    async def get_twilio_config(self, db: AsyncSession) -> Dict[str, str]:
+        """
+        Get Twilio configuration from database with environment variable fallback.
+        
+        Args:
+            db: Database session
+            
+        Returns:
+            Dict with account_sid, auth_token, and whatsapp_number
+        """
+        import os
+        
+        # Try to load from database first
+        twilio_config = await crud.get_config(db, "twilio")
+        
+        if twilio_config and twilio_config.get("account_sid") and twilio_config.get("auth_token"):
+            logger.info("Loaded Twilio config from database")
+            return twilio_config
+        
+        # Fallback to environment variables
+        account_sid = os.getenv("TWILIO_ACCOUNT_SID")
+        auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+        whatsapp_number = os.getenv("TWILIO_WHATSAPP_NUMBER")
+        
+        if account_sid and auth_token:
+            logger.info("Loaded Twilio config from environment variables")
+            return {
+                "account_sid": account_sid,
+                "auth_token": auth_token,
+                "whatsapp_number": whatsapp_number or ""
+            }
+        
+        logger.warning("Twilio not configured in database or environment")
+        return {}
+
+    async def get_hubspot_config(self, db: AsyncSession) -> Dict[str, Any]:
+        """
+        Get HubSpot configuration from database with environment variable fallback.
+        
+        Args:
+            db: Database session
+            
+        Returns:
+            Dict with access_token and enabled flag
+        """
+        import os
+        
+        # Try to load from database first
+        hubspot_config = await crud.get_config(db, "hubspot")
+        
+        if hubspot_config and hubspot_config.get("access_token"):
+            logger.info("Loaded HubSpot config from database")
+            return hubspot_config
+        
+        # Fallback to environment variables
+        access_token = os.getenv("HUBSPOT_ACCESS_TOKEN")
+        
+        if access_token:
+            logger.info("Loaded HubSpot config from environment variables")
+            return {
+                "access_token": access_token,
+                "enabled": True
+            }
+        
+        logger.warning("HubSpot not configured in database or environment")
+        return {"enabled": False}
+
 
 # Global instance (will be initialized in app.py)
 config_manager: Optional[ConfigManager] = None
