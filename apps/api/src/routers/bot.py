@@ -54,7 +54,8 @@ class MessageResponse(BaseModel):
 @router.post("/process", response_model=MessageResponse)
 async def process_bot_message(
     request: MessageRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    req: Request = None  # For rate limiting
 ):
     """
     Process a message through the bot-engine workflow.
