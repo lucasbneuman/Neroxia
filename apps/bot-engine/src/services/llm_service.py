@@ -92,6 +92,142 @@ class LLMService:
         logger.info(f"Context optimized: {len(messages)} -> {len(optimized)} messages (saved {len(messages) - len(optimized)} messages)")
         return optimized
 
+    def analyze_conversation_trends(
+        self,
+        messages: List[BaseMessage],
+        current_sentiment: str = "neutral",
+        current_intent: float = 0.5
+    ) -> Dict[str, Any]:
+        """
+        Analyze conversation trends for personalization.
+
+        Examines:
+        - Sentiment progression (improving/declining/stable)
+        - Intent momentum (increasing/decreasing)
+        - User engagement level
+
+        Args:
+            messages: Conversation history
+            current_sentiment: Current sentiment
+            current_intent: Current intent score
+
+        Returns:
+            Dict with trend analysis
+        """
+        # Extract message count
+        user_messages = [m for m in messages if isinstance(m, HumanMessage)]
+        message_count = len(user_messages)
+
+        # Default trends for new conversations
+        if message_count < 3:
+            return {
+                "sentiment_trend": "new_conversation",
+                "intent_trend": "initial",
+                "engagement_level": "high" if message_count >= 1 else "none",
+                "message_count": message_count,
+                "recommendation": "welcome_warmly"
+            }
+
+        # Analyze sentiment trend (simplified - check last few messages metadata)
+        # In real implementation, this would track sentiment history
+        sentiment_trend = "stable"
+        if current_sentiment == "negative":
+            sentiment_trend = "declining"
+        elif current_sentiment == "positive":
+            sentiment_trend = "improving"
+
+        # Analyze intent momentum
+        intent_trend = "increasing" if current_intent > 0.6 else "stable" if current_intent > 0.3 else "decreasing"
+
+        # Engagement level based on message count and recent activity
+        if message_count > 10:
+            engagement_level = "high"
+        elif message_count > 5:
+            engagement_level = "medium"
+        else:
+            engagement_level = "low"
+
+        # Generate recommendation
+        if sentiment_trend == "declining":
+            recommendation = "empathize_and_support"
+        elif intent_trend == "increasing":
+            recommendation = "introduce_urgency"
+        elif engagement_level == "high":
+            recommendation = "maintain_momentum"
+        else:
+            recommendation = "standard_approach"
+
+        return {
+            "sentiment_trend": sentiment_trend,
+            "intent_trend": intent_trend,
+            "engagement_level": engagement_level,
+            "message_count": message_count,
+            "recommendation": recommendation
+        }
+
+    def build_adaptive_system_prompt(
+        self,
+        base_prompt: str,
+        trends: Dict[str, Any],
+        current_sentiment: str,
+        current_intent: float
+    ) -> str:
+        """
+        Build adaptive system prompt based on conversation trends.
+
+        Modifies base prompt with dynamic instructions based on:
+        - Sentiment progression
+        - Intent momentum
+        - User engagement
+
+        Args:
+            base_prompt: Original system prompt
+            trends: Trend analysis from analyze_conversation_trends
+            current_sentiment: Current sentiment
+            current_intent: Current intent score
+
+        Returns:
+            Enhanced system prompt with adaptive instructions
+        """
+        enhanced_prompt = base_prompt
+
+        # Add tone modifiers based on sentiment trend
+        if trends["recommendation"] == "empathize_and_support":
+            enhanced_prompt += "\n\n=== AJUSTE DE TONO ===\n"
+            enhanced_prompt += "El cliente muestra signos de frustración o desinterés. Ajusta tu tono:\n"
+            enhanced_prompt += "- Sé más empático y comprensivo\n"
+            enhanced_prompt += "- Pregunta directamente cómo puedes ayudar mejor\n"
+            enhanced_prompt += "- Ofrece alternativas o soluciones específicas\n"
+            enhanced_prompt += "- Considera sugerir hablar con un humano si persiste la frustración"
+
+        elif trends["recommendation"] == "introduce_urgency":
+            enhanced_prompt += "\n\n=== ESTRATEGIA DE CIERRE ===\n"
+            enhanced_prompt += f"El cliente tiene alto interés (intent: {current_intent:.2f}). Acciones recomendadas:\n"
+            enhanced_prompt += "- Introduce un llamado a la acción claro\n"
+            enhanced_prompt += "- Menciona beneficios inmediatos de actuar ahora\n"
+            enhanced_prompt += "- Ofrece próximos pasos concretos (demo, prueba, compra)\n"
+            enhanced_prompt += "- Mantén el momentum, no lo pierdas con información innecesaria"
+
+        elif trends["recommendation"] == "maintain_momentum":
+            enhanced_prompt += "\n\n=== MANTENER ENGAGEMENT ===\n"
+            enhanced_prompt += f"Conversación activa ({trends['message_count']} mensajes). Estrategia:\n"
+            enhanced_prompt += "- Mantén el ritmo de la conversación\n"
+            enhanced_prompt += "- Sé más casual y entusiasta (el cliente está receptivo)\n"
+            enhanced_prompt += "- Haz preguntas que profundicen en sus necesidades\n"
+            enhanced_prompt += "- Comparte casos de éxito relevantes"
+
+        # Add engagement level modifier
+        if trends["engagement_level"] == "low":
+            enhanced_prompt += "\n\n=== INICIO DE CONVERSACIÓN ===\n"
+            enhanced_prompt += "Cliente recién iniciando. Establece rapport:\n"
+            enhanced_prompt += "- Sé particularmente amigable y acogedor\n"
+            enhanced_prompt += "- Haz preguntas abiertas para conocerlo\n"
+            enhanced_prompt += "- Construye confianza antes de vender"
+
+        logger.info(f"Adaptive prompt built: recommendation={trends['recommendation']}, engagement={trends['engagement_level']}")
+
+        return enhanced_prompt
+
     def _create_quick_summary(self, messages: List[BaseMessage]) -> str:
         """
         Create a quick summary of messages without calling LLM.

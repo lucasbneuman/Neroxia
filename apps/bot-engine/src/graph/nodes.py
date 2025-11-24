@@ -325,57 +325,139 @@ async def data_collector_node(state: ConversationState) -> Dict[str, Any]:
 # ============================================================================
 
 
+def calculate_routing_scores(state: ConversationState) -> Dict[str, float]:
+    """
+    Calculate probabilistic routing scores for each possible route.
+
+    Multi-factor analysis considers:
+    - Intent score (40% weight)
+    - Sentiment (20% weight)
+    - Data completeness (15% weight)
+    - Conversation momentum (25% weight)
+
+    Args:
+        state: Current conversation state
+
+    Returns:
+        Dict with scores for each route
+    """
+    scores = {
+        "conversation": 0.3,  # Base score for continuing conversation
+        "closing": 0.0,
+        "payment": 0.0,
+        "follow_up": 0.0,
+        "handoff": 0.0,
+    }
+
+    # Factor 1: Intent Score (40% weight)
+    intent_score = state.get("intent_score", 0.5)
+    scores["closing"] += intent_score * 0.4
+    scores["follow_up"] += (1 - intent_score) * 0.2
+    scores["conversation"] += (1 - abs(intent_score - 0.5)) * 0.2  # Moderate intent stays in conversation
+
+    # Factor 2: Sentiment (20% weight)
+    sentiment = state.get("sentiment", "neutral")
+    if sentiment == "negative":
+        scores["handoff"] += 0.5
+        scores["conversation"] -= 0.1
+    elif sentiment == "positive":
+        scores["closing"] += 0.2
+        scores["conversation"] += 0.1
+
+    # Factor 3: Data Completeness (15% weight)
+    collected_data = state.get("collected_data", {})
+    data_fields = ["name", "email", "phone", "needs"]
+    completeness = sum(1 for field in data_fields if collected_data.get(field)) / len(data_fields)
+
+    if completeness > 0.75:
+        scores["closing"] += 0.3
+    elif completeness < 0.25:
+        scores["conversation"] += 0.2  # Need more info
+
+    # Factor 4: Conversation Momentum (25% weight)
+    messages = state.get("messages", [])
+    user_messages = [m for m in messages if isinstance(m, HumanMessage)]
+    message_count = len(user_messages)
+
+    # Calculate momentum based on message count and intent progression
+    if message_count > 10:
+        momentum = 0.8  # High momentum
+    elif message_count > 5:
+        momentum = 0.6  # Medium momentum
+    else:
+        momentum = 0.3  # Low momentum
+
+    scores["closing"] += momentum * 0.25
+    scores["conversation"] += (1 - momentum) * 0.15
+
+    # Normalize scores to ensure they're valid probabilities
+    total = sum(scores.values())
+    if total > 0:
+        scores = {k: v / total for k, v in scores.items()}
+
+    logger.info(f"Routing scores calculated: {scores}")
+    return scores
+
+
 def router_node(state: ConversationState) -> str:
     """
-    Route to next node based on state.
+    Probabilistic router with multi-factor analysis.
 
     This is a CONDITIONAL EDGE function, not a regular node.
     Returns the name of the next node to execute.
 
-    Routing logic:
-    - If conversation_mode is NEEDS_ATTENTION → handoff_node
-    - If intent_score > 0.8 → closing_node
-    - If stage == 'closing' and not payment_link_sent → payment_node
-    - If user wants to leave / come back later → follow_up_node
-    - Otherwise → conversation_node
-    """
-    logger.info("Executing router_node")
+    Strategy:
+    1. Check deterministic cases first (NEEDS_ATTENTION, payment flow)
+    2. Use probabilistic scoring for ambiguous cases
+    3. Log decision reasoning for debugging
 
-    # Check conversation mode
+    Routing logic:
+    - DETERMINISTIC: conversation_mode == NEEDS_ATTENTION → handoff
+    - DETERMINISTIC: stage == closing + no payment link → payment
+    - PROBABILISTIC: Multi-factor scoring for conversation/closing/follow_up
+    """
+    logger.info("Executing router_node (probabilistic)")
+
+    # DETERMINISTIC CASE 1: Explicit handoff request
     if state.get("conversation_mode") == "NEEDS_ATTENTION":
         logger.info("Routing to handoff_node (NEEDS_ATTENTION)")
         return "handoff"
 
-    # Check if negative sentiment triggered handoff
-    if state.get("sentiment") == "negative":
-        # Check if this should trigger handoff
-        user_messages = [m for m in state["messages"] if isinstance(m, HumanMessage)]
-        if len(user_messages) >= 2:
-            # If last 2 messages were negative, go to handoff
-            recent_sentiments = [state.get("sentiment")]  # Current
-            if len(recent_sentiments) >= 2 and all(s == "negative" for s in recent_sentiments[-2:]):
-                logger.info("Routing to handoff_node (negative sentiment)")
-                return "handoff"
-
-    # Check high intent score
-    intent_score = state.get("intent_score", 0.0)
-    if intent_score > 0.8:
-        logger.info(f"Routing to closing_node (intent_score: {intent_score})")
-        return "closing"
-
-    # Check if in closing stage and payment link not sent
+    # DETERMINISTIC CASE 2: Payment flow
     if state.get("stage") == "closing" and not state.get("payment_link_sent"):
         logger.info("Routing to payment_node (closing stage)")
         return "payment"
 
-    # Check for leaving intent
-    if intent_score < 0.2:
-        logger.info("Routing to follow_up_node (low intent / leaving)")
-        return "follow_up"
+    # DETERMINISTIC CASE 3: Persistent negative sentiment (handoff)
+    sentiment = state.get("sentiment", "neutral")
+    user_messages = [m for m in state.get("messages", []) if isinstance(m, HumanMessage)]
 
-    # Default: continue conversation
-    logger.info("Routing to conversation_node (default)")
-    return "conversation"
+    if sentiment == "negative" and len(user_messages) >= 3:
+        # Strong negative signal → handoff
+        logger.info("Routing to handoff_node (persistent negative sentiment)")
+        return "handoff"
+
+    # PROBABILISTIC ROUTING: Use multi-factor scoring
+    scores = calculate_routing_scores(state)
+
+    # Select route with highest score
+    best_route = max(scores, key=scores.get)
+    best_score = scores[best_route]
+
+    # Add threshold for closing (require high confidence)
+    if best_route == "closing" and best_score < 0.4:
+        logger.info(f"Closing score too low ({best_score:.2f}), routing to conversation instead")
+        best_route = "conversation"
+
+    # Add threshold for handoff (require high confidence)
+    if best_route == "handoff" and best_score < 0.5:
+        logger.info(f"Handoff score too low ({best_score:.2f}), routing to conversation instead")
+        best_route = "conversation"
+
+    logger.info(f"Probabilistic routing: {best_route} (score: {best_score:.2f})")
+    logger.info(f"All scores: {scores}")
+
+    return best_route
 
 
 # ============================================================================
@@ -407,6 +489,27 @@ async def conversation_node(state: ConversationState) -> Dict[str, Any]:
             "current_response": error_msg,
             "stage": "error",
         }
+
+    # Apply adaptive personalization based on conversation trends
+    current_sentiment = state.get("sentiment", "neutral")
+    current_intent = state.get("intent_score", 0.5)
+
+    # Analyze conversation trends
+    trends = llm_service.analyze_conversation_trends(
+        state["messages"],
+        current_sentiment=current_sentiment,
+        current_intent=current_intent
+    )
+
+    # Build adaptive system prompt
+    enhanced_prompt = llm_service.build_adaptive_system_prompt(
+        enhanced_prompt,
+        trends=trends,
+        current_sentiment=current_sentiment,
+        current_intent=current_intent
+    )
+
+    logger.info(f"Adaptive personalization applied: {trends['recommendation']}")
 
     use_emojis = state["config"].get("use_emojis", True)
 

@@ -369,6 +369,25 @@
   - Multi-user concurrent conversation tests
   - Configuration persistence tests
 
+### [QA Agent] Enhancing Pytest Test Suite - 🔄 IN PROGRESS
+- **Started**: 2025-11-24 07:10:00
+- **Agent**: QA Agent
+- **Priority**: 🟡 Medium
+- **Files**:
+  - `apps/api/tests/test_rag_api.py` (NEW)
+  - `apps/api/tests/test_conversations_api.py` (NEW)
+  - `apps/api/pytest.ini` (NEW)
+  - `apps/api/run_tests.sh` (NEW)
+- **Description**: Enhance test suite with additional endpoint coverage and tooling
+- **Related**: Previous pytest test suite task
+- **Status**: Adding RAG tests, conversation tests, and pytest configuration
+- **Enhancements**:
+  - RAG endpoint tests (upload, list, delete, stats)
+  - Conversation management tests
+  - Pytest configuration file
+  - Test execution scripts
+  - Coverage reporting setup
+
 ---
 
 ## ✅ Recently Completed Tasks (Last 3)
