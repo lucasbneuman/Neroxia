@@ -7,6 +7,66 @@
 
 ## 🔴 Critical Bugs (P0)
 
+### Bug #12: Async Mock Database Returns Coroutine Instead of Object - 🆕 NEW
+- **Reported**: 2025-11-24 18:30:00
+- **Reporter**: QA Agent
+- **Severity**: 🔴 Critical
+- **Status**: 🆕 NEW
+- **Priority**: P0 - Blocks integration tests
+- **Affects**: 7 integration tests, all bot message processing
+- **Files**:
+  - `apps/api/tests/conftest.py` (mock_get_db fixture, lines 179-195)
+  - `apps/api/src/routers/bot.py` (process_bot_message, line 93)
+- **Root Cause**: Mock database dependency returns coroutine instead of awaited result
+- **Assigned To**: Dev Agent
+- **Related**: Test Suite Verification
+- **Error Message**:
+  ```
+  AttributeError: 'coroutine' object has no attribute 'id'
+  File "src\\routers\\bot.py", line 93, in process_bot_message
+      messages_data = await crud.get_user_messages(db, user.id, limit=20)
+                                                       ^^^^^^
+  ```
+- **Reproduction**:
+  1. Run integration tests: `pytest tests/integration/test_user_flows.py -v`
+  2. All 7 workflow tests fail with 500 Internal Server Error
+  3. Error shows coroutine object has no attribute 'id'
+- **Impact**:
+  - Cannot test bot message processing
+  - Cannot test complete user workflows
+  - Cannot test sales conversation flows
+  - Cannot test multi-user scenarios
+  - Cannot test error recovery
+  - Blocks verification of core functionality
+- **Affected Tests** (7):
+  1. `test_complete_configuration_flow` - FAILED
+  2. `test_test_chat_workflow` - FAILED
+  3. `test_configuration_affects_bot_behavior` - FAILED
+  4. `test_complete_sales_conversation_flow` - FAILED
+  5. `test_multi_user_concurrent_conversations` - FAILED
+  6. `test_error_recovery_flow` - FAILED
+  7. `test_configuration_persistence` - FAILED
+- **Fix Plan**:
+  1. Update `mock_get_db` fixture to properly handle async operations
+  2. Ensure CRUD operations return mock objects, not coroutines
+  3. Add proper async/await handling in mock
+  4. Configure AsyncMock to return awaitable results
+  5. Re-run integration tests to verify fix
+- **Suggested Fix**:
+  ```python
+  async def mock_get_db():
+      db = AsyncMock()
+      # Configure mock to return proper awaitable results
+      db.execute = AsyncMock(return_value=AsyncMock())
+      db.commit = AsyncMock()
+      db.rollback = AsyncMock()
+      db.close = AsyncMock()
+      try:
+          yield db
+      finally:
+          await db.close()
+  ```
+
 ### Bug #8: RAG Endpoints 404 Error - Incorrect API Routes - 🔄 IN PROGRESS
 - **Reported**: 2025-11-25 01:20:00
 - **Reporter**: User / LLM Bot Optimizer Agent
