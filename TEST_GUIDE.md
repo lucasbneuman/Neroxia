@@ -9,15 +9,19 @@ The project uses a microservices architecture with tests organized by service:
 ```
 whatsapp_sales_bot/
 ├── apps/
-│   ├── api/tests/              # API Tests (67 tests)
+│   ├── api/tests/              # API Tests (135 tests)
 │   │   ├── unit/               # Unit tests for API endpoints
 │   │   │   ├── test_config_api.py (10 tests)
 │   │   │   ├── test_bot_api.py (11 tests)
 │   │   │   ├── test_rag_api.py (16 tests)
-│   │   │   └── test_conversations_api.py (20 tests)
+│   │   │   ├── test_conversations_api.py (20 tests)
+│   │   │   ├── test_followups_api.py (20 tests) ⭐ NEW
+│   │   │   ├── test_handoff_api.py (15 tests) ⭐ NEW
+│   │   │   ├── test_integrations_api.py (25 tests) ⭐ NEW
+│   │   │   └── test_auth_crud.py (18 tests) ⭐ NEW
 │   │   ├── integration/        # Integration tests
 │   │   │   └── test_user_flows.py (10 tests)
-│   │   ├── conftest.py
+│   │   ├── conftest.py (enhanced with DB fixtures)
 │   │   ├── pytest.ini
 │   │   └── README.md
 │   │
@@ -101,7 +105,7 @@ cd apps/api && .\run_tests.ps1
 
 ## 📊 Test Coverage
 
-### API Tests (67 total)
+### API Tests (135 total) ⭐ UPDATED
 
 | Category | Tests | Description |
 |----------|-------|-------------|
@@ -109,6 +113,10 @@ cd apps/api && .\run_tests.ps1
 | Bot Processing | 11 | Message processing, health checks |
 | RAG | 16 | Document upload, management |
 | Conversations | 20 | List, details, manual control |
+| **Followups** | **20** | **Schedule, list, cancel follow-ups** ⭐ NEW |
+| **Handoff** | **15** | **Take/return conversation, manual messages** ⭐ NEW |
+| **Integrations** | **25** | **Twilio, HubSpot config and testing** ⭐ NEW |
+| **Auth** | **18** | **Signup, login, logout, token refresh** ⭐ NEW |
 | User Flows | 10 | Complete workflows |
 
 ### Bot Engine Tests (LLM Agent)

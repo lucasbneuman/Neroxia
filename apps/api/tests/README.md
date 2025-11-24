@@ -6,16 +6,20 @@ Comprehensive pytest test suite for the WhatsApp Sales Bot API.
 
 Tests are organized into two categories:
 
-- **`unit/`** - Unit tests for individual API endpoints (57 tests)
+- **`unit/`** - Unit tests for individual API endpoints (125 tests) ⭐ UPDATED
   - `test_config_api.py` - Configuration management (10 tests)
   - `test_bot_api.py` - Bot message processing (11 tests)
   - `test_rag_api.py` - RAG document management (16 tests)
   - `test_conversations_api.py` - Conversation management (20 tests)
+  - `test_followups_api.py` - Follow-up scheduling (20 tests) ⭐ NEW
+  - `test_handoff_api.py` - Human handoff management (15 tests) ⭐ NEW
+  - `test_integrations_api.py` - Twilio/HubSpot integrations (25 tests) ⭐ NEW
+  - `test_auth_crud.py` - Authentication CRUD (18 tests) ⭐ NEW
 
 - **`integration/`** - Integration tests for complete workflows (10 tests)
   - `test_user_flows.py` - End-to-end user flows
 
-**Total: 67 tests**
+**Total: 135 tests** ⭐ UPDATED (previously 67)
 
 ## Overview
 
@@ -210,10 +214,14 @@ Current test coverage:
 
 - **Configuration API**: 100% (10/10 tests) ✅
 - **Bot Processing API**: 100% (11/11 tests) ✅
-- **RAG API**: 100% (16/16 tests) ✅ NEW
-- **Conversations API**: 100% (20/20 tests) ✅ NEW
+- **RAG API**: 100% (16/16 tests) ✅
+- **Conversations API**: 100% (20/20 tests) ✅
+- **Followups API**: 100% (20/20 tests) ✅ NEW
+- **Handoff API**: 100% (15/15 tests) ✅ NEW
+- **Integrations API**: 100% (25/25 tests) ✅ NEW
+- **Auth API**: 100% (18/18 tests) ✅ NEW
 - **User Flows & Integration**: 100% (10/10 tests) ✅
-- **Total**: **67 tests** ⭐ (previously 31)
+- **Total**: **135 tests** ⭐ UPDATED (previously 67)
 
 ### Test Distribution
 
@@ -223,8 +231,12 @@ Current test coverage:
 | Bot Message Processing | 11 | ✅ Complete |
 | RAG Document Management | 16 | ✅ Complete |
 | Conversation Management | 20 | ✅ Complete |
+| **Follow-up Scheduling** | **20** | ✅ **Complete** ⭐ NEW |
+| **Human Handoff** | **15** | ✅ **Complete** ⭐ NEW |
+| **Integrations (Twilio/HubSpot)** | **25** | ✅ **Complete** ⭐ NEW |
+| **Authentication CRUD** | **18** | ✅ **Complete** ⭐ NEW |
 | User Flow Integration | 10 | ✅ Complete |
-| **TOTAL** | **67** | ✅ **Complete** |
+| **TOTAL** | **135** | ✅ **Complete** ⭐ UPDATED |
 
 ## Test Scenarios
 
