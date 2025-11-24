@@ -277,6 +277,135 @@
 
 ## 🟠 High Priority Bugs (P1)
 
+### Bug #9: Missing API Test Coverage for 3 Critical APIs - 🆕 NEW
+- **Reported**: 2025-11-24 14:57:00
+- **Reporter**: QA Agent
+- **Severity**: 🟠 High
+- **Status**: 🆕 NEW
+- **Priority**: P1 - No test coverage for critical features
+- **Affects**: Followups API, Handoff API, Integrations API - 0% test coverage
+- **Files**:
+  - `apps/api/src/routers/followups.py` - NO TESTS
+  - `apps/api/src/routers/handoff.py` - NO TESTS
+  - `apps/api/src/routers/integrations.py` - NO TESTS
+  - `apps/api/tests/` - Missing test files
+- **Root Cause**: Test suite incomplete, 3 out of 8 APIs have zero test coverage
+- **Assigned To**: QA Agent (creating tests)
+- **Related**: CRUD Test Implementation Plan
+- **Impact**:
+  - Cannot verify followup scheduling works correctly
+  - Cannot verify handoff to human agents works
+  - Cannot verify Hubspot integration works
+  - Risk of bugs in production
+  - No regression testing
+- **APIs Without Tests**:
+  1. **Followups API** (`followups.py`):
+     - Schedule follow-up
+     - List follow-ups
+     - Update follow-up
+     - Cancel follow-up
+     - Execute follow-up
+  2. **Handoff API** (`handoff.py`):
+     - Request handoff
+     - List handoffs
+     - Assign agent
+     - Complete handoff
+     - Return to bot
+  3. **Integrations API** (`integrations.py`):
+     - Connect Hubspot
+     - Sync contacts
+     - Update settings
+     - Disconnect integration
+     - Webhook handling
+- **Fix Plan**:
+  1. Create `test_followups_api.py` with ~20 tests
+  2. Create `test_handoff_api.py` with ~15 tests
+  3. Create `test_integrations_api.py` with ~20 tests
+  4. Add database validation for all operations
+  5. Test CRUD operations and edge cases
+- **Estimated Tests**: 55 new tests needed
+
+### Bug #10: No Database Persistence Validation in Existing Tests - 🆕 NEW
+- **Reported**: 2025-11-24 14:57:00
+- **Reporter**: QA Agent
+- **Severity**: 🟠 High
+- **Status**: 🆕 NEW
+- **Priority**: P1 - Data integrity risk
+- **Affects**: All existing API tests (57 unit tests)
+- **Files**:
+  - `apps/api/tests/unit/test_config_api.py` - No DB validation
+  - `apps/api/tests/unit/test_bot_api.py` - No DB validation
+  - `apps/api/tests/unit/test_conversations_api.py` - No DB validation
+  - `apps/api/tests/unit/test_rag_api.py` - No DB validation
+  - `apps/api/tests/conftest.py` - Missing DB fixtures
+- **Root Cause**: Tests only verify API responses, don't check database persistence
+- **Assigned To**: QA Agent (enhancing tests)
+- **Related**: CRUD Test Implementation Plan
+- **Impact**:
+  - Cannot verify data persists correctly in database
+  - Cannot detect data corruption
+  - Cannot verify foreign key relationships
+  - Cannot verify cascade deletes
+  - Cannot verify constraints enforced
+  - Risk of silent data loss
+- **Examples of Missing Validation**:
+  1. **Config API**: Tests update config but don't verify it persists in DB
+  2. **Conversations API**: Tests create conversations but don't verify in DB
+  3. **Bot API**: Tests process messages but don't verify messages saved
+  4. **RAG API**: Tests upload files but don't verify metadata in DB
+- **Fix Plan**:
+  1. Add `db_session` fixture to conftest.py
+  2. Add `clean_db` fixture for test isolation
+  3. Add DB validation to all existing tests:
+     - After CREATE: Query DB to verify record exists
+     - After UPDATE: Query DB to verify changes persisted
+     - After DELETE: Query DB to verify record removed
+  4. Add database integrity tests:
+     - Verify foreign keys valid
+     - Verify no orphaned records
+     - Verify cascade deletes work
+     - Verify unique constraints enforced
+- **Estimated Work**: ~20 tests to enhance + 10 new integrity tests
+
+---
+
+## 🟡 Medium Priority Bugs (P2)
+
+### Bug #11: Mock Authentication Too Permissive in Tests - 🆕 NEW
+- **Reported**: 2025-11-24 14:57:00
+- **Reporter**: QA Agent
+- **Severity**: 🟡 Medium
+- **Status**: 🆕 NEW
+- **Priority**: P2 - Test accuracy issue
+- **Affects**: 11 unit tests expecting 401 but getting 200
+- **Files**:
+  - `apps/api/tests/conftest.py` (mock_dependencies fixture)
+  - All `test_*_requires_auth` tests
+- **Root Cause**: Mock auth dependency applies globally, even to tests checking auth is required
+- **Assigned To**: QA Agent
+- **Related**: Test Suite Implementation
+- **Impact**:
+  - Tests that should verify auth requirement pass incorrectly
+  - Cannot detect if endpoints accidentally become public
+  - False sense of security
+- **Failing Tests** (11 total):
+  - `test_get_config_requires_auth` - expects 401, gets 200
+  - `test_update_config_requires_auth` - expects 401, gets 200
+  - `test_reset_config_requires_auth` - expects 401, gets 200
+  - `test_list_conversations_requires_auth` - expects 401, gets 200
+  - `test_get_pending_conversations_requires_auth` - expects 401, gets 200
+  - `test_get_user_details_requires_auth` - expects 401, gets 200
+  - `test_get_message_history_requires_auth` - expects 401, gets 200
+  - `test_send_manual_message_requires_auth` - expects 401, gets 200
+  - `test_take_control_requires_auth` - expects 401, gets 200
+  - `test_return_to_bot_requires_auth` - expects 401, gets 200
+  - `test_rag_stats_requires_auth` - expects 401, gets 200
+- **Fix Plan**:
+  1. Make mock auth conditional (only for authenticated tests)
+  2. Add `skip_auth_mock` marker for auth requirement tests
+  3. Or: Create separate test client without auth override
+- **Estimated Work**: 2-3 hours to fix properly
+
 ### Bug #5: Voice Preview Button Missing - ✅ FIXED
 - **Reported**: 2025-11-23 13:19:00
 - **Reporter**: QA Agent

@@ -165,3 +165,154 @@ def cleanup_test_data(client: TestClient, auth_headers: Dict[str, str]):
     yield
     # Cleanup logic can be added here if needed
     # For example: reset config, clear test conversations, etc.
+
+
+# ============================================================================
+# DATABASE VALIDATION FIXTURES
+# ============================================================================
+
+@pytest.fixture(scope="function")
+async def db_session():
+    """
+    Provide a real database session for integration tests with database validation.
+    
+    This fixture creates a real database connection and automatically rolls back
+    all changes after the test completes, ensuring test isolation.
+    
+    Yields:
+        AsyncSession: SQLAlchemy async session
+    """
+    from src.database import get_db
+    from sqlalchemy.ext.asyncio import AsyncSession
+    
+    # Get a real database session
+    async for session in get_db():
+        try:
+            yield session
+        finally:
+            # Rollback any changes made during the test
+            await session.rollback()
+            await session.close()
+
+
+@pytest.fixture(scope="function")
+async def clean_db(db_session):
+    """
+    Clean database before test and provide session.
+    
+    This fixture deletes all test data before running the test,
+    ensuring a clean slate for database validation tests.
+    
+    Args:
+        db_session: Database session from db_session fixture
+        
+    Yields:
+        AsyncSession: Clean database session
+    """
+    from sqlalchemy import text
+    
+    # Delete test data (phone numbers starting with '+test')
+    try:
+        await db_session.execute(text("DELETE FROM messages WHERE phone LIKE '+test%'"))
+        await db_session.execute(text("DELETE FROM conversations WHERE phone LIKE '+test%'"))
+        await db_session.execute(text("DELETE FROM users WHERE phone LIKE '+test%'"))
+        await db_session.execute(text("DELETE FROM followups WHERE phone LIKE '+test%'"))
+        await db_session.execute(text("DELETE FROM handoffs WHERE phone LIKE '+test%'"))
+        await db_session.commit()
+    except Exception as e:
+        # If tables don't exist or other error, just continue
+        await db_session.rollback()
+    
+    yield db_session
+
+
+@pytest.fixture(scope="function")
+def test_user_data() -> Dict:
+    """
+    Provide test user data for database validation.
+    
+    Returns:
+        Dict: Test user data
+    """
+    return {
+        "phone": "+test1234567890",
+        "name": "Test User",
+        "email": "test@example.com",
+        "stage": "initial_contact"
+    }
+
+
+@pytest.fixture(scope="function")
+def test_conversation_data(test_user_data: Dict) -> Dict:
+    """
+    Provide test conversation data for database validation.
+    
+    Args:
+        test_user_data: Test user data fixture
+        
+    Returns:
+        Dict: Test conversation data
+    """
+    return {
+        "phone": test_user_data["phone"],
+        "status": "active",
+        "manual_control": False
+    }
+
+
+@pytest.fixture(scope="function")
+def test_message_data(test_user_data: Dict) -> Dict:
+    """
+    Provide test message data for database validation.
+    
+    Args:
+        test_user_data: Test user data fixture
+        
+    Returns:
+        Dict: Test message data
+    """
+    return {
+        "phone": test_user_data["phone"],
+        "message": "Hello, this is a test message",
+        "sender": "user",
+        "timestamp": "2024-01-01T00:00:00Z"
+    }
+
+
+@pytest.fixture(scope="function")
+def test_followup_data(test_user_data: Dict) -> Dict:
+    """
+    Provide test follow-up data for database validation.
+    
+    Args:
+        test_user_data: Test user data fixture
+        
+    Returns:
+        Dict: Test follow-up data
+    """
+    return {
+        "phone": test_user_data["phone"],
+        "scheduled_time": "2024-12-31T23:59:59Z",
+        "message": "Follow-up test message",
+        "status": "pending"
+    }
+
+
+@pytest.fixture(scope="function")
+def test_handoff_data(test_user_data: Dict) -> Dict:
+    """
+    Provide test handoff data for database validation.
+    
+    Args:
+        test_user_data: Test user data fixture
+        
+    Returns:
+        Dict: Test handoff data
+    """
+    return {
+        "phone": test_user_data["phone"],
+        "reason": "Customer requested human agent",
+        "status": "pending",
+        "assigned_agent": None
+    }
+

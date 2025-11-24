@@ -498,7 +498,35 @@
   - Mock now covers both auth and database dependencies
   - Tests run without external services
 - **Status**: Test suite functional, integration tests 100% passing
-- **Next Steps**: Fix unit test issues (optional, not blocking)etup
+- **Next Steps**: Fix unit test issues (optional, not blocking)
+
+### [QA Agent] Comprehensive CRUD Test Scenarios - 🔄 IN PROGRESS
+- **Started**: 2025-11-24 14:52:00
+- **Agent**: QA Agent
+- **Priority**: 🔴 High
+- **Description**: Create comprehensive CRUD test scenarios with database validation
+- **Scope**:
+  - Create tests for all CRUD operations (Create, Read, Update, Delete)
+  - Validate database persistence for all operations
+  - Test data integrity and constraints
+  - Test edge cases and error scenarios
+  - Document missing APIs in improvement proposals
+  - Register bugs in BUG_TRACKER.md
+- **APIs to Test**:
+  - Auth API (login, signup, logout, refresh, me)
+  - Config API (get, update, reset)
+  - Bot API (process message, health)
+  - Conversations API (list, get, messages, control)
+  - RAG API (upload, list, delete, stats)
+  - Followups API (if exists)
+  - Integrations API (if exists)
+- **Database Validation**:
+  - Verify records created in database
+  - Verify updates persist correctly
+  - Verify deletes remove records
+  - Verify relationships maintained
+  - Verify constraints enforced
+- **Status**: Analyzing current API coverageetup
 
 ### [QA Agent] Enhancing Pytest Test Suite - 🔄 IN PROGRESS
 - **Started**: 2025-11-24 07:10:00
