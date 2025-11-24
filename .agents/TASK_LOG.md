@@ -421,7 +421,22 @@
   - ✅ Removed test_hubspot.py from root
   - ✅ Created pytest.ini for bot-engine
   - ✅ Created central TEST_GUIDE.md
-  - ✅ Updated all READMEsetup
+  - ✅ Updated all READMEs
+
+### [QA Agent] Fix API Test Import Error - ✅ COMPLETED
+- **Started**: 2025-11-24 10:34:00
+- **Completed**: 2025-11-24 10:35:00
+- **Agent**: QA Agent
+- **Priority**: 🔴 Critical
+- **Files Modified**:
+  - `apps/api/tests/conftest.py`
+- **Description**: Fixed ImportError in API tests caused by relative imports
+- **Related**: Test organization task
+- **Issue**: Tests failing with "ImportError: attempted relative import with no known parent package"
+- **Root Cause**: conftest.py was adding src/ to path, but main.py uses relative imports (.routers)
+- **Solution**: Changed to add apps/api/ to path and import as `from src.main import app`
+- **Result**: API tests can now import correctly
+- **Verification**: Bot-engine tests already working (68 tests passed)etup
 
 ### [QA Agent] Enhancing Pytest Test Suite - 🔄 IN PROGRESS
 - **Started**: 2025-11-24 07:10:00
