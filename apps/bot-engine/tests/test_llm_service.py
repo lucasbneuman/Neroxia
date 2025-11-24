@@ -112,9 +112,9 @@ async def test_generate_response_with_rag_context(llm_service):
     )
 
     assert response == "Test response with context"
-    # Verify the system message includes RAG context
+    # Verify the system message includes RAG context (updated format)
     call_args = mock_llm.ainvoke.call_args[0][0]
-    assert any("RELEVANT CONTEXT" in msg.content for msg in call_args if isinstance(msg, SystemMessage))
+    assert any("DOCUMENTACIÓN OFICIAL" in msg.content for msg in call_args if isinstance(msg, SystemMessage))
 
 
 @pytest.mark.asyncio

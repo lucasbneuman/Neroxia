@@ -41,6 +41,99 @@ class LLMService:
 
         logger.info("LLM service initialized with GPT-4o and GPT-4o-mini")
 
+    def prepare_optimized_context(
+        self,
+        messages: List[BaseMessage],
+        max_messages: int = 12,
+        preserve_start: int = 2,
+        preserve_end: int = 6
+    ) -> List[BaseMessage]:
+        """
+        Optimize conversation context by intelligently truncating long histories.
+
+        Strategy:
+        - Always preserve first N messages (welcome + initial interaction)
+        - Always preserve last M messages (recent context)
+        - If total > max_messages, summarize the middle section
+
+        Args:
+            messages: Full conversation history
+            max_messages: Maximum messages to keep without summarization
+            preserve_start: Number of initial messages to always keep
+            preserve_end: Number of recent messages to always keep
+
+        Returns:
+            Optimized list of messages
+        """
+        if len(messages) <= max_messages:
+            # Short enough, return as is
+            return messages
+
+        logger.info(f"Optimizing context: {len(messages)} messages -> truncating to ~{max_messages}")
+
+        # Separate messages
+        start_messages = messages[:preserve_start]
+        end_messages = messages[-preserve_end:]
+        middle_messages = messages[preserve_start:-preserve_end]
+
+        if not middle_messages:
+            # Edge case: start and end overlap
+            return messages
+
+        # Create summary of middle section
+        middle_summary = self._create_quick_summary(middle_messages)
+        summary_message = SystemMessage(
+            content=f"[Resumen de {len(middle_messages)} mensajes anteriores: {middle_summary}]"
+        )
+
+        # Combine: start + summary + end
+        optimized = start_messages + [summary_message] + end_messages
+
+        logger.info(f"Context optimized: {len(messages)} -> {len(optimized)} messages (saved {len(messages) - len(optimized)} messages)")
+        return optimized
+
+    def _create_quick_summary(self, messages: List[BaseMessage]) -> str:
+        """
+        Create a quick summary of messages without calling LLM.
+
+        Extracts key information from middle messages:
+        - Topics mentioned
+        - Key data points
+        - Sentiment progression
+
+        Args:
+            messages: Messages to summarize
+
+        Returns:
+            Brief summary string
+        """
+        # Extract user and AI messages
+        user_msgs = []
+        ai_msgs = []
+
+        for msg in messages:
+            if isinstance(msg, HumanMessage):
+                user_msgs.append(msg.content[:100])  # First 100 chars
+            elif hasattr(msg, 'content'):
+                from langchain_core.messages import AIMessage
+                if isinstance(msg, AIMessage):
+                    ai_msgs.append(msg.content[:100])
+
+        # Build concise summary
+        summary_parts = []
+        if user_msgs:
+            summary_parts.append(f"Cliente mencionó: {'; '.join(user_msgs[:2])}")  # First 2 user messages
+        if ai_msgs:
+            summary_parts.append(f"Bot respondió sobre: {'; '.join(ai_msgs[:2])}")  # First 2 AI messages
+
+        summary = " | ".join(summary_parts) if summary_parts else "Conversación general"
+
+        # Truncate to max 200 chars
+        if len(summary) > 200:
+            summary = summary[:197] + "..."
+
+        return summary
+
     def split_into_parts(self, text: str, max_words: int = 50) -> List[str]:
         """
         Split text into parts respecting complete sentences.
@@ -110,31 +203,69 @@ class LLMService:
             logger.warning(f"Unknown task type '{task_type}', defaulting to GPT-4o-mini")
             return self.gpt4o_mini
 
-    async def classify_intent(self, message: str, conversation_history: Optional[List[BaseMessage]] = None) -> Dict[str, Any]:
+    async def classify_intent(self, message: str, conversation_history: Optional[List[BaseMessage]] = None, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Classify user intent and calculate intent score.
 
         Args:
             message: User's message
             conversation_history: Previous messages for context
+            config: Optional configuration dict with custom intent_prompt
 
         Returns:
             Dict with intent category and score (0-1)
         """
         llm = self.get_llm_for_task("classification")
 
-        prompt = f"""Analiza el siguiente mensaje de un cliente potencial y clasifica su intención.
+        # Check if custom intent_prompt is provided in config
+        if config and config.get("intent_prompt"):
+            # Use custom prompt from configuration
+            custom_prompt = config["intent_prompt"]
+            # Inject message and context variables
+            prompt = custom_prompt.replace("{message}", message)
+            if conversation_history:
+                history_length = len([m for m in conversation_history if isinstance(m, HumanMessage)])
+                prompt = prompt.replace("{context}", f"Esta es la interacción #{history_length + 1} del cliente.")
+            else:
+                prompt = prompt.replace("{context}", "Este es el primer mensaje del cliente (inicio de conversación).")
 
-Mensaje: "{message}"
+            logger.info("Using custom intent_prompt from configuration")
+        else:
+            # Use improved default prompt
+            # Build context indicator
+            history_context = ""
+            if conversation_history and len(conversation_history) > 0:
+                history_length = len([m for m in conversation_history if isinstance(m, HumanMessage)])
+                history_context = f"\nContexto: Esta es la interacción #{history_length + 1} del cliente."
+            else:
+                history_context = "\nContexto: Este es el primer mensaje del cliente (inicio de conversación)."
+
+            prompt = f"""Analiza el siguiente mensaje de un cliente potencial y clasifica su intención REAL considerando el contexto completo.
+
+Mensaje actual: "{message}"{history_context}
 
 Clasifica en una de estas categorías:
-- browsing: Solo está mirando, no listo para comprar (puntuación: 0.0-0.3)
-- interested: Muestra interés, hace preguntas (puntuación: 0.3-0.6)
-- ready_to_buy: Señales claras de compra (puntuación: 0.6-0.9)
-- objection: Tiene dudas u objeciones (puntuación: 0.4-0.6)
-- leaving: Quiere terminar la conversación (puntuación: 0.0-0.2)
+- browsing: Solo está mirando, no muestra señales de compra (puntuación: 0.0-0.3)
+- interested: Muestra interés genuino, hace preguntas sobre el producto/servicio (puntuación: 0.3-0.6)
+- ready_to_buy: Señales claras de compra inmediata ("quiero comprar", "cómo pago", etc.) (puntuación: 0.6-0.9)
+- objection: Tiene dudas u objeciones que necesitan resolverse (puntuación: 0.4-0.6)
+- leaving: Quiere terminar o posponer la conversación ("luego vuelvo", "después te escribo") (puntuación: 0.0-0.2)
 
-IMPORTANTE: Un saludo inicial como "hola", "buenos días", "hey" debe clasificarse como "interested" con puntuación entre 0.4-0.5, ya que el cliente está iniciando una conversación.
+CRITERIOS DE CLASIFICACIÓN:
+1. Si es el PRIMER mensaje:
+   - Saludo simple ("hola", "buenos días") → interested (0.4-0.5) - cliente inicia contacto
+   - Pregunta específica → interested (0.5-0.6) - cliente con necesidad clara
+   - Expresión de interés directo → ready_to_buy (0.7+) - cliente muy motivado
+
+2. Si hay HISTORIAL previo:
+   - Analiza la PROGRESIÓN de la conversación (¿está aumentando o disminuyendo el interés?)
+   - Considera el MOMENTUM actual (¿el cliente está cada vez más comprometido?)
+   - La clasificación debe reflejar la INTENCIÓN ACTUAL, no solo las palabras
+
+3. Señales de alta intención (0.7+):
+   - Preguntas sobre precio, pago, entrega
+   - "Quiero", "necesito", "me interesa comprar"
+   - Solicitud de información para concretar
 
 Responde SOLO con JSON válido en este formato exacto:
 {{"category": "nombre_categoria", "score": 0.0}}"""
@@ -184,20 +315,29 @@ Responde con UNA SOLA PALABRA: positive, neutral, o negative"""
             logger.error(f"Sentiment analysis error: {e}")
             return "neutral"
 
-    async def extract_data(self, message: str, conversation_history: Optional[List[BaseMessage]] = None) -> Dict[str, Any]:
+    async def extract_data(self, message: str, conversation_history: Optional[List[BaseMessage]] = None, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Extract user data from message (name, email, needs, budget, etc.).
 
         Args:
             message: User's message
             conversation_history: Previous messages for context
+            config: Optional configuration dict with custom data_extraction_prompt
 
         Returns:
             Dict with extracted data
         """
         llm = self.get_llm_for_task("extraction")
 
-        prompt = f"""Extrae ÚNICAMENTE información EXPLÍCITA del cliente de este mensaje. NO inventes ni asumas datos.
+        # Check if custom data_extraction_prompt is provided in config
+        if config and config.get("data_extraction_prompt"):
+            # Use custom prompt from configuration
+            custom_prompt = config["data_extraction_prompt"]
+            prompt = custom_prompt.replace("{message}", message)
+            logger.info("Using custom data_extraction_prompt from configuration")
+        else:
+            # Use improved default prompt
+            prompt = f"""Extrae ÚNICAMENTE información EXPLÍCITA del cliente de este mensaje. NO inventes ni asumas datos.
 
 Mensaje: "{message}"
 
@@ -205,21 +345,54 @@ REGLAS CRÍTICAS:
 - Solo extraer datos que el cliente MENCIONE EXPLÍCITAMENTE
 - Si el dato no está presente, usar null
 - NO asumir ni inferir información
-- Validar que cada dato sea correcto antes de incluirlo
+- Validar cuidadosamente cada extracción
 
-Campos a buscar:
-- name: Nombre completo del cliente (Capitalizar: "lucas" → "Lucas", "juan perez" → "Juan Perez")
-- email: Email válido (debe tener formato email@dominio.com)
-- phone: Número de teléfono completo (con código de país si está disponible)
-- needs: Lo que el cliente EXPLÍCITAMENTE dice que busca o necesita
-- budget: Presupuesto o rango de precio que el cliente MENCIONA
-- pain_points: Problemas específicos que el cliente MENCIONA que quiere resolver
+Campos a extraer:
+- name: Nombre completo del cliente
+- email: Dirección de email
+- phone: Número de teléfono
+- needs: Lo que el cliente busca o necesita
+- budget: Presupuesto o rango de precio
+- pain_points: Problemas que quiere resolver
 
-VALIDACIÓN:
-- name: Debe ser un nombre real, no saludos como "hola" o "buenos días"
-- email: Debe tener formato válido (usuario@dominio)
-- phone: Debe ser un número, no palabras
-- needs/pain_points: Deben ser descripciones concretas, no frases genéricas
+VALIDACIÓN ESTRICTA (ejemplos):
+
+✅ name - VÁLIDO:
+  "Me llamo María" → {{"name": "María"}}
+  "Soy Juan Pérez" → {{"name": "Juan Pérez"}}
+  "Mi nombre es Dr. García" → {{"name": "Dr. García"}}
+
+❌ name - INVÁLIDO (retornar null):
+  "Hola" → NO es un nombre, es un saludo
+  "Buenos días" → NO es un nombre
+  "Señor" → NO es un nombre completo
+
+✅ email - VÁLIDO:
+  "Mi email es juan@gmail.com" → {{"email": "juan@gmail.com"}}
+  "Escríbeme a maria.lopez@empresa.co" → {{"email": "maria.lopez@empresa.co"}}
+
+❌ email - INVÁLIDO (retornar null):
+  "juan@" → Incompleto
+  "email.com" → Falta usuario
+
+✅ phone - VÁLIDO:
+  "Mi número es +54 11 1234-5678" → {{"phone": "+54 11 1234-5678"}}
+  "Llámame al 1234567890" → {{"phone": "1234567890"}}
+  "+1-555-123-4567" → {{"phone": "+1-555-123-4567"}}
+
+❌ phone - INVÁLIDO (retornar null):
+  "teléfono" → Solo una palabra, no un número
+  "123" → Muy corto para ser teléfono válido
+
+✅ needs - VÁLIDO:
+  "Necesito un sistema de gestión" → {{"needs": "sistema de gestión"}}
+  "Busco mejorar mis ventas" → {{"needs": "mejorar ventas"}}
+
+❌ needs - INVÁLIDO (retornar null):
+  "hola" → No expresa una necesidad
+  "información" → Muy vago, no es una necesidad específica
+
+IMPORTANTE: Sé MUY conservador. Si tienes alguna duda sobre la validez del dato, retorna null.
 
 Responde SOLO con JSON válido:
 {{"name": null, "email": null, "phone": null, "needs": null, "budget": null, "pain_points": null}}"""
@@ -235,51 +408,45 @@ Responde SOLO con JSON válido:
             # Filter out null values
             result = {k: v for k, v in result.items() if v is not None and v != ""}
 
-            # VALIDATION: Post-process and validate extracted data
+            # Lightweight post-processing (trust the LLM, only catch extreme edge cases)
             validated_result = {}
 
-            # Validate and process name
+            # Name: Light cleanup and capitalization
             if "name" in result and result["name"]:
                 name = result["name"].strip()
-                # Filter out greetings and invalid names
-                invalid_names = ["hola", "buenos dias", "buenas tardes", "buenas noches", "hello", "hi"]
-                if name.lower() not in invalid_names and len(name) > 1:
+                if len(name) >= 2:  # Allow short names like "Li", "Jo"
                     validated_result["name"] = name.title()
 
-            # Validate email format
+            # Email: Basic format check only
             if "email" in result and result["email"]:
-                email = result["email"].strip()
-                # Basic email validation regex
-                if re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
-                    validated_result["email"] = email.lower()
+                email = result["email"].strip().lower()
+                # Only validate it has @ and domain
+                if "@" in email and "." in email.split("@")[-1]:
+                    validated_result["email"] = email
 
-            # Validate phone format
+            # Phone: Minimal validation (trust LLM)
             if "phone" in result and result["phone"]:
                 phone = result["phone"].strip()
-                # Check if it contains mostly numbers (allow +, -, spaces, parentheses)
-                cleaned_phone = re.sub(r'[\s\-\(\)]', '', phone)
-                if cleaned_phone.startswith('+'):
-                    cleaned_phone = cleaned_phone[1:]
-                if cleaned_phone.isdigit() and len(cleaned_phone) >= 7:
+                # Just verify it has some digits
+                if any(char.isdigit() for char in phone):
                     validated_result["phone"] = phone
 
-            # Validate needs (should be meaningful text, at least 5 characters)
+            # Needs: Accept anything meaningful (trust LLM validation)
             if "needs" in result and result["needs"]:
                 needs = result["needs"].strip()
-                if len(needs) >= 5:
+                if len(needs) >= 3:  # Very minimal length check
                     validated_result["needs"] = needs
 
-            # Validate budget (check it mentions money or numbers)
+            # Budget: Trust LLM extraction
             if "budget" in result and result["budget"]:
                 budget = result["budget"].strip()
-                # Should contain numbers or money-related keywords
-                if re.search(r'\d+|pesos|dolares|euros|precio|costo', budget.lower()):
+                if len(budget) >= 1:
                     validated_result["budget"] = budget
 
-            # Validate pain_points (should be meaningful text)
+            # Pain points: Trust LLM extraction
             if "pain_points" in result and result["pain_points"]:
                 pain_points = result["pain_points"].strip()
-                if len(pain_points) >= 5:
+                if len(pain_points) >= 3:
                     validated_result["pain_points"] = pain_points
 
             logger.info(f"Data extracted and validated: {validated_result}")
@@ -329,14 +496,45 @@ Responde SOLO con JSON válido:
         else:
             enhanced_prompt += "\n\nIMPORTANTE: NO uses emojis en tus respuestas."
 
+        # Enhanced RAG context injection with clear instructions
         if rag_context:
-            enhanced_prompt += f"\n\nRELEVANT CONTEXT:\n{rag_context}\n\nUse this context to inform your response when relevant."
+            enhanced_prompt += f"""
+
+=== 📚 DOCUMENTACIÓN OFICIAL DEL PRODUCTO/SERVICIO ===
+
+La siguiente información proviene de los documentos oficiales cargados en el sistema. Esta información es PRIORITARIA y AUTORITATIVA sobre cualquier otro conocimiento:
+
+{rag_context}
+
+=== INSTRUCCIONES DE USO DE LA DOCUMENTACIÓN ===
+
+1. **PRIORIDAD ABSOLUTA**: Si la pregunta del cliente se relaciona con información en estos documentos, úsala DIRECTAMENTE como fuente de verdad.
+
+2. **CITACIÓN NATURAL**: Incorpora la información de manera conversacional, no copies textualmente a menos que sean especificaciones técnicas exactas.
+   - ✅ Correcto: "Según nuestra documentación, el precio incluye..."
+   - ❌ Incorrecto: Copiar párrafos completos sin adaptar
+
+3. **TRANSPARENCIA**: Si los documentos NO cubren la pregunta específica del cliente:
+   - Aclara que la información no está en la documentación oficial
+   - Ofrece ayuda con lo que sí sabes o sugiere escalar a un humano
+
+4. **COHERENCIA**: Si hay contradicciones entre estos documentos y tu conocimiento base:
+   - SIEMPRE prioriza los documentos oficiales
+   - Los documentos reflejan información actualizada y específica del producto
+
+5. **NATURALIDAD**: Mantén un tono conversacional y amigable, no suenes como un manual técnico a menos que el cliente pida especificaciones detalladas.
+
+===
+"""
+
+        # Optimize context for long conversations (only for main conversation, not analysis tasks)
+        optimized_messages = self.prepare_optimized_context(messages)
 
         # Prepare messages - convert BaseMessage objects to proper format
         full_messages = [SystemMessage(content=enhanced_prompt)]
 
         # Ensure all messages are properly formatted BaseMessage objects
-        for msg in messages:
+        for msg in optimized_messages:
             if isinstance(msg, BaseMessage):
                 full_messages.append(msg)
             elif isinstance(msg, dict):

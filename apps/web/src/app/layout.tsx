@@ -1,21 +1,19 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Montserrat } from "next/font/google";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["700", "800", "900"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "WhatsApp Sales Bot",
-  description: "AI-powered sales assistant for WhatsApp",
+  title: "Sales Oracle - AI Sales Assistant",
+  description: "Intelligent WhatsApp sales automation powered by AI",
 };
 
 export default function RootLayout({
@@ -24,12 +22,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    <html lang="es">
+      <body className={`${montserrat.variable} antialiased`}>
         <ErrorBoundary>
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </ErrorBoundary>
       </body>
     </html>

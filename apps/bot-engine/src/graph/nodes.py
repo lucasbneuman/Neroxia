@@ -142,6 +142,7 @@ async def intent_classifier_node(state: ConversationState) -> Dict[str, Any]:
     Classify user intent and update intent score.
 
     Runs on EVERY turn. Uses GPT-4o-mini for efficiency.
+    Supports custom intent_prompt from configuration.
     """
     logger.info("Executing intent_classifier_node")
 
@@ -154,8 +155,12 @@ async def intent_classifier_node(state: ConversationState) -> Dict[str, Any]:
 
     last_message = user_messages[-1].content
 
-    # Classify intent
-    intent_data = await llm_service.classify_intent(last_message, state["messages"])
+    # Classify intent with config support
+    intent_data = await llm_service.classify_intent(
+        last_message,
+        state["messages"],
+        config=state.get("config")  # Pass config for custom prompts
+    )
 
     logger.info(f"Intent: {intent_data['category']}, Score: {intent_data['score']}")
 
@@ -235,8 +240,12 @@ async def data_collector_node(state: ConversationState) -> Dict[str, Any]:
 
     last_message = user_messages[-1].content
 
-    # Extract data
-    extracted_data = await llm_service.extract_data(last_message, state["messages"])
+    # Extract data with config support
+    extracted_data = await llm_service.extract_data(
+        last_message,
+        state["messages"],
+        config=state.get("config")  # Pass config for custom prompts
+    )
 
     if extracted_data:
         logger.info(f"Extracted data: {extracted_data}")

@@ -8,15 +8,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { useToast } from "@/components/ui/toast"
 import { VoiceSelector } from "@/components/config/VoiceSelector"
 import { SliderControl } from "@/components/config/SliderControl"
 import { FileUpload } from "@/components/config/FileUpload"
 
 export default function ConfigPage() {
     const [activeTab, setActiveTab] = useState<"chatbot" | "product" | "knowledge">("chatbot")
+    const { addToast } = useToast()
 
     // Use Zustand store for config state
-    const { config, loading, saving, status, setConfig, updateConfig, setLoading, setSaving, setStatus } = useConfigStore()
+    const { config, loading, saving, setConfig, updateConfig, setLoading, setSaving } = useConfigStore()
 
     useEffect(() => {
         loadConfig()
@@ -29,7 +32,7 @@ export default function ConfigPage() {
             setConfig(data)
         } catch (error) {
             console.error("Error loading config:", error)
-            setStatus("❌ Error al cargar configuración")
+            addToast("Error al cargar configuración", "error")
         } finally {
             setLoading(false)
         }
@@ -37,16 +40,16 @@ export default function ConfigPage() {
 
     const handleSave = async () => {
         setSaving(true)
-        setStatus("")
+        const loadingToastId = addToast("Guardando configuración...", "loading")
         try {
             const result = await saveConfig(config)
             if (result.success) {
-                setStatus("✅ Configuración guardada exitosamente")
+                addToast("✅ Configuración guardada exitosamente", "success")
             } else {
-                setStatus(`❌ Error: ${result.error || "Error desconocido"}`)
+                addToast(`Error: ${result.error || "Error desconocido"}`, "error")
             }
         } catch (error) {
-            setStatus(`❌ Error: ${error instanceof Error ? error.message : "Error desconocido"}`)
+            addToast(`Error: ${error instanceof Error ? error.message : "Error desconocido"}`, "error")
         } finally {
             setSaving(false)
         }
@@ -54,8 +57,9 @@ export default function ConfigPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-full">
-                <p className="text-gray-600">Cargando configuración...</p>
+            <div className="flex flex-col items-center justify-center h-full gap-4">
+                <LoadingSpinner size="lg" variant="accent" />
+                <p className="text-gray-600 font-bold">Cargando configuración...</p>
             </div>
         )
     }
@@ -63,40 +67,49 @@ export default function ConfigPage() {
     return (
         <div className="h-full p-6">
             <div className="mb-6">
-                <h1 className="text-2xl font-bold text-black">⚙️ Configuración</h1>
-                <p className="text-gray-600 text-sm mt-1">
+                <h1 className="text-3xl font-black text-black dark:text-white tracking-tight">⚙️ Configuración</h1>
+                <p className="text-gray-600 dark:text-gray-400 text-sm mt-2 font-bold">
                     Configura tu chatbot y describe tu producto/servicio
                 </p>
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-gray-300 mb-6">
+            <div className="flex border-b-2 border-gray-200 mb-6">
                 <button
                     onClick={() => setActiveTab("chatbot")}
-                    className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === "chatbot"
-                            ? "border-b-2 border-black text-black"
-                            : "text-gray-600 hover:text-black"
+                    className={`px-6 py-3 text-sm font-bold transition-smooth relative ${activeTab === "chatbot"
+                        ? "text-purple-600"
+                        : "text-gray-600 hover:text-purple-600"
                         }`}
                 >
                     🤖 Chatbot
+                    {activeTab === "chatbot" && (
+                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-600 to-purple-500 rounded-t-full" />
+                    )}
                 </button>
                 <button
                     onClick={() => setActiveTab("product")}
-                    className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === "product"
-                            ? "border-b-2 border-black text-black"
-                            : "text-gray-600 hover:text-black"
+                    className={`px-6 py-3 text-sm font-bold transition-smooth relative ${activeTab === "product"
+                        ? "text-purple-600"
+                        : "text-gray-600 hover:text-purple-600"
                         }`}
                 >
                     📦 Producto/Servicio
+                    {activeTab === "product" && (
+                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-600 to-purple-500 rounded-t-full" />
+                    )}
                 </button>
                 <button
                     onClick={() => setActiveTab("knowledge")}
-                    className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === "knowledge"
-                            ? "border-b-2 border-black text-black"
-                            : "text-gray-600 hover:text-black"
+                    className={`px-6 py-3 text-sm font-bold transition-smooth relative ${activeTab === "knowledge"
+                        ? "text-purple-600"
+                        : "text-gray-600 hover:text-purple-600"
                         }`}
                 >
                     📚 Base de Conocimientos
+                    {activeTab === "knowledge" && (
+                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-600 to-purple-500 rounded-t-full" />
+                    )}
                 </button>
             </div>
 
@@ -104,10 +117,10 @@ export default function ConfigPage() {
             <div className="max-w-4xl">
                 {activeTab === "chatbot" && (
                     <div className="space-y-6">
-                        <h2 className="text-lg font-semibold text-black">Configuración del Chatbot</h2>
+                        <h2 className="text-lg font-semibold text-black dark:text-white">Configuración del Chatbot</h2>
 
                         <div>
-                            <label className="block text-sm font-medium text-black mb-2">
+                            <label className="block text-sm font-medium text-black dark:text-white mb-2">
                                 System Prompt
                             </label>
                             <Textarea
@@ -122,7 +135,7 @@ export default function ConfigPage() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-black mb-2">
+                            <label className="block text-sm font-medium text-black dark:text-white mb-2">
                                 Mensaje de Bienvenida
                             </label>
                             <Textarea
@@ -137,7 +150,7 @@ export default function ConfigPage() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-black mb-2">
+                            <label className="block text-sm font-medium text-black dark:text-white mb-2">
                                 Link de Pago
                             </label>
                             <Input
@@ -150,8 +163,8 @@ export default function ConfigPage() {
                             </p>
                         </div>
 
-                        <div className="border-t border-gray-300 pt-6">
-                            <h3 className="text-base font-semibold text-black mb-4">Comportamiento</h3>
+                        <div className="border-t border-gray-300 dark:border-gray-700 pt-6">
+                            <h3 className="text-base font-semibold text-black dark:text-white mb-4">Comportamiento</h3>
 
                             <div className="grid grid-cols-2 gap-6">
                                 <SliderControl
@@ -184,7 +197,7 @@ export default function ConfigPage() {
                                             updateConfig({ use_emojis: checked as boolean })
                                         }
                                     />
-                                    <label className="text-sm text-black">Usar Emojis</label>
+                                    <label className="text-sm text-black dark:text-white">Usar Emojis</label>
                                 </div>
 
                                 <div className="flex items-center space-x-2">
@@ -194,13 +207,13 @@ export default function ConfigPage() {
                                             updateConfig({ multi_part_messages: checked as boolean })
                                         }
                                     />
-                                    <label className="text-sm text-black">Mensajes en Múltiples Partes</label>
+                                    <label className="text-sm text-black dark:text-white">Mensajes en Múltiples Partes</label>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="border-t border-gray-300 pt-6">
-                            <h3 className="text-base font-semibold text-black mb-4">Audio/TTS</h3>
+                        <div className="border-t border-gray-300 dark:border-gray-700 pt-6">
+                            <h3 className="text-base font-semibold text-black dark:text-white mb-4">Audio/TTS</h3>
 
                             <SliderControl
                                 label="Ratio Texto/Audio"
@@ -225,13 +238,13 @@ export default function ConfigPage() {
 
                 {activeTab === "product" && (
                     <div className="space-y-6">
-                        <h2 className="text-lg font-semibold text-black">Información de tu Producto/Servicio</h2>
+                        <h2 className="text-lg font-semibold text-black dark:text-white">Información de tu Producto/Servicio</h2>
                         <p className="text-sm text-gray-600">
                             Esta información se usará para adaptar las respuestas del chatbot
                         </p>
 
                         <div>
-                            <label className="block text-sm font-medium text-black mb-2">
+                            <label className="block text-sm font-medium text-black dark:text-white mb-2">
                                 Nombre del Producto/Servicio
                             </label>
                             <Input
@@ -243,7 +256,7 @@ export default function ConfigPage() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-black mb-2">
+                            <label className="block text-sm font-medium text-black dark:text-white mb-2">
                                 Descripción
                             </label>
                             <Textarea
@@ -256,7 +269,7 @@ export default function ConfigPage() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-black mb-2">
+                            <label className="block text-sm font-medium text-black dark:text-white mb-2">
                                 Características Principales
                             </label>
                             <Textarea
@@ -269,7 +282,7 @@ export default function ConfigPage() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-black mb-2">
+                            <label className="block text-sm font-medium text-black dark:text-white mb-2">
                                 Beneficios para el Cliente
                             </label>
                             <Textarea
@@ -283,7 +296,7 @@ export default function ConfigPage() {
 
                         <div className="grid grid-cols-2 gap-6">
                             <div>
-                                <label className="block text-sm font-medium text-black mb-2">
+                                <label className="block text-sm font-medium text-black dark:text-white mb-2">
                                     Precio
                                 </label>
                                 <Input
@@ -295,7 +308,7 @@ export default function ConfigPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-black mb-2">
+                                <label className="block text-sm font-medium text-black dark:text-white mb-2">
                                     Público Objetivo
                                 </label>
                                 <Input
@@ -323,12 +336,15 @@ export default function ConfigPage() {
                         variant="primary"
                         size="lg"
                     >
-                        {saving ? "Guardando..." : "💾 Guardar Configuración"}
+                        {saving ? (
+                            <span className="flex items-center justify-center gap-2">
+                                <LoadingSpinner size="sm" variant="default" />
+                                Guardando...
+                            </span>
+                        ) : (
+                            "💾 Guardar Configuración"
+                        )}
                     </Button>
-
-                    {status && (
-                        <p className="mt-3 text-sm">{status}</p>
-                    )}
                 </div>
             )}
         </div>

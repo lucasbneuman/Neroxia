@@ -52,15 +52,15 @@ export default function ChatsPage() {
     return (
         <div className="h-full p-6">
             <div className="mb-6">
-                <h1 className="text-2xl font-bold text-black">💬 Chats</h1>
-                <p className="text-gray-600 text-sm mt-1">
+                <h1 className="text-2xl font-bold text-black dark:text-white">💬 Chats</h1>
+                <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
                     Gestiona conversaciones en tiempo real
                 </p>
             </div>
 
             <div className="grid grid-cols-12 gap-6 h-[calc(100vh-200px)]">
                 {/* Left Column: Conversation List */}
-                <div className="col-span-3 border border-gray-300 rounded overflow-hidden bg-white">
+                <div className="col-span-3 border border-gray-300 dark:border-gray-700 rounded overflow-hidden bg-white dark:bg-gray-800">
                     <ConversationList
                         onSelectConversation={handleSelectConversation}
                         selectedPhone={selectedPhone}

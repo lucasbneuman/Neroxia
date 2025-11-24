@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation"
 import { useAuthStore } from "@/stores/auth-store"
 import { MessageSquare, Settings, FlaskConical, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { cn } from "@/lib/utils"
 
 export default function DashboardLayout({
@@ -35,43 +36,48 @@ export default function DashboardLayout({
         {
             href: "/dashboard/chat",
             icon: MessageSquare,
-            label: "💬 Chats",
+            label: "Chats",
             active: pathname?.startsWith("/dashboard/chat"),
         },
         {
             href: "/dashboard/config",
             icon: Settings,
-            label: "⚙️ Configuración",
+            label: "Configuración",
             active: pathname?.startsWith("/dashboard/config"),
         },
         {
             href: "/dashboard/test",
             icon: FlaskConical,
-            label: "🧪 Pruebas",
+            label: "Pruebas",
             active: pathname?.startsWith("/dashboard/test"),
         },
     ]
 
     return (
-        <div className="flex h-screen bg-white">
+        <div className="flex h-screen bg-gradient-to-b from-white to-gray-50 dark:from-gray-950 dark:to-gray-900">
             {/* Sidebar */}
-            <aside className="w-64 bg-white border-r border-gray-300 flex flex-col">
-                <div className="p-6 border-b border-gray-300">
-                    <h1 className="text-xl font-bold text-black">WhatsApp Sales Bot</h1>
-                    <p className="text-xs text-gray-600 mt-1">Panel de Control</p>
+            <aside className="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col shadow-medium transition-colors">
+                <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+                    <div>
+                        <h1 className="text-xl font-black text-black dark:text-white tracking-tight">
+                            Sales Oracle
+                        </h1>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 font-bold">Panel de Control</p>
+                    </div>
+                    <ThemeToggle />
                 </div>
 
                 <nav className="flex-1 p-4">
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                         {navItems.map((item) => (
                             <a
                                 key={item.href}
                                 href={item.href}
                                 className={cn(
-                                    "flex items-center gap-3 px-4 py-3 text-sm font-medium rounded transition-colors",
+                                    "flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-2xl transition-smooth",
                                     item.active
-                                        ? "bg-black text-white"
-                                        : "text-gray-700 hover:bg-gray-100"
+                                        ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-accent"
+                                        : "text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-400"
                                 )}
                             >
                                 <item.icon size={18} />
@@ -81,11 +87,11 @@ export default function DashboardLayout({
                     </div>
                 </nav>
 
-                <div className="p-4 border-t border-gray-300">
+                <div className="p-4 border-t border-gray-200 dark:border-gray-800">
                     <Button
                         variant="secondary"
                         onClick={handleLogout}
-                        className="w-full flex items-center justify-center gap-2"
+                        className="w-full flex items-center justify-center gap-2 rounded-2xl shadow-soft hover:shadow-medium transition-smooth"
                     >
                         <LogOut size={18} />
                         <span>Cerrar Sesión</span>

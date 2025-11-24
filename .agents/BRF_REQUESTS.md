@@ -1,7 +1,7 @@
 # 📋 BRF Requests (Brief de Requerimientos Funcionales)
 
 **Purpose**: UX Agent requests backend changes from Dev Agent
-**Last Updated**: 2025-11-23 15:00:00
+**Last Updated**: 2025-11-24 00:53:00
 
 ---
 
@@ -9,7 +9,241 @@
 
 > **RULE**: UX Agent creates, Dev Agent implements, QA Agent verifies
 
-*No active BRF requests at this time*
+### BRF #3: Fix Configuration Persistence - 🔴 CRITICAL
+- **Created**: 2025-11-24 00:53
+- **Requested By**: UX Agent
+- **Assigned To**: Dev Agent (awaiting assignment)
+- **Priority**: 🔴 Critical
+- **Status**: 🆕 NEW
+- **Estimated Effort**: M (Medium - 2-3 hours)
+
+**User Story**:
+As a user, I want my configuration changes to be saved and persist across page navigations so that I don't have to re-enter my settings every time.
+
+**Problem Statement**:
+1. Configuration save API returns 200 but doesn't actually save the data
+2. When navigating between tabs, configuration reverts to default/old values
+3. Users cannot persist their chatbot settings
+
+**Current Behavior**:
+- User fills out configuration form
+- Clicks "Guardar Configuración"
+- API responds with 200 OK
+- Configuration appears saved momentarily
+- Upon navigating to another tab and back, configuration is lost
+
+**Expected Behavior**:
+- Configuration should be saved to database
+- Configuration should persist across page navigations
+- Configuration should be loaded correctly on page mount
+
+**API Requirements**:
+- Endpoint: `POST /api/config/save` (already exists)
+- Fix: Ensure data is actually written to database
+- Verify: Configuration can be retrieved with `GET /api/config`
+
+**Frontend Impact**:
+- Frontend already implements correct save/load logic
+- No frontend changes needed once backend is fixed
+
+**Acceptance Criteria**:
+- [ ] Configuration save actually writes to database
+- [ ] Configuration persists after page refresh
+- [ ] Configuration persists when navigating between tabs
+- [ ] GET /api/config returns the most recently saved configuration
+
+**Dependencies**:
+- Blocks: User configuration workflow
+- Related: BRF #4 (Login issues)
+
+**Notes**:
+- This is CRITICAL for MVP launch
+- Users cannot use the application without being able to save config
+- Frontend implementation is correct, issue is backend-only
+
+---
+
+### BRF #4: Fix Login Authentication - 🔴 CRITICAL
+- **Created**: 2025-11-24 00:53
+- **Requested By**: UX Agent
+- **Assigned To**: Dev Agent (awaiting assignment)
+- **Priority**: 🔴 Critical
+- **Status**: 🆕 NEW
+- **Estimated Effort**: S (Small - 1-2 hours)
+
+**User Story**:
+As a user, I want to be able to log in with valid credentials so that I can access the dashboard.
+
+**Problem Statement**:
+Login endpoint is not working correctly. Users cannot authenticate even with correct credentials.
+
+**Current Behavior**:
+- User enters email: `admin@example.com`
+- User enters password: `admin`
+- Clicks "Iniciar Sesión"
+- API returns error
+- Toast notification shows: "Error al iniciar sesión. Por favor, intenta de nuevo."
+
+**Expected Behavior**:
+- User enters valid credentials
+- API validates credentials
+- API returns access token
+- User is redirected to dashboard
+
+**API Requirements**:
+- Endpoint: `POST /api/auth/login` (already exists)
+- Fix: Ensure authentication logic works correctly
+- Verify: Valid credentials return access token
+
+**Frontend Impact**:
+- Frontend already implements correct login logic
+- No frontend changes needed once backend is fixed
+
+**Acceptance Criteria**:
+- [ ] Login with valid credentials returns access token
+- [ ] Access token can be used to access protected routes
+- [ ] Invalid credentials return appropriate error message
+- [ ] Error handling is clear and user-friendly
+
+**Dependencies**:
+- Blocks: All dashboard functionality
+- Related: Cannot test BRF #3 without working login
+
+**Notes**:
+- This is CRITICAL for MVP launch
+- Users cannot access the application at all
+- Frontend implementation is correct, issue is backend-only
+- Verify database has test user with credentials: admin@example.com / admin
+
+---
+
+### BRF #1: Sales Oracle Branding Assets API - 🆕 NEW
+- **Created**: 2025-11-23 21:56
+- **Requested By**: UX Agent
+- **Assigned To**: Dev Agent (awaiting assignment)
+- **Priority**: 🟢 Low
+- **Status**: 🆕 NEW
+- **Estimated Effort**: S (Small - 1-2 hours)
+
+**User Story**:
+As a frontend developer, I want a centralized API to fetch branding assets so that I can dynamically load the Sales Oracle logo and brand colors.
+
+**Problem Statement**:
+Currently, branding is hardcoded in the frontend. For future white-labeling or brand updates, we need a centralized way to manage brand assets.
+
+**Proposed Solution**:
+Create an API endpoint that serves Sales Oracle branding assets including logos and color schemes.
+
+**Frontend Impact**:
+- Dashboard layout will fetch and display logo dynamically
+- Login page will use brand colors from API
+- Easier to update branding across all instances
+
+**API Requirements**:
+- Endpoint: `GET /api/branding/assets`
+- Request Body: None (GET request)
+- Response:
+  ```json
+  {
+    "logo": {
+      "full": "/assets/sales-oracle-logo.svg",
+      "icon": "/assets/sales-oracle-icon.svg",
+      "wordmark": "/assets/sales-oracle-wordmark.svg"
+    },
+    "colors": {
+      "accent": "#8B5CF6",
+      "accentHover": "#7C3AED"
+    }
+  }
+  ```
+- Status Codes: 200 (success), 500 (server error)
+- Authentication: Not Required (public endpoint)
+
+**Database Changes** (if needed):
+- None required (can serve static files)
+
+**Acceptance Criteria**:
+- [ ] API endpoint created and returns brand assets
+- [ ] Static assets directory created at `apps/api/static/branding/`
+- [ ] Frontend can consume API successfully
+- [ ] Documentation updated
+
+**Dependencies**:
+- Blocks: None (optional enhancement)
+- Related: Sales Oracle UI Redesign
+
+**Notes**:
+- This is OPTIONAL for initial launch
+- Can use text-based branding for now
+- Implement only if time permits
+- Low priority enhancement
+
+---
+
+### BRF #2: User Theme Preferences API - 🆕 NEW
+- **Created**: 2025-11-23 21:56
+- **Requested By**: UX Agent
+- **Assigned To**: Dev Agent (awaiting assignment)
+- **Priority**: 🟢 Low
+- **Status**: 🆕 NEW
+- **Estimated Effort**: M (Medium - 2-3 hours)
+
+**User Story**:
+As a user, I want my theme preferences saved so that my chosen theme persists across sessions.
+
+**Problem Statement**:
+Future dark mode support will need backend storage for user preferences.
+
+**Proposed Solution**:
+Create API endpoints to save and retrieve user theme preferences.
+
+**Frontend Impact**:
+- Theme toggle component will save preferences
+- Preferences will persist across browser sessions
+- Better UX for returning users
+
+**API Requirements**:
+- Endpoint 1: `GET /api/user/preferences`
+  - Response:
+    ```json
+    {
+      "theme": "light",
+      "accentColor": "#8B5CF6",
+      "fontSize": "medium"
+    }
+    ```
+- Endpoint 2: `PUT /api/user/preferences`
+  - Request Body:
+    ```json
+    {
+      "theme": "light" | "dark",
+      "accentColor": "#8B5CF6",
+      "fontSize": "small" | "medium" | "large"
+    }
+    ```
+  - Response: `{ "success": true }`
+- Status Codes: 200, 400, 401, 500
+- Authentication: Required
+
+**Database Changes** (if needed):
+- New table: `user_preferences` or add columns to existing `users` table
+- Columns: `theme`, `accent_color`, `font_size`
+
+**Acceptance Criteria**:
+- [ ] GET endpoint returns user preferences
+- [ ] PUT endpoint saves preferences
+- [ ] Preferences persist across sessions
+- [ ] Error handling for invalid values
+- [ ] Documentation updated
+
+**Dependencies**:
+- Blocks: Dark mode feature (future)
+- Related: Sales Oracle UI Redesign
+
+**Notes**:
+- NOT required for initial Sales Oracle launch
+- Future enhancement for v2.0
+- Very low priority
 
 ---
 
@@ -156,7 +390,7 @@ As a [user type], I want [goal] so that [benefit].
 
 ## 📊 BRF Statistics
 
-- **Active BRFs**: 0
+- **Active BRFs**: 2
 - **In Progress**: 0
 - **Completed Today**: 0
 - **Average Implementation Time**: N/A

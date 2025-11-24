@@ -20,14 +20,14 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         >
             <div
                 className={cn(
-                    "max-w-[70%] rounded px-4 py-2 text-sm",
+                    "max-w-[70%] rounded-2xl px-4 py-3 text-sm font-bold shadow-soft transition-smooth",
                     isUser
-                        ? "bg-black text-white"
-                        : "bg-white text-black border border-gray-300"
+                        ? "bg-gradient-to-r from-purple-600 to-purple-500 text-white"
+                        : "bg-white text-black border-2 border-gray-300"
                 )}
             >
                 <p className="whitespace-pre-wrap break-words">{message.message_text}</p>
-                <span className="text-xs opacity-70 mt-1 block">
+                <span className="text-xs opacity-70 mt-1 block font-normal">
                     {new Date(message.created_at).toLocaleTimeString()}
                 </span>
             </div>
