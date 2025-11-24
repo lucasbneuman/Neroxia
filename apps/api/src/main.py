@@ -1,6 +1,7 @@
 import os
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from dotenv import load_dotenv
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -17,12 +18,18 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 app = FastAPI(
     title="WhatsApp Sales Bot API",
     description="Backend API for WhatsApp Sales Bot SaaS",
-    version="1.0.0"
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json"
 )
 
 # Add rate limiter to app state and exception handler
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Add GZip compression middleware (compress responses > 1000 bytes)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Configure CORS
 # Allow configuring allowed origins via environment variable for production

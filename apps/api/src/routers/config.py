@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 from typing import Dict, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,19 +33,25 @@ class ConfigUpdate(BaseModel):
 
 @router.get("/")
 async def get_config(
+    response: Response,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """
     Get all configuration settings.
-    
+
     Returns all bot configuration including system prompts, product info,
     and behavior settings.
+
+    Cached for 5 minutes to improve performance.
     """
     try:
         config_manager = get_config_manager()
         configs = await config_manager.load_all_configs(db)
-        
+
+        # Add caching headers (5 minutes)
+        response.headers["Cache-Control"] = "private, max-age=300"
+
         logger.info(f"Retrieved {len(configs)} configuration settings")
         return {"configs": configs}
     
@@ -60,24 +66,32 @@ async def get_config(
 @router.put("/")
 async def update_config(
     config_update: ConfigUpdate,
+    response: Response,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """
     Update configuration settings.
-    
+
     Accepts a dictionary of configuration key-value pairs to update.
     Only provided keys will be updated, others remain unchanged.
+
+    Invalidates cache to ensure fresh data on next GET.
     """
     try:
         config_manager = get_config_manager()
-        
+
+        # Clear cache before saving
+        config_manager.clear_cache()
+
         # Save all provided configs
         await config_manager.save_all_configs(db, config_update.configs)
-        
+
         logger.info(f"Updated {len(config_update.configs)} configuration settings")
-        
-        # Return updated configs
+
+        # Return updated configs with no-cache header
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+
         updated_configs = await config_manager.load_all_configs(db)
         return {
             "status": "success",
