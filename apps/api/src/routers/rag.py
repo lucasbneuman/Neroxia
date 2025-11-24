@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 
 from whatsapp_bot_shared import get_logger
@@ -38,7 +38,7 @@ class FileInfo(BaseModel):
 
 @router.post("/upload")
 async def upload_documents(
-    request: Request,
+    files: List[UploadFile] = File(..., description="One or more files to upload"),
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -58,19 +58,15 @@ async def upload_documents(
                 detail="RAG service is not available. ChromaDB may not be installed."
             )
 
-        allowed_extensions = [".pdf", ".txt", ".doc", ".docx"]
-        total_chunks = 0
-        uploaded_files = []
-
-        # Parse form data to get files
-        form = await request.form()
-        files = form.getlist("files")
-
         if not files:
             raise HTTPException(
                 status_code=400,
                 detail="No files provided. Please upload at least one file."
             )
+
+        allowed_extensions = [".pdf", ".txt", ".doc", ".docx"]
+        total_chunks = 0
+        uploaded_files = []
 
         for file in files:
             # Validate file extension
