@@ -2,6 +2,21 @@
 
 Comprehensive pytest test suite for the WhatsApp Sales Bot API.
 
+## 📁 Organization
+
+Tests are organized into two categories:
+
+- **`unit/`** - Unit tests for individual API endpoints (57 tests)
+  - `test_config_api.py` - Configuration management (10 tests)
+  - `test_bot_api.py` - Bot message processing (11 tests)
+  - `test_rag_api.py` - RAG document management (16 tests)
+  - `test_conversations_api.py` - Conversation management (20 tests)
+
+- **`integration/`** - Integration tests for complete workflows (10 tests)
+  - `test_user_flows.py` - End-to-end user flows
+
+**Total: 67 tests**
+
 ## Overview
 
 This test suite provides complete coverage of all API endpoints with:

@@ -393,6 +393,36 @@
   - Multi-user concurrent conversation tests
   - Configuration persistence tests
 
+### [QA Agent] Test Organization and Consolidation - ✅ COMPLETED
+- **Started**: 2025-11-24 10:04:00
+- **Completed**: 2025-11-24 10:15:00
+- **Agent**: QA Agent
+- **Priority**: 🟡 Medium
+- **Files Organized**:
+  - API tests: Moved to unit/ and integration/ subdirectories
+  - Bot-engine tests: Organized preserving LLM Agent's work
+  - Scripts: Moved to scripts/tests/ and scripts/utils/
+  - Deprecated: Removed root /tests/ directory
+- **Files Created**:
+  - `TEST_GUIDE.md` - Central test documentation
+  - `apps/bot-engine/pytest.ini` - Bot engine test configuration
+  - `scripts/README.md` - Scripts documentation
+  - `__init__.py` files for all test subdirectories
+- **Description**: Organized and consolidated scattered test files across project
+- **Related**: Previous pytest test suite tasks, LLM Agent bot tests
+- **Result**: Clean, organized test structure with clear separation
+- **Changes Made**:
+  - ✅ API tests organized into unit/ (57 tests) and integration/ (10 tests)
+  - ✅ Bot-engine tests organized into unit/ (3 files) and integration/ (2 files)
+  - ✅ Preserved LLM Agent's bot tests (test_llm_optimizations, test_sprint2_features)
+  - ✅ Moved 5 utility test scripts to scripts/tests/
+  - ✅ Moved create_test_user.py to scripts/utils/
+  - ✅ Removed deprecated root /tests/ directory
+  - ✅ Removed test_hubspot.py from root
+  - ✅ Created pytest.ini for bot-engine
+  - ✅ Created central TEST_GUIDE.md
+  - ✅ Updated all READMEsetup
+
 ### [QA Agent] Enhancing Pytest Test Suite - 🔄 IN PROGRESS
 - **Started**: 2025-11-24 07:10:00
 - **Agent**: QA Agent
