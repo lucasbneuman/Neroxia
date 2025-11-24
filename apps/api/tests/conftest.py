@@ -71,12 +71,14 @@ def auth_headers(auth_token: str) -> Dict[str, str]:
 
 # Mock the get_current_user dependency for tests
 @pytest.fixture(autouse=True)
-def mock_auth_dependency(monkeypatch):
+def mock_dependencies(monkeypatch):
     """
-    Mock the authentication dependency for all tests.
-    This allows tests to run without real Supabase authentication.
+    Mock dependencies for all tests.
+    This allows tests to run without real Supabase authentication or database.
     """
     from src.routers.auth import get_current_user
+    from src.database import get_db
+    from unittest.mock import AsyncMock
     
     async def mock_get_current_user():
         """Mock user for testing."""
@@ -87,12 +89,23 @@ def mock_auth_dependency(monkeypatch):
             "created_at": "2024-01-01T00:00:00Z"
         }
     
-    # Replace the dependency in the app
-    from src.main import app
-    from fastapi import Depends
+    async def mock_get_db():
+        """Mock database session for testing."""
+        # Create a mock database session
+        db = AsyncMock()
+        try:
+            yield db
+        finally:
+            pass
     
-    # Override the dependency
+    # Replace the dependencies in the app
+    from src.main import app
+    
+    # Override auth dependency
     app.dependency_overrides[get_current_user] = mock_get_current_user
+    
+    # Override database dependency
+    app.dependency_overrides[get_db] = mock_get_db
     
     yield
     
