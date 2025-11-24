@@ -113,16 +113,38 @@ class ConfigManager:
 
     async def save_all_configs(self, db: AsyncSession, configs: Dict[str, Any]) -> None:
         """
-        Save multiple configurations.
+        Save multiple configurations in a single transaction (optimized).
 
         Args:
             db: Database session
             configs: Dict of configurations to save
         """
-        for key, value in configs.items():
-            await self.save_config(db, key, value)
+        from sqlalchemy.future import select
+        from whatsapp_bot_database.models import Config
+        from datetime import datetime
 
-        logger.info(f"Saved {len(configs)} configurations")
+        # Batch operation: prepare all upserts then commit once
+        for key, value in configs.items():
+            # Fetch existing config
+            result = await db.execute(select(Config).where(Config.key == key))
+            config = result.scalar_one_or_none()
+
+            if config:
+                # Update existing
+                config.value = value
+                config.updated_at = datetime.utcnow()
+            else:
+                # Create new
+                config = Config(key=key, value=value)
+                db.add(config)
+
+            # Update cache immediately
+            self._cache[key] = value
+
+        # Single commit for all changes
+        await db.commit()
+
+        logger.info(f"Saved {len(configs)} configurations in batch")
 
     def get_cached(self, key: str, default: Any = None) -> Any:
         """

@@ -38,7 +38,8 @@ export const getConfig = async (): Promise<Config> => {
 };
 
 export const saveConfig = async (config: Partial<Config>): Promise<APIResponse> => {
-  const response = await api.put('/config/', config);
+  // Backend expects: { configs: { key: value, ... } }
+  const response = await api.put('/config/', { configs: config });
   return response.data;
 };
 

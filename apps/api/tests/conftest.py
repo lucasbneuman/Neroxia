@@ -14,10 +14,13 @@ from typing import Generator, Dict
 import sys
 from pathlib import Path
 
-# Add src directory to Python path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+# Add parent directory (apps/api) to Python path so 'src' can be imported as a package
+api_dir = Path(__file__).parent.parent
+if str(api_dir) not in sys.path:
+    sys.path.insert(0, str(api_dir))
 
-from main import app
+# Now import from src package
+from src.main import app
 
 
 @pytest.fixture(scope="session")
