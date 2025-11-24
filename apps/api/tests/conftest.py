@@ -46,11 +46,15 @@ def auth_token(client: TestClient) -> str:
     Returns:
         str: JWT authentication token
     """
-    # Login with test credentials
+    # Login with real test credentials from Supabase
     response = client.post(
         "/auth/login",
-        data={"username": "admin", "password": "admin"}
+        json={
+            "email": "automationinnova640@gmail.com",
+            "password": "automation.innova$864."
+        }
     )
+    
     assert response.status_code == 200, f"Login failed: {response.text}"
     
     data = response.json()
