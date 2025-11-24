@@ -13,9 +13,10 @@
 2. [Environment Variables](#environment-variables)
 3. [Local Development (Docker Compose)](#local-development-docker-compose)
 4. [Production Deployment (Render.com)](#production-deployment-rendercom)
-5. [Health Checks](#health-checks)
-6. [Troubleshooting](#troubleshooting)
-7. [Rollback Procedures](#rollback-procedures)
+5. [CI/CD Pipeline (GitHub Actions)](#cicd-pipeline-github-actions)
+6. [Health Checks](#health-checks)
+7. [Troubleshooting](#troubleshooting)
+8. [Rollback Procedures](#rollback-procedures)
 
 ---
 
@@ -309,6 +310,160 @@ cd apps/web && npm start
 5. **Health Check Path**: `/`
 6. Add environment variables (see above)
 7. **Link API service**: In `NEXT_PUBLIC_API_URL`, select "From service" → whatsapp-saas-api
+
+---
+
+## 🔄 CI/CD Pipeline (GitHub Actions)
+
+### Overview
+
+The project includes a comprehensive CI/CD pipeline using GitHub Actions that automatically:
+- ✅ Lints Python and TypeScript code
+- ✅ Runs type checking (mypy, TypeScript)
+- ✅ Tests Docker builds
+- ✅ Runs unit tests (if available)
+- 🔒 Optional: Auto-deploys to Render.com
+
+### Workflow File
+
+Location: `.github/workflows/ci.yml`
+
+### Checks Performed
+
+| Check | Description | Tools |
+|-------|-------------|-------|
+| **Python Linting** | Code style and syntax errors | flake8 |
+| **Python Type Check** | Static type analysis | mypy |
+| **TypeScript Linting** | Code style and best practices | ESLint |
+| **TypeScript Type Check** | Type safety verification | tsc |
+| **Docker Build** | Verify Dockerfiles build successfully | Docker Buildx |
+| **Unit Tests** | Run pytest tests (if exist) | pytest |
+
+### Triggering CI/CD
+
+The pipeline runs automatically on:
+- **Push** to `saas-migration` or `main` branches
+- **Pull requests** to `saas-migration` or `main` branches
+
+### Viewing Results
+
+1. Go to your GitHub repository
+2. Click **"Actions"** tab
+3. Click on the latest workflow run
+4. Expand each job to see detailed logs
+
+### Configuration Files
+
+#### `.flake8` - Python Linting
+```ini
+[flake8]
+max-line-length = 127
+max-complexity = 10
+ignore = E203, E266, E501, W503, W504
+```
+
+#### `mypy.ini` - Python Type Checking
+```ini
+[mypy]
+python_version = 3.11
+ignore_missing_imports = True
+strict_optional = False
+```
+
+### Running Checks Locally
+
+#### Python Linting
+```bash
+# Install flake8
+pip install flake8
+
+# Lint API code
+flake8 apps/api/src
+
+# Lint bot-engine code
+flake8 apps/bot-engine/src
+```
+
+#### Python Type Checking
+```bash
+# Install mypy
+pip install mypy
+
+# Check types
+mypy apps/api/src --ignore-missing-imports
+```
+
+#### TypeScript Linting
+```bash
+# Navigate to web app
+cd apps/web
+
+# Run ESLint
+npm run lint
+```
+
+#### TypeScript Type Checking
+```bash
+cd apps/web
+npx tsc --noEmit
+```
+
+### Setting Up Auto-Deploy to Render
+
+To enable automatic deployment on push to `main`:
+
+1. **Get Render Deploy Hooks**:
+   - Go to Render Dashboard
+   - Select your API service → Settings → Deploy Hook
+   - Copy the deploy hook URL
+   - Repeat for Web service
+
+2. **Add GitHub Secrets**:
+   - Go to GitHub repository → Settings → Secrets and variables → Actions
+   - Click "New repository secret"
+   - Add two secrets:
+     - `RENDER_DEPLOY_HOOK_API`: Paste API deploy hook URL
+     - `RENDER_DEPLOY_HOOK_WEB`: Paste Web deploy hook URL
+
+3. **Enable Auto-Deploy**:
+   - Edit `.github/workflows/ci.yml`
+   - Uncomment the `deploy-render` job (lines ~180-195)
+   - Commit and push
+
+Now, every push to `main` will:
+1. Run all CI checks
+2. If all pass, trigger Render deployment automatically
+
+### Branch Protection Rules (Recommended)
+
+Protect your main branches by requiring CI to pass:
+
+1. Go to GitHub repository → Settings → Branches
+2. Click "Add branch protection rule"
+3. Branch name pattern: `main` (or `saas-migration`)
+4. Enable:
+   - ✅ Require status checks to pass before merging
+   - ✅ Require branches to be up to date before merging
+   - Select checks: `All CI Checks Passed`
+5. Save changes
+
+This ensures no code is merged unless all checks pass.
+
+### Troubleshooting CI/CD
+
+#### Build fails on GitHub Actions
+- Check the logs in Actions tab
+- Verify all dependencies are in `requirements.txt` and `package.json`
+- Ensure Docker builds work locally first
+
+#### Type checking fails
+- Run mypy/tsc locally to see errors
+- Fix type issues or adjust configuration in `mypy.ini`
+
+#### Auto-deploy not working
+- Verify GitHub secrets are set correctly
+- Check deploy hook URLs are valid
+- Ensure `deploy-render` job is uncommented
 
 ---
 
