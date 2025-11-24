@@ -7,54 +7,63 @@
 
 ## 🔴 Critical Bugs (P0)
 
-### Bug #8: RAG Endpoints 404 Error - Incorrect API Routes - ✅ FIXED ✅ VERIFIED
+### Bug #8: RAG Endpoints 404 Error - Incorrect API Routes - 🔄 IN PROGRESS
 - **Reported**: 2025-11-25 01:20:00
 - **Reporter**: User / LLM Bot Optimizer Agent
 - **Severity**: 🔴 Critical
-- **Status**: ✅ FIXED ✅ VERIFIED (LLM Bot Optimizer Agent)
-- **Fixed**: 2025-11-25 01:30:00 (initial), 2025-11-25 02:15:00 (complete)
+- **Status**: 🔄 IN PROGRESS - Upload fix attempt #3 (LLM Bot Optimizer Agent)
+- **Fixed**: 2025-11-25 01:30:00 (routes), 2025-11-25 02:15:00 (clear), 2025-11-25 03:00:00 (upload v3)
 - **Priority**: P0 - Blocks RAG functionality
 - **Affects**: File upload feature in Configuration page, all users trying to upload documents
 - **Files**:
   - `apps/web/src/lib/api.ts` (lines 49, 58, 63) - Frontend API calls
-  - `apps/api/src/routers/rag.py` (lines 8, 39-117, 225) - Backend endpoint signature
+  - `apps/api/src/routers/rag.py` (lines 8, 40-71, 225) - Backend endpoint signature
 - **Root Causes**:
-  1. Frontend calling `/config/rag/*` but backend endpoints mounted at `/rag/*`
-  2. Backend only accepting single file, frontend sending multiple files
-  3. FastAPI multipart/form-data field mismatch (expected 'file', received 'files')
-  4. Clear endpoint using POST instead of DELETE
+  1. Frontend calling `/config/rag/*` but backend endpoints mounted at `/rag/*` ✅ FIXED
+  2. Backend only accepting single file, frontend sending multiple files ✅ FIXED
+  3. FastAPI multipart/form-data handling - multiple attempts ⏳ IN PROGRESS
+  4. Clear endpoint using POST instead of DELETE ✅ FIXED
 - **Assigned To**: LLM Bot Optimizer Agent
 - **Related**:
   - FileUpload component (src/components/config/FileUpload.tsx)
   - RAG router (apps/api/src/routers/rag.py)
 - **Error Messages**:
-  1. Initial: `AxiosError: Request failed with status code 404`
-  2. Upload: `{"detail": [{"type": "missing", "loc": ["body", "file"], "msg": "Field required"}]}`
-  3. Clear: `{"detail": "Method Not Allowed"}`
+  1. Initial: `AxiosError: Request failed with status code 404` ✅ FIXED
+  2. Upload (attempt 1): `{"detail": [{"type": "missing", "loc": ["body", "file"], "msg": "Field required"}]}` ❌ FAILED
+  3. Upload (attempt 2): Same error after Request+form.getlist() approach ❌ FAILED
+  4. Clear: `{"detail": "Method Not Allowed"}` ✅ FIXED
 - **Reproduction**:
   1. Go to `/dashboard/config`
   2. Navigate to file upload section
   3. Try to upload files → Field required error
-  4. Try to clear collection → Method not allowed
-- **Fixes Applied**:
-  1. ✅ **Frontend** (apps/web/src/lib/api.ts) - Commit 723ecf3:
+  4. Try to clear collection → Method not allowed ✅ FIXED
+- **Fix Attempts**:
+  1. ✅ **Frontend Routes** (apps/web/src/lib/api.ts) - Commit 723ecf3:
      - Changed `/config/rag/upload` → `/rag/upload`
      - Changed `/config/rag/clear` → `/rag/clear`
      - Changed `/config/rag/stats` → `/rag/stats`
-  2. ✅ **Backend Upload** (apps/api/src/routers/rag.py) - Current commit:
-     - Changed endpoint signature to accept `Request` object
-     - Manually parse form data with `request.form()`
-     - Use `form.getlist("files")` to get multiple files
-     - Process each file in loop
-     - Added proper validation and error handling
-     - Return format: `{status, uploaded, files, total_chunks, message}`
-  3. ✅ **Backend Clear** (apps/api/src/routers/rag.py) - Current commit:
+     - **Status:** Working correctly
+
+  2. ✅ **Backend Clear** (apps/api/src/routers/rag.py) - Commit 76f42a0:
      - Changed `@router.post("/clear")` → `@router.delete("/clear")`
-     - Now matches frontend DELETE call
-- **Testing**:
+     - **Status:** Fixed, matches frontend DELETE call
+
+  3. ❌ **Backend Upload Attempt 1** (apps/api/src/routers/rag.py) - Commit 76f42a0:
+     - Approach: Changed to `Request` object + manual `form.getlist("files")`
+     - **Result:** FastAPI still validated expecting 'file' parameter
+     - **Why Failed:** Pydantic validation triggered before function execution
+
+  4. ⏳ **Backend Upload Attempt 3** (apps/api/src/routers/rag.py) - Commit f7e6527:
+     - Approach: Standard FastAPI pattern `files: List[UploadFile] = File(...)`
+     - Removed manual form parsing
+     - Let FastAPI handle multipart/form-data automatically
+     - Parameter name 'files' matches frontend FormData field
+     - **Status:** Awaiting user testing
+
+- **Testing Status**:
   - ✅ Stats endpoint returns proper data (404 resolved)
-  - ⏳ Upload endpoint accepts multiple files (needs user verification)
-  - ⏳ Clear endpoint responds to DELETE method (needs user verification)
+  - ✅ Clear endpoint responds to DELETE method (verified working)
+  - ⏳ Upload endpoint - attempt #3 needs user verification
 
 ### Bug #1: React hydration error on login page - ✅ FIXED
 - **Reported**: 2025-11-23 11:50:00
