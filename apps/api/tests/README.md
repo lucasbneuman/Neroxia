@@ -53,6 +53,46 @@ Integration tests (10 tests):
 - Configuration persistence
 - Health and status endpoints
 
+### `test_rag_api.py` ⭐ NEW
+RAG document management tests (16 tests):
+- GET /rag/stats - RAG statistics
+- GET /rag/files - List uploaded files
+- POST /rag/upload - Upload documents (TXT, PDF, DOC, DOCX)
+- DELETE /rag/files/{filename} - Delete files
+- POST /rag/clear - Clear RAG collection
+- File upload validation (file types, empty files)
+- RAG integration with bot processing
+- Complete RAG workflow tests
+
+### `test_conversations_api.py` ⭐ NEW
+Conversation management tests (20 tests):
+- GET /conversations - List all conversations
+- GET /conversations/pending - Get pending conversations
+- GET /conversations/{phone} - Get user details
+- GET /conversations/{phone}/messages - Get message history
+- POST /conversations/{phone}/send - Send manual message
+- POST /conversations/{phone}/take-control - Take manual control
+- POST /conversations/{phone}/return-to-bot - Return to bot
+- Pagination support
+- Complete manual intervention workflow
+- Conversation state tracking
+
+### `pytest.ini` ⭐ NEW
+Pytest configuration file:
+- Test discovery patterns
+- Coverage reporting configuration
+- Test markers for categorization
+- Output formatting options
+- Logging configuration
+
+### `run_tests.sh` & `run_tests.ps1` ⭐ NEW
+Test execution scripts (Bash & PowerShell):
+- Run all tests or specific categories
+- Coverage reporting
+- Parallel execution support
+- Quick smoke tests
+- Filtered test runs
+
 ## Running Tests
 
 ### Install Dependencies
@@ -65,43 +105,111 @@ pip install pytest pytest-cov httpx
 ### Run All Tests
 
 ```bash
-# Run all tests
-pytest tests/
+# Using test scripts (recommended)
+# Linux/Mac:
+./run_tests.sh
 
-# Run with verbose output
+# Windows PowerShell:
+.\run_tests.ps1
+
+# Or directly with pytest:
 pytest tests/ -v
+```
 
-# Run with coverage report
-pytest tests/ --cov=src --cov-report=html
+### Run Specific Test Categories
 
-# Run specific test file
-pytest tests/test_config_api.py
+```bash
+# Configuration tests only
+./run_tests.sh config
 
-# Run specific test class
-pytest tests/test_bot_api.py::TestBotProcessingAPI
+# Bot processing tests only
+./run_tests.sh bot
 
-# Run specific test
-pytest tests/test_user_flows.py::TestUserFlows::test_complete_sales_conversation_flow
+# RAG tests only
+./run_tests.sh rag
+
+# Conversation tests only
+./run_tests.sh conversations
+
+# User flow integration tests
+./run_tests.sh flows
+
+# Quick smoke tests
+./run_tests.sh quick
+```
+
+### Run with Coverage Report
+
+```bash
+# Generate HTML coverage report
+./run_tests.sh coverage
+
+# View coverage report
+open htmlcov/index.html  # Mac
+xdg-open htmlcov/index.html  # Linux
+start htmlcov/index.html  # Windows
 ```
 
 ### Run Tests in Parallel
 
 ```bash
-# Install pytest-xdist
+# Install pytest-xdist first
 pip install pytest-xdist
 
 # Run tests in parallel
+./run_tests.sh parallel
+
+# Or directly:
 pytest tests/ -n auto
+```
+
+### Run Specific Test File
+
+```bash
+pytest tests/test_config_api.py -v
+pytest tests/test_bot_api.py -v
+pytest tests/test_rag_api.py -v
+pytest tests/test_conversations_api.py -v
+pytest tests/test_user_flows.py -v
+```
+
+### Run Specific Test Class or Method
+
+```bash
+# Run specific class
+pytest tests/test_bot_api.py::TestBotProcessingAPI -v
+
+# Run specific test
+pytest tests/test_user_flows.py::TestUserFlows::test_complete_sales_conversation_flow -v
+```
+
+### View All Available Options
+
+```bash
+./run_tests.sh help
 ```
 
 ## Test Coverage
 
 Current test coverage:
 
-- **Configuration API**: 100% (10/10 tests)
-- **Bot Processing API**: 100% (11/11 tests)
-- **User Flows**: 100% (10/10 tests)
-- **Total**: 31 tests
+- **Configuration API**: 100% (10/10 tests) ✅
+- **Bot Processing API**: 100% (11/11 tests) ✅
+- **RAG API**: 100% (16/16 tests) ✅ NEW
+- **Conversations API**: 100% (20/20 tests) ✅ NEW
+- **User Flows & Integration**: 100% (10/10 tests) ✅
+- **Total**: **67 tests** ⭐ (previously 31)
+
+### Test Distribution
+
+| Category | Tests | Status |
+|----------|-------|--------|
+| Configuration Management | 10 | ✅ Complete |
+| Bot Message Processing | 11 | ✅ Complete |
+| RAG Document Management | 16 | ✅ Complete |
+| Conversation Management | 20 | ✅ Complete |
+| User Flow Integration | 10 | ✅ Complete |
+| **TOTAL** | **67** | ✅ **Complete** |
 
 ## Test Scenarios
 
