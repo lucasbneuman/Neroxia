@@ -1,0 +1,52 @@
+# API Service .dockerignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+venv/
+env/
+.venv/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+test_*.py
+tests/
+
+# Logs & Debug
+*.log
+api_debug.log
+
+# Database files (use volumes instead)
+chroma_db/
+*.db
+*.sqlite
+
+# Uploads (use volumes instead)
+rag_uploads/
+
+# Documentation
+*.md
+!README.md
+!API_ENDPOINTS.md
+!INTEGRATIONS_API.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Environment
+.env
+.env.*
+
+# Docker
+Dockerfile*
+.dockerignore

@@ -67,6 +67,10 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+        - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL:-http://localhost:8000}
+        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-dummy-key-for-local}
     container_name: whatsapp-sales-web
     ports:
       - '3000:3000'
@@ -84,6 +88,12 @@ services:
     networks:
       - whatsapp-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   # pgAdmin for database management (optional)
   pgadmin:

@@ -1,0 +1,45 @@
+# Bot Engine .dockerignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+venv/
+env/
+.venv/
+
+# Testing
+.pytest_cache/
+tests/
+test_*.py
+
+# Logs
+*.log
+
+# Database (use volumes)
+chroma_db/
+*.db
+
+# Documentation
+*.md
+!README.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Environment
+.env
+.env.*
+
+# Docker
+Dockerfile*
+.dockerignore
+
+# Git
+.git
+.gitignore

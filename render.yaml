@@ -1,5 +1,5 @@
 services:
-  # API Backend Service
+  # API Backend Service (includes bot-engine)
   - type: web
     name: whatsapp-saas-api
     runtime: python
@@ -11,10 +11,14 @@ services:
       pip install -e packages/database
       pip install -e apps/bot-engine
       pip install -r apps/api/requirements.txt
-    startCommand: cd apps/api && uvicorn src.main:app --host 0.0.0.0 --port $PORT
+    startCommand: cd apps/api && uvicorn src.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /health
+    autoDeploy: false
     envVars:
+      # AI & LLM
       - key: OPENAI_API_KEY
         sync: false
+      # Database (Supabase)
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_ANON_KEY
@@ -23,20 +27,25 @@ services:
         sync: false
       - key: SUPABASE_DATABASE_URL
         sync: false
+      # WhatsApp Integration (Twilio)
       - key: TWILIO_ACCOUNT_SID
         sync: false
       - key: TWILIO_AUTH_TOKEN
         sync: false
       - key: TWILIO_WHATSAPP_NUMBER
         sync: false
+      # CRM Integration (HubSpot)
       - key: HUBSPOT_ACCESS_TOKEN
         sync: false
       - key: HUBSPOT_CLIENT_SECRET
         sync: false
+      # Application Settings
       - key: LOG_LEVEL
         value: INFO
       - key: DEBUG
         value: false
+      - key: PYTHONUNBUFFERED
+        value: "1"
 
   # Frontend Web Service
   - type: web
@@ -46,15 +55,22 @@ services:
     plan: starter
     buildCommand: cd apps/web && npm install && npm run build
     startCommand: cd apps/web && npm start
+    healthCheckPath: /
+    autoDeploy: false
     envVars:
+      # API Connection (auto-linked to API service)
       - key: NEXT_PUBLIC_API_URL
         fromService:
           type: web
           name: whatsapp-saas-api
           property: url
+      # Supabase Client
       - key: NEXT_PUBLIC_SUPABASE_URL
         sync: false
       - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
         sync: false
+      # Node Settings
       - key: NODE_ENV
         value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
