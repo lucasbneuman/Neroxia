@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
 from pydantic import BaseModel
 
 from whatsapp_bot_shared import get_logger
@@ -38,7 +38,7 @@ class FileInfo(BaseModel):
 
 @router.post("/upload")
 async def upload_documents(
-    files: List[UploadFile] = File(...),
+    request: Request,
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -46,6 +46,8 @@ async def upload_documents(
 
     Supports PDF, TXT, DOC, and DOCX files.
     Documents will be processed and added to the knowledge base.
+
+    Note: This endpoint receives files via multipart/form-data with field name 'files'
     """
     try:
         rag_service = get_rag_service()
@@ -59,6 +61,16 @@ async def upload_documents(
         allowed_extensions = [".pdf", ".txt", ".doc", ".docx"]
         total_chunks = 0
         uploaded_files = []
+
+        # Parse form data to get files
+        form = await request.form()
+        files = form.getlist("files")
+
+        if not files:
+            raise HTTPException(
+                status_code=400,
+                detail="No files provided. Please upload at least one file."
+            )
 
         for file in files:
             # Validate file extension
@@ -94,14 +106,14 @@ async def upload_documents(
             "total_chunks": total_chunks,
             "message": f"Successfully uploaded {len(uploaded_files)} file(s) with {total_chunks} total chunks"
         }
-    
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error uploading document: {e}", exc_info=True)
+        logger.error(f"Error uploading documents: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to upload document: {str(e)}"
+            detail=f"Failed to upload documents: {str(e)}"
         )
 
 
@@ -210,7 +222,7 @@ async def get_stats(
         )
 
 
-@router.post("/clear")
+@router.delete("/clear")
 async def clear_collection(
     current_user: dict = Depends(get_current_user)
 ):
