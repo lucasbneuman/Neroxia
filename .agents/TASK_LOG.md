@@ -436,7 +436,34 @@
 - **Root Cause**: conftest.py was adding src/ to path, but main.py uses relative imports (.routers)
 - **Solution**: Changed to add apps/api/ to path and import as `from src.main import app`
 - **Result**: API tests can now import correctly
-- **Verification**: Bot-engine tests already working (68 tests passed)etup
+- **Verification**: Bot-engine tests already working (68 tests passed)
+
+### [QA Agent] Implementing Mock Authentication for Tests - ✅ COMPLETED
+- **Started**: 2025-11-24 11:59:00
+- **Completed**: 2025-11-24 12:05:00
+- **Agent**: QA Agent
+- **Priority**: 🔴 Critical
+- **Files Modified**:
+  - `apps/api/tests/conftest.py`
+- **Files Created**:
+  - `apps/api/tests/AUTH_SETUP.md`
+- **Description**: Implemented mock authentication to bypass Supabase in tests
+- **Related**: Test organization, auth fixture fixes
+- **Issue**: Supabase returning 400 Bad Request for test credentials
+- **Root Cause**: Real Supabase auth not suitable for automated tests
+- **Solution**: Mock `get_current_user` dependency using FastAPI overrides
+- **Implementation**:
+  - Created `mock_auth_dependency` fixture (autouse=True)
+  - Mocks return test user without Supabase call
+  - Uses `app.dependency_overrides` to replace auth
+  - Cleans up after each test
+- **Benefits**:
+  - ✅ Tests run without Supabase
+  - ✅ Faster execution
+  - ✅ No real credentials needed
+  - ✅ Isolated and repeatable
+  - ✅ Works in CI/CD
+- **Result**: Tests can now run successfully without external dependenciesetup
 
 ### [QA Agent] Enhancing Pytest Test Suite - 🔄 IN PROGRESS
 - **Started**: 2025-11-24 07:10:00

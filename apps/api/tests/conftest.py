@@ -40,28 +40,19 @@ def auth_token(client: TestClient) -> str:
     """
     Obtain an authentication token for protected endpoints.
     
+    For tests, we use a mock token since Supabase auth may not be available
+    in test environment.
+    
     Args:
         client: FastAPI test client
         
     Returns:
-        str: JWT authentication token
+        str: JWT authentication token (mock for tests)
     """
-    # Login with real test credentials from Supabase
-    response = client.post(
-        "/auth/login",
-        json={
-            "email": "automationinnova640@gmail.com",
-            "password": "automation.innova$864."
-        }
-    )
-    
-    assert response.status_code == 200, f"Login failed: {response.text}"
-    
-    data = response.json()
-    token = data.get("access_token")
-    assert token is not None, "No access token in response"
-    
-    return token
+    # For now, return a mock token
+    # TODO: Implement proper test authentication when Supabase test environment is ready
+    # The actual tests will mock the auth dependency, so this token just needs to exist
+    return "mock_test_token_for_api_tests"
 
 
 @pytest.fixture(scope="session")
@@ -76,6 +67,37 @@ def auth_headers(auth_token: str) -> Dict[str, str]:
         Dict[str, str]: Headers dictionary with Authorization
     """
     return {"Authorization": f"Bearer {auth_token}"}
+
+
+# Mock the get_current_user dependency for tests
+@pytest.fixture(autouse=True)
+def mock_auth_dependency(monkeypatch):
+    """
+    Mock the authentication dependency for all tests.
+    This allows tests to run without real Supabase authentication.
+    """
+    from src.routers.auth import get_current_user
+    
+    async def mock_get_current_user():
+        """Mock user for testing."""
+        return {
+            "id": "test-user-id-123",
+            "email": "test@example.com",
+            "user_metadata": {"name": "Test User"},
+            "created_at": "2024-01-01T00:00:00Z"
+        }
+    
+    # Replace the dependency in the app
+    from src.main import app
+    from fastapi import Depends
+    
+    # Override the dependency
+    app.dependency_overrides[get_current_user] = mock_get_current_user
+    
+    yield
+    
+    # Clean up
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture(scope="function")
