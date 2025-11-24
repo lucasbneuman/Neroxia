@@ -37,54 +37,62 @@ class FileInfo(BaseModel):
 
 
 @router.post("/upload")
-async def upload_document(
-    file: UploadFile = File(...),
+async def upload_documents(
+    files: List[UploadFile] = File(...),
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Upload a document for RAG processing.
-    
+    Upload one or more documents for RAG processing.
+
     Supports PDF, TXT, DOC, and DOCX files.
-    The document will be processed and added to the knowledge base.
+    Documents will be processed and added to the knowledge base.
     """
     try:
-        # Validate file extension
-        file_ext = Path(file.filename).suffix.lower()
-        allowed_extensions = [".pdf", ".txt", ".doc", ".docx"]
-        
-        if file_ext not in allowed_extensions:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unsupported file type. Allowed: {', '.join(allowed_extensions)}"
-            )
-        
-        # Save uploaded file
-        file_path = UPLOAD_DIR / file.filename
-        
-        with open(file_path, "wb") as f:
-            content = await file.read()
-            f.write(content)
-        
-        logger.info(f"Saved uploaded file: {file.filename} ({len(content)} bytes)")
-        
-        # Process with RAG service
         rag_service = get_rag_service()
-        
+
         if not rag_service.enabled:
             raise HTTPException(
                 status_code=503,
                 detail="RAG service is not available. ChromaDB may not be installed."
             )
-        
-        chunks_created = await rag_service.upload_document(str(file_path))
-        
-        logger.info(f"Processed {file.filename}: {chunks_created} chunks created")
-        
+
+        allowed_extensions = [".pdf", ".txt", ".doc", ".docx"]
+        total_chunks = 0
+        uploaded_files = []
+
+        for file in files:
+            # Validate file extension
+            file_ext = Path(file.filename).suffix.lower()
+
+            if file_ext not in allowed_extensions:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Unsupported file type for {file.filename}. Allowed: {', '.join(allowed_extensions)}"
+                )
+
+            # Save uploaded file
+            file_path = UPLOAD_DIR / file.filename
+
+            with open(file_path, "wb") as f:
+                content = await file.read()
+                f.write(content)
+
+            logger.info(f"Saved uploaded file: {file.filename} ({len(content)} bytes)")
+
+            # Process with RAG service
+            chunks_created = await rag_service.upload_document(str(file_path))
+
+            logger.info(f"Processed {file.filename}: {chunks_created} chunks created")
+
+            uploaded_files.append(file.filename)
+            total_chunks += chunks_created
+
         return {
             "status": "success",
-            "filename": file.filename,
-            "chunks_created": chunks_created,
-            "message": f"Document uploaded and processed successfully"
+            "uploaded": len(uploaded_files),
+            "files": uploaded_files,
+            "total_chunks": total_chunks,
+            "message": f"Successfully uploaded {len(uploaded_files)} file(s) with {total_chunks} total chunks"
         }
     
     except HTTPException:

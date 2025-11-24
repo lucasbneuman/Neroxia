@@ -1,11 +1,53 @@
 # 🐛 Bug Tracker
 
 **Purpose**: Live tracking of bugs and fixes
-**Last Updated**: 2025-11-23 14:35:00
+**Last Updated**: 2025-11-25 01:30:00
 
 ---
 
 ## 🔴 Critical Bugs (P0)
+
+### Bug #8: RAG Endpoints 404 Error - Incorrect API Routes - ✅ FIXED
+- **Reported**: 2025-11-25 01:20:00
+- **Reporter**: User / LLM Bot Optimizer Agent
+- **Severity**: 🔴 Critical
+- **Status**: ✅ FIXED (LLM Bot Optimizer Agent)
+- **Fixed**: 2025-11-25 01:30:00
+- **Priority**: P0 - Blocks RAG functionality
+- **Affects**: File upload feature in Configuration page, all users trying to upload documents
+- **Files**:
+  - `apps/web/src/lib/api.ts` (lines 49, 58, 63) - Frontend API calls
+  - `apps/api/src/routers/rag.py` (line 40) - Backend endpoint signature
+- **Root Cause**: Frontend calling `/config/rag/*` but backend endpoints mounted at `/rag/*`
+- **Secondary Issue**: Backend only accepting single file, frontend sending multiple files
+- **Assigned To**: LLM Bot Optimizer Agent
+- **Related**:
+  - FileUpload component (src/components/config/FileUpload.tsx)
+  - RAG router (apps/api/src/routers/rag.py)
+- **Error Message**:
+  ```
+  AxiosError: Request failed with status code 404
+  at async getRAGStats (src/lib/api.ts:63:20)
+  at async loadStats (src/components/config/FileUpload.tsx:16:26)
+  ```
+- **Reproduction**:
+  1. Go to `/dashboard/config`
+  2. Navigate to file upload section
+  3. **Expected**: RAG stats load successfully
+  4. **Actual**: 404 error in console, stats don't load
+- **Fixes Applied**:
+  1. ✅ **Frontend** (apps/web/src/lib/api.ts):
+     - Changed `/config/rag/upload` → `/rag/upload`
+     - Changed `/config/rag/clear` → `/rag/clear`
+     - Changed `/config/rag/stats` → `/rag/stats`
+  2. ✅ **Backend** (apps/api/src/routers/rag.py):
+     - Updated endpoint to accept `List[UploadFile]` (multiple files)
+     - Added loop to process all uploaded files
+     - Return format matches frontend expectations: `{uploaded, total_chunks}`
+- **Testing**:
+  - File upload should now work with correct route
+  - Multiple files can be uploaded at once
+  - Stats endpoint returns proper data
 
 ### Bug #1: React hydration error on login page - ✅ FIXED
 - **Reported**: 2025-11-23 11:50:00

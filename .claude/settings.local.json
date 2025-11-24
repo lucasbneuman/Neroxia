@@ -58,7 +58,9 @@
       "Bash(git pull:*)",
       "Bash(git fetch:*)",
       "Bash(docker --version:*)",
-      "Bash(docker-compose:*)"
+      "Bash(docker-compose:*)",
+      "Bash(cat:*)",
+      "Bash(git check-ignore:*)"
     ],
     "deny": [],
     "ask": []

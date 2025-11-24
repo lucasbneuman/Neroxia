@@ -46,7 +46,7 @@ export const uploadRAGDocuments = async (files: File[]): Promise<APIResponse<{ u
   const formData = new FormData();
   files.forEach(file => formData.append('files', file));
 
-  const response = await api.post('/config/rag/upload', formData, {
+  const response = await api.post('/rag/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
@@ -55,12 +55,12 @@ export const uploadRAGDocuments = async (files: File[]): Promise<APIResponse<{ u
 };
 
 export const clearRAGCollection = async (): Promise<APIResponse> => {
-  const response = await api.delete('/config/rag/clear');
+  const response = await api.delete('/rag/clear');
   return response.data;
 };
 
 export const getRAGStats = async (): Promise<RAGStats> => {
-  const response = await api.get('/config/rag/stats');
+  const response = await api.get('/rag/stats');
   return response.data;
 };
 
