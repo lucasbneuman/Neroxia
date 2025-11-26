@@ -26,7 +26,7 @@ export function SliderControl({
     return (
         <div className="space-y-2">
             <div className="flex justify-between items-center">
-                <label className="text-sm font-medium text-black">{label}</label>
+                <label className="text-sm font-medium text-black dark:text-white">{label}</label>
                 <span className="text-sm text-gray-600">
                     {value}{unit}
                 </span>

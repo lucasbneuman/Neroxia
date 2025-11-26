@@ -5,11 +5,20 @@ interface AuthState {
     isAuthenticated: boolean;
     setToken: (token: string) => void;
     logout: () => void;
+    initializeAuth: () => void;
 }
 
+// Helper to get token from localStorage safely
+const getStoredToken = (): string | null => {
+    if (typeof window !== 'undefined') {
+        return localStorage.getItem('token');
+    }
+    return null;
+};
+
 export const useAuthStore = create<AuthState>((set) => ({
-    token: null,
-    isAuthenticated: false,
+    token: getStoredToken(),
+    isAuthenticated: !!getStoredToken(),
     setToken: (token: string) => {
         if (typeof window !== 'undefined') {
             localStorage.setItem('token', token);
@@ -21,5 +30,9 @@ export const useAuthStore = create<AuthState>((set) => ({
             localStorage.removeItem('token');
         }
         set({ token: null, isAuthenticated: false });
+    },
+    initializeAuth: () => {
+        const token = getStoredToken();
+        set({ token, isAuthenticated: !!token });
     },
 }));

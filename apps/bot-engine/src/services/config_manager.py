@@ -45,79 +45,92 @@ class ConfigManager:
         self._cache: Dict[str, Any] = {}
         logger.info("Config manager initialized")
 
-    async def load_config(self, db: AsyncSession, key: str, default: Any = None) -> Any:
+    async def load_config(self, db: AsyncSession, key: str, user_id: Optional[str] = None, default: Any = None) -> Any:
         """
-        Load a configuration value.
+        Load a configuration value for a specific user.
 
         Args:
             db: Database session
             key: Configuration key
+            user_id: User ID (UUID from auth.users) - required for multi-tenant
             default: Default value if not found
 
         Returns:
             Configuration value
         """
-        # Check cache first
-        if key in self._cache:
-            return self._cache[key]
+        # Check cache first (cache key includes user_id)
+        cache_key = f"{user_id}:{key}" if user_id else key
+        if cache_key in self._cache:
+            return self._cache[cache_key]
 
         # Load from database
-        value = await crud.get_config(db, key)
+        value = await crud.get_config(db, key, user_id=user_id)
 
         if value is None:
             # Use default or fall back to DEFAULT_CONFIG
             value = default if default is not None else self.DEFAULT_CONFIG.get(key)
-            logger.info(f"Config '{key}' not found, using default: {value}")
+            logger.info(f"Config '{key}' not found for user {user_id}, using default: {value}")
         else:
-            logger.info(f"Loaded config '{key}': {value}")
+            logger.info(f"Loaded config '{key}' for user {user_id}: {value}")
 
         # Cache it
-        self._cache[key] = value
+        self._cache[cache_key] = value
         return value
 
-    async def save_config(self, db: AsyncSession, key: str, value: Any) -> None:
+    async def save_config(self, db: AsyncSession, key: str, value: Any, user_id: Optional[str] = None) -> None:
         """
-        Save a configuration value.
+        Save a configuration value for a specific user.
 
         Args:
             db: Database session
             key: Configuration key
             value: Configuration value
+            user_id: User ID (UUID from auth.users) - required for multi-tenant
         """
-        await crud.set_config(db, key, value)
-        self._cache[key] = value
-        logger.info(f"Saved config '{key}': {value}")
+        await crud.set_config(db, key, value, user_id=user_id)
+        
+        # Cache it (cache key includes user_id)
+        cache_key = f"{user_id}:{key}" if user_id else key
+        self._cache[cache_key] = value
+        logger.info(f"Saved config '{key}' for user {user_id}: {value}")
 
-    async def load_all_configs(self, db: AsyncSession) -> Dict[str, Any]:
+    async def load_all_configs(self, db: AsyncSession, user_id: Optional[str] = None) -> Dict[str, Any]:
         """
-        Load all configuration values.
+        Load all configuration values for a specific user.
 
         Args:
             db: Database session
+            user_id: User ID (UUID from auth.users) - required for multi-tenant
 
         Returns:
             Dict of all configurations
         """
-        configs = await crud.get_all_configs(db)
+        configs = await crud.get_all_configs(db, user_id=user_id)
 
         # Merge with defaults (defaults for missing keys)
         for key, value in self.DEFAULT_CONFIG.items():
             if key not in configs:
                 configs[key] = value
 
-        # Update cache
-        self._cache = configs.copy()
+        # Update cache (cache keys include user_id)
+        if user_id:
+            for key, value in configs.items():
+                cache_key = f"{user_id}:{key}"
+                self._cache[cache_key] = value
+        else:
+            self._cache.update(configs)
 
-        logger.info(f"Loaded {len(configs)} configurations")
+        logger.info(f"Loaded {len(configs)} configurations for user {user_id}")
         return configs
 
-    async def save_all_configs(self, db: AsyncSession, configs: Dict[str, Any]) -> None:
+    async def save_all_configs(self, db: AsyncSession, configs: Dict[str, Any], user_id: Optional[str] = None) -> None:
         """
-        Save multiple configurations in a single transaction (optimized).
+        Save multiple configurations in a single transaction (optimized) for a specific user.
 
         Args:
             db: Database session
             configs: Dict of configurations to save
+            user_id: User ID (UUID from auth.users) - required for multi-tenant
         """
         from sqlalchemy.future import select
         from whatsapp_bot_database.models import Config
@@ -125,8 +138,14 @@ class ConfigManager:
 
         # Batch operation: prepare all upserts then commit once
         for key, value in configs.items():
-            # Fetch existing config
-            result = await db.execute(select(Config).where(Config.key == key))
+            # Fetch existing config for this user
+            if user_id:
+                result = await db.execute(
+                    select(Config).where(Config.key == key, Config.user_id == user_id)
+                )
+            else:
+                result = await db.execute(select(Config).where(Config.key == key))
+            
             config = result.scalar_one_or_none()
 
             if config:
@@ -135,16 +154,17 @@ class ConfigManager:
                 config.updated_at = datetime.utcnow()
             else:
                 # Create new
-                config = Config(key=key, value=value)
+                config = Config(key=key, value=value, user_id=user_id)
                 db.add(config)
 
-            # Update cache immediately
-            self._cache[key] = value
+            # Update cache immediately (cache key includes user_id)
+            cache_key = f"{user_id}:{key}" if user_id else key
+            self._cache[cache_key] = value
 
         # Single commit for all changes
         await db.commit()
 
-        logger.info(f"Saved {len(configs)} configurations in batch")
+        logger.info(f"Saved {len(configs)} configurations in batch for user {user_id}")
 
     def get_cached(self, key: str, default: Any = None) -> Any:
         """
@@ -164,21 +184,22 @@ class ConfigManager:
         self._cache.clear()
         logger.info("Config cache cleared")
 
-    async def initialize_defaults(self, db: AsyncSession) -> None:
+    async def initialize_defaults(self, db: AsyncSession, user_id: Optional[str] = None) -> None:
         """
-        Initialize default configurations in database if they don't exist.
+        Initialize default configurations in database for a specific user if they don't exist.
 
         Args:
             db: Database session
+            user_id: User ID (UUID from auth.users) - required for multi-tenant
         """
         for key, value in self.DEFAULT_CONFIG.items():
-            existing = await crud.get_config(db, key)
+            existing = await crud.get_config(db, key, user_id=user_id)
             if existing is None:
-                await crud.set_config(db, key, value)
-                logger.info(f"Initialized default config '{key}': {value}")
+                await crud.set_config(db, key, value, user_id=user_id)
+                logger.info(f"Initialized default config '{key}' for user {user_id}: {value}")
 
         # Load all into cache
-        await self.load_all_configs(db)
+        await self.load_all_configs(db, user_id=user_id)
 
     async def get_twilio_config(self, db: AsyncSession) -> Dict[str, str]:
         """

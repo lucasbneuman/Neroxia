@@ -7,7 +7,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
-from .routers import auth, conversations, bot, config, rag, followups, integrations
+from .routers import auth, conversations, bot, config, rag, followups, integrations, handoff
 
 # Load environment variables
 load_dotenv()
@@ -60,6 +60,7 @@ app.include_router(bot.router)
 app.include_router(rag.router)
 app.include_router(followups.router)
 app.include_router(integrations.router)
+app.include_router(handoff.router)
 
 
 @app.get("/")

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import type { User, Message } from "@/types"
 import { getMessages, getUserByPhone } from "@/lib/api"
 import { ConversationList } from "@/components/chat/ConversationList"
-import { ChatWindow } from "@/components/chat/ChatWindow"
+import { ChatView } from "@/components/chat/ChatView"
 import { UserDataPanel } from "@/components/chat/UserDataPanel"
 import { HandoffControls } from "@/components/chat/HandoffControls"
 
@@ -68,9 +68,20 @@ export default function ChatsPage() {
                     />
                 </div>
 
-                {/* Middle Column: Chat Window */}
-                <div className="col-span-6 flex flex-col space-y-4">
-                    <ChatWindow messages={messages} loading={loading} />
+                {/* Middle Column: Chat View with Input */}
+                <div className="col-span-6 border border-gray-300 dark:border-gray-700 rounded overflow-hidden">
+                    {selectedPhone && selectedUser ? (
+                        <ChatView
+                            phone={selectedPhone}
+                            messages={messages}
+                            conversationMode={selectedUser.conversation_mode}
+                            onMessageSent={handleMessageSent}
+                        />
+                    ) : (
+                        <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500 font-bold bg-white dark:bg-gray-800">
+                            Selecciona una conversación para ver los mensajes
+                        </div>
+                    )}
                 </div>
 
                 {/* Right Column: User Info + Handoff Controls */}

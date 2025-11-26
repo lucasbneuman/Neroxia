@@ -98,7 +98,7 @@ export function ConversationList({
     return (
         <div className="space-y-1">
             <div className="flex justify-between items-center px-3 py-2 border-b border-gray-300">
-                <h3 className="font-semibold text-sm text-black">Chats Activos</h3>
+                <h3 className="font-semibold text-sm text-black dark:text-white">Chats Activos</h3>
                 <Button onClick={fetchConversations} size="sm" variant="secondary">
                     🔄
                 </Button>
@@ -129,7 +129,7 @@ export function ConversationList({
                         )}
                     >
                         <div className="flex justify-between items-start mb-1">
-                            <span className="text-sm text-black">
+                            <span className="text-sm text-black dark:text-white">
                                 {getModeIndicator(conversation.user?.conversation_mode || 'AUTO')} {displayName}
                             </span>
                             <span className="text-xs text-gray-500">

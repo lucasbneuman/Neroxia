@@ -1,13 +1,43 @@
 # 📋 Active Task Log
 
 **Purpose**: Live tracking of current agent work
-**Last Updated**: 2025-11-25 01:15:00
+**Last Updated**: 2025-11-25 00:20:00
 
 ---
 
 ## 🔄 Currently Active Tasks
 
 > **RULE**: Only ONE task per agent. Mark as COMPLETED before starting new task.
+
+### [Dev Agent] Fix Reported UI and RAG Issues - ✅ COMPLETED
+- **Started**: 2025-11-25 00:04:00
+- **Completed**: 2025-11-25 00:20:00
+- **Agent**: Dev Agent
+- **Priority**: 🔴 Critical
+- **Related**: Bug #13, #14, #15
+- **Description**: Fix uncontrolled input error, config saving stuck state, and RAG service unavailability.
+- **Files**: `apps/web/src/app/dashboard/config/page.tsx`, `apps/bot-engine/src/services/rag_service.py`
+- **Status**: All bugs resolved. UI fixed, Supabase support added to RAG service.
+
+### [QA Agent] Implementar Tests Específicos para LLM - 🆕 NEW
+- **Started**: 2025-11-24 21:25:00
+- **Agent**: QA Agent
+- **Priority**: 🟠 Alta
+- **Related**: Bug #12 (Resuelto), TODO_LLM_TESTS.md
+- **Description**: Crear suite de tests específicos para verificar comportamiento del LLM y bot workflow con llamadas reales
+- **Files**: 
+  - `.agents/TODO_LLM_TESTS.md` (plan detallado)
+  - `apps/bot-engine/tests/test_llm_real.py` (a crear)
+  - `apps/bot-engine/tests/test_workflow_e2e.py` (a crear)
+  - `pytest.ini` (configurar markers)
+- **Tasks**:
+  - [ ] Configurar markers de pytest (llm, slow, e2e)
+  - [ ] Crear tests de LLM Service
+  - [ ] Crear tests de Workflow E2E
+  - [ ] Crear tests de Optimizaciones LLM
+  - [ ] Documentar cómo ejecutar tests
+  - [ ] Establecer métricas de calidad
+- **Notas**: Tests con LLM real cuestan dinero, ejecutar solo cuando sea necesario
 
 ### [LLM Bot Optimizer Agent] Sprint 2 - Adaptive Personalization & Probabilistic Router - ✅ COMPLETED
 - **Started**: 2025-11-25 00:00:00
@@ -634,7 +664,32 @@
 - **Files Created**:
   - Test Verification Report (comprehensive analysis)
 - **Assigned to Dev**: Bug #12 for fixing
-- **Status**: ✅ COMPLETED - Verification done, bugs documentedetup
+- **Status**: ✅ COMPLETED - Verification done, bugs documented
+
+### [QA Agent] Documentation Review and Updates - ✅ COMPLETED
+- **Started**: 2025-11-24 18:33:00
+- **Completed**: 2025-11-24 18:45:00
+- **Agent**: QA Agent
+- **Priority**: 🟡 Medium
+- **Description**: Review and update test documentation while Dev fixes bugs
+- **Files Updated**:
+  - `TEST_GUIDE.md` - Updated test counts (67 → 135)
+  - `apps/api/tests/README.md` - Added new APIs, updated counts
+- **Files Created**:
+  - `apps/api/tests/TROUBLESHOOTING.md` - Comprehensive troubleshooting guide
+- **Updates Made**:
+  - Updated test counts to reflect 135 tests
+  - Added 4 new API categories (Followups, Handoff, Integrations, Auth)
+  - Created troubleshooting guide with 10 common issues
+  - Documented known bugs (#12, #11, #10)
+  - Added quick commands reference
+  - Added debugging tips
+- **Benefits**:
+  - Developers have up-to-date documentation
+  - Common issues have documented solutions
+  - Clear test organization
+  - Easy onboarding for new contributors
+- **Status**: ✅ COMPLETED - All documentation updatedetup
 
 ### [QA Agent] Enhancing Pytest Test Suite - 🔄 IN PROGRESS
 - **Started**: 2025-11-24 07:10:00

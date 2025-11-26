@@ -36,14 +36,19 @@ async def get_conversations(
                 last_message = recent[0].message_text
 
         result.append({
+            "id": user.id,
             "phone": user.phone,
             "name": user.name or "Unknown",
+            "email": user.email,
             "lastMessage": last_message,
             "timestamp": user.last_message_at,
             "unread": 0,  # TODO: Implement unread count
             "isHandedOff": user.conversation_mode != "AUTO",
+            "mode": user.conversation_mode,
             "stage": user.stage,
-            "sentiment": user.sentiment
+            "sentiment": user.sentiment,
+            "conversation_summary": user.conversation_summary,
+            "total_messages": user.total_messages
         })
     
     return result
@@ -130,14 +135,15 @@ async def get_messages(
     # Format for frontend
     result = []
     for msg in messages:
-        sender_type = "customer" if msg.sender == "user" else msg.sender
-        # Map 'user' -> 'customer', 'bot' -> 'bot', 'agent' -> 'agent'
+        sender_type = "user" if msg.sender == "user" else msg.sender
+        # Frontend expects: message_text, created_at, user_id, sender
         
         result.append({
             "id": msg.id,
-            "text": msg.message_text,
+            "user_id": msg.user_id,
+            "message_text": msg.message_text,
             "sender": sender_type,
-            "timestamp": msg.timestamp,
+            "created_at": msg.timestamp.isoformat() if msg.timestamp else None,
             "metadata": msg.message_metadata
         })
         
@@ -206,3 +212,36 @@ async def send_message(
     # This would require migrating the Twilio service to a shared package or calling it here
     
     return {"status": "success", "message_id": new_msg.id}
+
+
+@router.delete("/{phone}/clear")
+async def clear_conversation_history(
+    phone: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Clear conversation message history for a user.
+    
+    This deletes all messages but preserves the user record and their configuration.
+    Useful for clearing test conversations without losing user data.
+    """
+    formatted_phone = format_phone_number(phone)
+    user = await crud.get_user_by_phone(db, formatted_phone)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Delete all messages for this user
+    # Note: This requires a new CRUD function
+    from sqlalchemy import delete
+    from whatsapp_bot_database.models import Message
+    
+    stmt = delete(Message).where(Message.user_id == user.id)
+    await db.execute(stmt)
+    await db.commit()
+    
+    return {
+        "status": "success",
+        "message": f"Cleared message history for {user.name or user.phone}",
+        "user_preserved": True
+    }

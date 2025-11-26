@@ -31,13 +31,13 @@ export function FileUpload() {
             const fileArray = Array.from(files)
             const result = await uploadRAGDocuments(fileArray)
 
-            if (result.success && result.data) {
+            if (result.status === "success") {
                 setUploadStatus(
-                    `✅ ${result.data.uploaded} archivo(s) subido(s) correctamente (${result.data.total_chunks} fragmentos)`
+                    `✅ ${result.uploaded} archivo(s) subido(s) correctamente (${result.total_chunks} fragmentos)`
                 )
                 await loadStats()
             } else {
-                setUploadStatus(`❌ Error: ${result.error || "Error desconocido"}`)
+                setUploadStatus(`❌ Error: ${result.error || result.message || "Error desconocido"}`)
             }
         } catch (error) {
             setUploadStatus(`❌ Error: ${error instanceof Error ? error.message : "Error desconocido"}`)
@@ -58,11 +58,11 @@ export function FileUpload() {
 
         try {
             const result = await clearRAGCollection()
-            if (result.success) {
+            if (result.status === "success") {
                 setUploadStatus("✅ Base de conocimientos limpiada exitosamente")
                 await loadStats()
             } else {
-                setUploadStatus(`❌ Error: ${result.error || "Error desconocido"}`)
+                setUploadStatus(`❌ Error: ${result.error || result.message || "Error desconocido"}`)
             }
         } catch (error) {
             setUploadStatus(`❌ Error: ${error instanceof Error ? error.message : "Error desconocido"}`)
@@ -79,7 +79,7 @@ export function FileUpload() {
     return (
         <div className="space-y-4">
             <div>
-                <h3 className="text-lg font-semibold mb-2 text-black">
+                <h3 className="text-lg font-semibold mb-2 text-black dark:text-white">
                     📚 Base de Conocimientos
                 </h3>
                 <p className="text-sm text-gray-600 mb-4">
@@ -89,7 +89,7 @@ export function FileUpload() {
 
             <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-3">
-                    <p className="text-sm font-medium text-black">Formatos soportados: TXT, PDF, DOC, DOCX</p>
+                    <p className="text-sm font-medium text-black dark:text-white">Formatos soportados: TXT, PDF, DOC, DOCX</p>
 
                     <div className="border-2 border-dashed border-gray-300 rounded p-6 text-center">
                         <input
@@ -112,19 +112,19 @@ export function FileUpload() {
                         </label>
                     </div>
 
-                    <div className="p-3 bg-gray-50 border border-gray-300 rounded text-sm">
+                    <div className="p-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded text-sm">
                         📊 Fragmentos en base de datos: <strong>{stats.total_chunks}</strong>
                     </div>
 
                     {uploadStatus && (
-                        <div className="p-3 bg-gray-50 border border-gray-300 rounded text-sm">
+                        <div className="p-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded text-sm">
                             {uploadStatus}
                         </div>
                     )}
                 </div>
 
                 <div className="space-y-3">
-                    <p className="text-sm font-semibold text-black">ℹ️ Información</p>
+                    <p className="text-sm font-semibold text-black dark:text-white">ℹ️ Información</p>
                     <div className="text-sm text-gray-700 space-y-2">
                         <p><strong>¿Qué puedes subir?</strong></p>
                         <ul className="list-disc list-inside space-y-1 text-xs">
@@ -146,7 +146,7 @@ export function FileUpload() {
             </div>
 
             <div className="border-t border-gray-300 pt-4">
-                <p className="text-sm font-semibold text-black mb-2">⚠️ Zona de Peligro</p>
+                <p className="text-sm font-semibold text-black dark:text-white mb-2">⚠️ Zona de Peligro</p>
                 <Button
                     onClick={handleClearCollection}
                     disabled={clearing}

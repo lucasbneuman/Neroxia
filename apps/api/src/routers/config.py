@@ -38,7 +38,7 @@ async def get_config(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Get all configuration settings.
+    Get all configuration settings for the authenticated user.
 
     Returns all bot configuration including system prompts, product info,
     and behavior settings.
@@ -46,13 +46,21 @@ async def get_config(
     Cached for 5 minutes to improve performance.
     """
     try:
+        # Extract user_id from JWT token
+        user_id = current_user.get("id")
+        if not user_id:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid user token: missing user ID"
+            )
+        
         config_manager = get_config_manager()
-        configs = await config_manager.load_all_configs(db)
+        configs = await config_manager.load_all_configs(db, user_id=user_id)
 
         # Add caching headers (5 minutes)
         response.headers["Cache-Control"] = "private, max-age=300"
 
-        logger.info(f"Retrieved {len(configs)} configuration settings")
+        logger.info(f"Retrieved {len(configs)} configuration settings for user {user_id}")
         return {"configs": configs}
     
     except Exception as e:
@@ -71,7 +79,7 @@ async def update_config(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Update configuration settings.
+    Update configuration settings for the authenticated user.
 
     Accepts a dictionary of configuration key-value pairs to update.
     Only provided keys will be updated, others remain unchanged.
@@ -79,20 +87,28 @@ async def update_config(
     Invalidates cache to ensure fresh data on next GET.
     """
     try:
+        # Extract user_id from JWT token
+        user_id = current_user.get("id")
+        if not user_id:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid user token: missing user ID"
+            )
+        
         config_manager = get_config_manager()
 
         # Clear cache before saving
         config_manager.clear_cache()
 
         # Save all provided configs
-        await config_manager.save_all_configs(db, config_update.configs)
+        await config_manager.save_all_configs(db, config_update.configs, user_id=user_id)
 
-        logger.info(f"Updated {len(config_update.configs)} configuration settings")
+        logger.info(f"Updated {len(config_update.configs)} configuration settings for user {user_id}")
 
         # Return updated configs with no-cache header
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
 
-        updated_configs = await config_manager.load_all_configs(db)
+        updated_configs = await config_manager.load_all_configs(db, user_id=user_id)
         return {
             "status": "success",
             "message": f"Updated {len(config_update.configs)} settings",
@@ -113,23 +129,31 @@ async def reset_config(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Reset configuration to defaults.
+    Reset configuration to defaults for the authenticated user.
     
     Clears cache and reinitializes with default values.
     """
     try:
+        # Extract user_id from JWT token
+        user_id = current_user.get("id")
+        if not user_id:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid user token: missing user ID"
+            )
+        
         config_manager = get_config_manager()
         
         # Clear cache
         config_manager.clear_cache()
         
         # Reinitialize defaults
-        await config_manager.initialize_defaults(db)
+        await config_manager.initialize_defaults(db, user_id=user_id)
         
         # Load fresh configs
-        configs = await config_manager.load_all_configs(db)
+        configs = await config_manager.load_all_configs(db, user_id=user_id)
         
-        logger.info("Configuration reset to defaults")
+        logger.info(f"Configuration reset to defaults for user {user_id}")
         return {
             "status": "success",
             "message": "Configuration reset to defaults",

@@ -23,7 +23,11 @@ export default function LoginPage() {
 
         try {
             const data = await login(email, password);
+            // Save both access token and refresh token
             setToken(data.access_token);
+            if (data.refresh_token) {
+                localStorage.setItem('refresh_token', data.refresh_token);
+            }
             addToast('¡Inicio de sesión exitoso!', 'success');
             router.push('/dashboard/chat');
         } catch (err: any) {
@@ -36,9 +40,9 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-50">
-            <div className="max-w-md w-full space-y-8 p-10 bg-white rounded-3xl shadow-large border-2 border-gray-200">
+            <div className="max-w-md w-full space-y-8 p-10 bg-white dark:bg-gray-800 rounded-3xl shadow-large border-2 border-gray-200 dark:border-gray-700">
                 <div>
-                    <h1 className="text-center text-4xl font-black text-black tracking-tight">
+                    <h1 className="text-center text-4xl font-black text-black dark:text-white tracking-tight">
                         Sales Oracle
                     </h1>
                     <div className="mt-2 flex items-center justify-center">
@@ -52,7 +56,7 @@ export default function LoginPage() {
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                     <div className="space-y-4">
                         <div>
-                            <label htmlFor="email" className="block text-sm font-bold text-black mb-2">
+                            <label htmlFor="email" className="block text-sm font-bold text-black dark:text-white mb-2">
                                 Email
                             </label>
                             <Input
@@ -67,7 +71,7 @@ export default function LoginPage() {
                         </div>
 
                         <div>
-                            <label htmlFor="password" className="block text-sm font-bold text-black mb-2">
+                            <label htmlFor="password" className="block text-sm font-bold text-black dark:text-white mb-2">
                                 Password
                             </label>
                             <Input

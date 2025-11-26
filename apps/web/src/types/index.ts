@@ -68,8 +68,10 @@ export interface RAGStats {
 }
 
 export interface APIResponse<T = any> {
-    success: boolean
+    success?: boolean  // Legacy field, some endpoints still use this
+    status?: string    // New field: "success" | "error"
     data?: T
     error?: string
     message?: string
+    configs?: any      // For config endpoints
 }

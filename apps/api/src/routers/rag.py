@@ -88,7 +88,8 @@ async def upload_documents(
             logger.info(f"Saved uploaded file: {file.filename} ({len(content)} bytes)")
 
             # Process with RAG service
-            chunks_created = await rag_service.upload_document(str(file_path))
+            user_id = current_user.get("id") if current_user else None
+            chunks_created = await rag_service.upload_document(str(file_path), user_id=user_id)
 
             logger.info(f"Processed {file.filename}: {chunks_created} chunks created")
 
@@ -190,7 +191,7 @@ async def get_stats(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Get RAG collection statistics.
+    Get RAG collection statistics for the authenticated user.
     
     Returns information about the number of document chunks in the vector database.
     """
@@ -203,7 +204,15 @@ async def get_stats(
                 "message": "RAG service is not available"
             }
         
-        stats = rag_service.get_collection_stats()
+        # Extract user_id from JWT token for multi-tenant security
+        user_id = current_user.get("id")
+        if not user_id:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid user token: missing user ID"
+            )
+        
+        stats = rag_service.get_collection_stats(user_id=user_id)
         
         return {
             "enabled": True,
@@ -223,9 +232,10 @@ async def clear_collection(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Clear all documents from the RAG collection.
+    Clear all documents from the RAG collection for the authenticated user.
     
-    WARNING: This will remove all document chunks from the vector database.
+    WARNING: This will remove all YOUR document chunks from the vector database.
+    Other users' documents will not be affected.
     """
     try:
         rag_service = get_rag_service()
@@ -236,13 +246,22 @@ async def clear_collection(
                 detail="RAG service is not available"
             )
         
-        rag_service.clear_collection()
+        # Extract user_id from JWT token for multi-tenant security
+        user_id = current_user.get("id")
+        if not user_id:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid user token: missing user ID"
+            )
         
-        logger.info("Cleared RAG collection")
+        deleted_count = rag_service.clear_collection(user_id=user_id)
+        
+        logger.info(f"User {user_id} cleared {deleted_count} documents from RAG collection")
         
         return {
             "status": "success",
-            "message": "RAG collection cleared successfully"
+            "message": f"RAG collection cleared successfully ({deleted_count} documents deleted)",
+            "deleted_count": deleted_count
         }
     
     except HTTPException:

@@ -21,6 +21,53 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Add response interceptor to handle 401 errors (token expiration)
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If error is 401 and we haven't retried yet
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        // Try to refresh the token
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (refreshToken) {
+          const response = await axios.post(`${API_URL}/auth/refresh`, {
+            refresh_token: refreshToken
+          });
+
+          const { access_token, refresh_token: newRefreshToken } = response.data;
+
+          // Save new tokens
+          localStorage.setItem('token', access_token);
+          if (newRefreshToken) {
+            localStorage.setItem('refresh_token', newRefreshToken);
+          }
+
+          // Update the failed request with new token
+          originalRequest.headers.Authorization = `Bearer ${access_token}`;
+
+          // Retry the original request
+          return api(originalRequest);
+        }
+      } catch (refreshError) {
+        // Refresh failed, redirect to login
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('refresh_token');
+          window.location.href = '/login';
+        }
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 // Auth API
 export const login = async (email: string, password: string) => {
   // Supabase expects JSON with email (not form data)
@@ -34,7 +81,8 @@ export const login = async (email: string, password: string) => {
 // Configuration API
 export const getConfig = async (): Promise<Config> => {
   const response = await api.get('/config/');
-  return response.data;
+  // API returns { configs: {...} }
+  return response.data.configs || response.data;
 };
 
 export const saveConfig = async (config: Partial<Config>): Promise<APIResponse> => {
@@ -43,7 +91,7 @@ export const saveConfig = async (config: Partial<Config>): Promise<APIResponse> 
   return response.data;
 };
 
-export const uploadRAGDocuments = async (files: File[]): Promise<APIResponse<{ uploaded: number; total_chunks: number }>> => {
+export const uploadRAGDocuments = async (files: File[]): Promise<{ status: string; uploaded: number; total_chunks: number; message: string; error?: string }> => {
   const formData = new FormData();
   files.forEach(file => formData.append('files', file));
 
@@ -55,7 +103,7 @@ export const uploadRAGDocuments = async (files: File[]): Promise<APIResponse<{ u
   return response.data;
 };
 
-export const clearRAGCollection = async (): Promise<APIResponse> => {
+export const clearRAGCollection = async (): Promise<{ status: string; message: string; error?: string }> => {
   const response = await api.delete('/rag/clear');
   return response.data;
 };
@@ -74,8 +122,24 @@ export const previewVoice = async (voice: string): Promise<Blob> => {
 
 // Conversations API
 export const getConversations = async (): Promise<Conversation[]> => {
-  const response = await api.get('/conversations');
-  return response.data;
+  const response = await api.get('/conversations/');
+  // API returns flat objects, transform to match Conversation type
+  return response.data.map((item: any) => ({
+    user: {
+      id: item.id || 0,
+      phone: item.phone,
+      name: item.name,
+      email: item.email,
+      conversation_mode: item.mode || 'AUTO',
+      total_messages: item.total_messages || 0,
+      last_message_at: item.timestamp,
+      sentiment: item.sentiment,
+      stage: item.stage,
+      conversation_summary: item.conversation_summary
+    },
+    last_message: item.lastMessage || '',
+    unread: item.unread || false
+  }));
 };
 
 export const getMessages = async (phone: string): Promise<Message[]> => {
@@ -89,15 +153,17 @@ export const getUserInfo = async (userId: number): Promise<User> => {
 };
 
 export const getUserByPhone = async (phone: string): Promise<User> => {
-  const response = await api.get(`/users/phone/${phone}`);
+  // Use the conversations endpoint which returns user details
+  const response = await api.get(`/conversations/${phone}`);
   return response.data;
 };
 
 // Handoff API
 export const takeControl = async (phone: string): Promise<APIResponse> => {
-  const response = await api.post(`/handoff/${phone}/take`);
+  const response = await api.post(`/handoff/${phone}/take`, {});
   return response.data;
 };
+
 
 export const returnToBot = async (phone: string): Promise<APIResponse> => {
   const response = await api.post(`/handoff/${phone}/return`);

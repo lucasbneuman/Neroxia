@@ -34,7 +34,7 @@ export function VoiceSelector({ value, onChange }: VoiceSelectorProps) {
 
     return (
         <div className="space-y-3">
-            <label className="text-sm font-medium text-black">Voz TTS</label>
+            <label className="text-sm font-medium text-black dark:text-white">Voz TTS</label>
             <div className="grid grid-cols-3 gap-2">
                 {voices.map((voice) => (
                     <button
@@ -42,8 +42,8 @@ export function VoiceSelector({ value, onChange }: VoiceSelectorProps) {
                         type="button"
                         onClick={() => onChange(voice)}
                         className={`px-3 py-2 text-sm rounded border transition-colors ${value === voice
-                                ? "bg-black text-white border-black"
-                                : "bg-white text-black border-gray-300 hover:border-black"
+                            ? "bg-black text-white border-black"
+                            : "bg-white text-black border-gray-300 hover:border-black"
                             }`}
                     >
                         {voice}

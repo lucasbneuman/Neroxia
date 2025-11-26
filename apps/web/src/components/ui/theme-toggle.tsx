@@ -13,13 +13,26 @@ export function ThemeToggle() {
         const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null
         const initialTheme = savedTheme || "light"
         setTheme(initialTheme)
-        document.documentElement.setAttribute("data-theme", initialTheme)
+
+        // Apply dark class to html element for Tailwind
+        if (initialTheme === "dark") {
+            document.documentElement.classList.add("dark")
+        } else {
+            document.documentElement.classList.remove("dark")
+        }
     }, [])
 
     const toggleTheme = () => {
         const newTheme = theme === "light" ? "dark" : "light"
         setTheme(newTheme)
-        document.documentElement.setAttribute("data-theme", newTheme)
+
+        // Toggle dark class on html element for Tailwind
+        if (newTheme === "dark") {
+            document.documentElement.classList.add("dark")
+        } else {
+            document.documentElement.classList.remove("dark")
+        }
+
         localStorage.setItem("theme", newTheme)
     }
 

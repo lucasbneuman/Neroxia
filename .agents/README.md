@@ -10,12 +10,18 @@
 
 ```
 .agents/
-├── README.md                 ← You are here
-├── AGENT_PROTOCOL.md         ← HOW to work (workflow steps)
-├── AGENT_ROLES.md            ← WHO does WHAT (responsibilities)
-├── TASK_LOG.md               ← LIVE active tasks (current work)
-├── BUG_TRACKER.md            ← LIVE bugs & fixes (issues)
-└── BRF_REQUESTS.md           ← LIVE backend requests from UX (coordination)
+├── README.md                           ← You are here
+├── AGENT_PROTOCOL.md                   ← HOW to work (workflow steps)
+├── AGENT_ROLES.md                      ← WHO does WHAT (responsibilities)
+├── TASK_LOG.md                         ← LIVE active tasks (current work)
+├── BUG_TRACKER.md                      ← LIVE bugs & fixes (issues)
+├── BRF_REQUESTS.md                     ← LIVE backend requests from UX (coordination)
+├── PROMPT_DEV_AGENT.md                 ← Dev Agent instructions
+├── PROMPT_QA_BACKEND.md                ← QA Backend Agent instructions
+├── PROMPT_QA_FRONTEND.md               ← QA Frontend Agent instructions
+├── PROJECT_COORDINATION.md             ← Project status and coordination
+├── EXECUTIVE_SUMMARY.md                ← High-level project summary
+└── PARALLEL_AGENTS_COORDINATION.md     ← Parallel agent workflow
 ```
 
 ---

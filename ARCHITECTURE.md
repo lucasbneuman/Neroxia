@@ -339,12 +339,30 @@ whatsapp_sales_bot/
 **Routers**:
 | Router | Endpoints | Purpose |
 |--------|-----------|---------|
-| `auth.py` | `/auth/login`, `/auth/signup` | Supabase authentication |
-| `conversations.py` | `/conversations/*` | CRUD for conversations |
-| `bot.py` | `/bot/message`, `/bot/health` | Bot message processing |
-| `config.py` | `/config/*` | Configuration management |
-| `rag.py` | `/rag/documents/*` | RAG document upload/delete |
-| `followups.py` | `/followups/*` | Follow-up scheduling |
+| `auth.py` | `/auth/login`, `/auth/signup`, `/auth/logout`, `/auth/refresh`, `/auth/me` | Supabase authentication |
+| `conversations.py` | `/conversations/`, `/conversations/{phone}`, `/conversations/{phone}/messages`, `/conversations/{phone}/clear` | Conversation and message management |
+| `bot.py` | `/bot/process`, `/bot/health` | Bot message processing |
+| `config.py` | `/config/`, `/config/reset` | Configuration management |
+| `rag.py` | `/rag/upload`, `/rag/files`, `/rag/files/{filename}`, `/rag/stats`, `/rag/clear` | RAG document management |
+| `followups.py` | `/followups/`, `/followups/{id}`, `/followups/pending` | Follow-up scheduling |
+| `handoff.py` | `/handoff/{phone}/take`, `/handoff/{phone}/return`, `/handoff/{phone}/send` | Human handoff controls |
+| `integrations.py` | `/integrations/hubspot/*`, `/integrations/twilio/*` | External integrations |
+
+**API Response Format**:
+All endpoints return JSON with consistent structure:
+```json
+{
+  "status": "success" | "error",
+  "message": "Human readable message",
+  "data": { ... },  // Optional, endpoint-specific data
+  "configs": { ... } // For config endpoints
+}
+```
+
+**Authentication**:
+- All endpoints (except `/auth/login` and `/auth/signup`) require authentication
+- Use `Authorization: Bearer {token}` header
+- Token obtained from `/auth/login` endpoint
 
 **Dependencies**:
 - `packages/database` - For models and CRUD

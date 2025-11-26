@@ -77,13 +77,13 @@ export function HandoffControls({ user, onModeChange, onMessageSent }: HandoffCo
             </Button>
 
             {status && (
-                <div className="p-2 text-sm border border-gray-300 rounded bg-gray-50">
+                <div className="p-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-800">
                     {status}
                 </div>
             )}
 
             <div className="border-t border-gray-300 pt-3">
-                <h4 className="text-sm font-semibold mb-2 text-black">Mensaje Manual</h4>
+                <h4 className="text-sm font-semibold mb-2 text-black dark:text-white">Mensaje Manual</h4>
                 <div className="flex gap-2">
                     <Input
                         value={message}

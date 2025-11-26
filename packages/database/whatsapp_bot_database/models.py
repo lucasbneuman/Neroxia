@@ -3,7 +3,8 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -87,14 +88,20 @@ class FollowUp(Base):
 
 
 class Config(Base):
-    """Configuration storage model."""
+    """Configuration storage model - Multi-tenant support."""
 
     __tablename__ = "configs"
+    
+    # Composite unique constraint (user_id, key) defined in __table_args__
+    __table_args__ = (
+        UniqueConstraint('user_id', 'key', name='configs_user_key_unique'),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
-    key = Column(String(100), unique=True, nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=False), nullable=False, index=True)  # UUID from auth.users
+    key = Column(String(100), nullable=False, index=True)
     value = Column(JSON, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     def __repr__(self) -> str:
-        return f"<Config(key={self.key})>"
+        return f"<Config(user_id={self.user_id}, key={self.key})>"

@@ -40,13 +40,17 @@ export default function ConfigPage() {
 
     const handleSave = async () => {
         setSaving(true)
-        const loadingToastId = addToast("Guardando configuración...", "loading")
         try {
             const result = await saveConfig(config)
-            if (result.success) {
+            // API returns { status: "success", message: "...", configs: {...} }
+            if (result.status === "success") {
+                // Update the config state with the saved values from the API
+                if (result.configs) {
+                    setConfig(result.configs)
+                }
                 addToast("✅ Configuración guardada exitosamente", "success")
             } else {
-                addToast(`Error: ${result.error || "Error desconocido"}`, "error")
+                addToast(`Error: ${result.message || "Error desconocido"}`, "error")
             }
         } catch (error) {
             addToast(`Error: ${error instanceof Error ? error.message : "Error desconocido"}`, "error")
@@ -124,7 +128,7 @@ export default function ConfigPage() {
                                 System Prompt
                             </label>
                             <Textarea
-                                value={config.system_prompt}
+                                value={config.system_prompt || ""}
                                 onChange={(e) => updateConfig({ system_prompt: e.target.value })}
                                 placeholder="Eres un asistente de ventas profesional..."
                                 rows={4}
@@ -139,7 +143,7 @@ export default function ConfigPage() {
                                 Mensaje de Bienvenida
                             </label>
                             <Textarea
-                                value={config.welcome_message}
+                                value={config.welcome_message || ""}
                                 onChange={(e) => updateConfig({ welcome_message: e.target.value })}
                                 placeholder="¡Hola! Soy tu asistente virtual. ¿En qué puedo ayudarte hoy?"
                                 rows={2}
@@ -154,7 +158,7 @@ export default function ConfigPage() {
                                 Link de Pago
                             </label>
                             <Input
-                                value={config.payment_link}
+                                value={config.payment_link || ""}
                                 onChange={(e) => updateConfig({ payment_link: e.target.value })}
                                 placeholder="https://tu-sitio.com/pagar"
                             />
@@ -248,7 +252,7 @@ export default function ConfigPage() {
                                 Nombre del Producto/Servicio
                             </label>
                             <Input
-                                value={config.product_name}
+                                value={config.product_name || ""}
                                 onChange={(e) => updateConfig({ product_name: e.target.value })}
                                 placeholder="Ej: Curso de Marketing Digital"
                             />
@@ -260,7 +264,7 @@ export default function ConfigPage() {
                                 Descripción
                             </label>
                             <Textarea
-                                value={config.product_description}
+                                value={config.product_description || ""}
                                 onChange={(e) => updateConfig({ product_description: e.target.value })}
                                 placeholder="Curso completo de marketing digital con más de 50 horas de contenido..."
                                 rows={4}
@@ -273,7 +277,7 @@ export default function ConfigPage() {
                                 Características Principales
                             </label>
                             <Textarea
-                                value={config.product_features}
+                                value={config.product_features || ""}
                                 onChange={(e) => updateConfig({ product_features: e.target.value })}
                                 placeholder="- 50+ horas de video&#10;- Certificado al finalizar&#10;- Acceso de por vida&#10;- Soporte 24/7"
                                 rows={5}
@@ -286,7 +290,7 @@ export default function ConfigPage() {
                                 Beneficios para el Cliente
                             </label>
                             <Textarea
-                                value={config.product_benefits}
+                                value={config.product_benefits || ""}
                                 onChange={(e) => updateConfig({ product_benefits: e.target.value })}
                                 placeholder="- Aprenderás a crear campañas efectivas&#10;- Aumentarás tus ventas online&#10;- Dominarás las redes sociales"
                                 rows={5}
@@ -300,7 +304,7 @@ export default function ConfigPage() {
                                     Precio
                                 </label>
                                 <Input
-                                    value={config.product_price}
+                                    value={config.product_price || ""}
                                     onChange={(e) => updateConfig({ product_price: e.target.value })}
                                     placeholder="Ej: $99 USD, Desde $50, Consultar"
                                 />
@@ -312,7 +316,7 @@ export default function ConfigPage() {
                                     Público Objetivo
                                 </label>
                                 <Input
-                                    value={config.product_target_audience}
+                                    value={config.product_target_audience || ""}
                                     onChange={(e) => updateConfig({ product_target_audience: e.target.value })}
                                     placeholder="Ej: Emprendedores, Pequeños negocios"
                                 />

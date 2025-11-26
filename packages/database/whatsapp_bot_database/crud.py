@@ -338,42 +338,61 @@ async def cancel_user_pending_follow_ups(db: AsyncSession, user_id: int) -> int:
 # ============================================================================
 
 
-async def get_config(db: AsyncSession, key: str) -> Optional[Dict[str, Any]]:
+async def get_config(db: AsyncSession, key: str, user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """
-    Get configuration value by key.
+    Get configuration value by key for a specific user.
 
     Args:
         db: Database session
         key: Configuration key
+        user_id: User ID (UUID from auth.users) - required for multi-tenant
 
     Returns:
         Configuration value (JSON) if found, None otherwise
     """
-    result = await db.execute(select(Config).where(Config.key == key))
+    if user_id:
+        # Multi-tenant: filter by user_id
+        result = await db.execute(
+            select(Config).where(Config.key == key, Config.user_id == user_id)
+        )
+    else:
+        # Legacy: no user_id filter (will be blocked by RLS if enabled)
+        result = await db.execute(select(Config).where(Config.key == key))
+    
     config = result.scalar_one_or_none()
     return config.value if config else None
 
 
-async def set_config(db: AsyncSession, key: str, value: Dict[str, Any]) -> Config:
+async def set_config(db: AsyncSession, key: str, value: Dict[str, Any], user_id: Optional[str] = None) -> Config:
     """
-    Set configuration value (create or update).
+    Set configuration value for a specific user (create or update).
 
     Args:
         db: Database session
         key: Configuration key
         value: Configuration value (will be stored as JSON)
+        user_id: User ID (UUID from auth.users) - required for multi-tenant
 
     Returns:
         Config object
     """
-    result = await db.execute(select(Config).where(Config.key == key))
+    if user_id:
+        # Multi-tenant: filter by user_id
+        result = await db.execute(
+            select(Config).where(Config.key == key, Config.user_id == user_id)
+        )
+    else:
+        # Legacy: no user_id filter
+        result = await db.execute(select(Config).where(Config.key == key))
+    
     config = result.scalar_one_or_none()
 
     if config:
         config.value = value
         config.updated_at = datetime.utcnow()
     else:
-        config = Config(key=key, value=value)
+        # Create new config with user_id
+        config = Config(key=key, value=value, user_id=user_id)
         db.add(config)
 
     await db.commit()
@@ -381,17 +400,24 @@ async def set_config(db: AsyncSession, key: str, value: Dict[str, Any]) -> Confi
     return config
 
 
-async def get_all_configs(db: AsyncSession) -> Dict[str, Any]:
+async def get_all_configs(db: AsyncSession, user_id: Optional[str] = None) -> Dict[str, Any]:
     """
-    Get all configuration values.
+    Get all configuration values for a specific user.
 
     Args:
         db: Database session
+        user_id: User ID (UUID from auth.users) - required for multi-tenant
 
     Returns:
         Dictionary mapping config keys to values
     """
-    result = await db.execute(select(Config))
+    if user_id:
+        # Multi-tenant: filter by user_id
+        result = await db.execute(select(Config).where(Config.user_id == user_id))
+    else:
+        # Legacy: no user_id filter (will be blocked by RLS if enabled)
+        result = await db.execute(select(Config))
+    
     configs = result.scalars().all()
     return {config.key: config.value for config in configs}
 

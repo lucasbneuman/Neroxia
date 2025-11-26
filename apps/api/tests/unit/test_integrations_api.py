@@ -240,8 +240,9 @@ class TestIntegrationsWorkflows:
         assert get_response.status_code == 200
         data = get_response.json()
         assert data["twilio"] is not None
-        # Sensitive data should be masked
-        assert "***" in data["twilio"].get("auth_token", "")
+        # Sensitive data should not be returned, but configured flag should be true
+        assert data["twilio"].get("configured") is True
+        assert "auth_token" not in data["twilio"]
         
         # 3. Test connection (will fail with fake credentials, but endpoint should work)
         test_response = client.post(
