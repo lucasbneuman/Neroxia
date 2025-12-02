@@ -245,3 +245,60 @@ async def clear_conversation_history(
         "message": f"Cleared message history for {user.name or user.phone}",
         "user_preserved": True
     }
+
+
+@router.delete("/{phone}")
+async def delete_conversation(
+    phone: str,
+    delete_from_crm: bool = False,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Delete entire conversation including user and all messages.
+    
+    Args:
+        phone: User's phone number
+        delete_from_crm: If True, also delete user's deals from CRM
+    
+    Returns:
+        Status message with deletion details
+    """
+    formatted_phone = format_phone_number(phone)
+    user = await crud.get_user_by_phone(db, formatted_phone)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user_name = user.name or user.phone
+    user_id = user.id
+    
+    # Delete from CRM if requested
+    deals_deleted = 0
+    if delete_from_crm:
+        # Get all user's deals
+        deals = await crud.get_user_deals(db, user_id)
+        for deal in deals:
+            await crud.delete_deal(db, deal.id)
+            deals_deleted += 1
+    
+    # Delete all messages
+    from sqlalchemy import delete
+    from whatsapp_bot_database.models import Message
+    
+    stmt = delete(Message).where(Message.user_id == user_id)
+    result = await db.execute(stmt)
+    messages_deleted = result.rowcount
+    
+    # Delete user
+    from whatsapp_bot_database.models import User
+    stmt = delete(User).where(User.id == user_id)
+    await db.execute(stmt)
+    await db.commit()
+    
+    return {
+        "status": "success",
+        "message": f"Deleted conversation for {user_name}",
+        "messages_deleted": messages_deleted,
+        "deals_deleted": deals_deleted if delete_from_crm else 0,
+        "crm_deleted": delete_from_crm
+    }

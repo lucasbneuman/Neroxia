@@ -1,3 +1,5 @@
+"""Main application entry point."""
+
 import os
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,7 +9,22 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
-from .routers import auth, conversations, bot, config, rag, followups, integrations, handoff
+from .routers import (
+    auth,
+    bot,
+    config,
+    conversations,
+    crm,
+    followups,
+    handoff,
+    integrations,
+    rag,
+    subscriptions,
+    twilio_webhook,
+    users,
+)
+
+
 
 # Load environment variables
 load_dotenv()
@@ -35,8 +52,10 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 # Allow configuring allowed origins via environment variable for production
 allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
 origins = [
-    "http://localhost:3000",  # Next.js frontend (dev)
-    "http://localhost:8000",  # Self (dev)
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8000",
 ]
 
 # Add production origins from environment variable
@@ -47,13 +66,14 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Explicit methods
-    allow_headers=["Content-Type", "Authorization"],  # Explicit headers
-    max_age=600,  # Cache preflight requests for 10 minutes
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include routers
 app.include_router(auth.router)
+app.include_router(users.router)  # User management
+app.include_router(subscriptions.router)  # Subscription management
 app.include_router(config.router)
 app.include_router(conversations.router)
 app.include_router(bot.router)
@@ -61,6 +81,9 @@ app.include_router(rag.router)
 app.include_router(followups.router)
 app.include_router(integrations.router)
 app.include_router(handoff.router)
+app.include_router(twilio_webhook.router)  # Twilio webhook for incoming messages
+app.include_router(crm.router)  # CRM module endpoints
+
 
 
 @app.get("/")

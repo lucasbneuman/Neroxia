@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -20,6 +20,10 @@ class User(Base):
     phone = Column(String(20), unique=True, nullable=False, index=True)
     name = Column(String(100), nullable=True)
     email = Column(String(100), nullable=True)
+    
+    # Link to authenticated user (Supabase auth.users)
+    auth_user_id = Column(UUID(as_uuid=False), nullable=True, index=True)  # UUID from auth.users
+    
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -35,6 +39,15 @@ class User(Base):
     hubspot_lifecyclestage = Column(String(50), nullable=True)  # lead, marketingqualifiedlead, salesqualifiedlead, opportunity, customer, evangelist, other
     hubspot_synced_at = Column(DateTime, nullable=True)  # Last sync timestamp
 
+    # Twilio Integration - Data collected automatically from webhooks
+    whatsapp_profile_name = Column(String(100), nullable=True)  # WhatsApp profile name from Twilio
+    country_code = Column(String(5), nullable=True)  # Country code extracted from phone
+    phone_formatted = Column(String(20), nullable=True)  # Phone formatted by Twilio
+    first_contact_timestamp = Column(DateTime, nullable=True)  # First message timestamp
+    media_count = Column(Integer, default=0)  # Count of media files sent
+    location_shared = Column(Boolean, default=False)  # Whether user shared location
+    last_twilio_message_sid = Column(String(50), nullable=True)  # Last Twilio message SID
+
     # Activity tracking
     total_messages = Column(Integer, default=0)
     last_message_at = Column(DateTime, nullable=True)
@@ -42,6 +55,9 @@ class User(Base):
     # Relationships
     messages = relationship("Message", back_populates="user", cascade="all, delete-orphan")
     follow_ups = relationship("FollowUp", back_populates="user", cascade="all, delete-orphan")
+    deals = relationship("Deal", back_populates="user", cascade="all, delete-orphan")
+    notes = relationship("Note", back_populates="user", cascade="all, delete-orphan")
+    tags = relationship("Tag", secondary="user_tags", back_populates="users")
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, phone={self.phone}, name={self.name})>"
@@ -105,3 +121,83 @@ class Config(Base):
 
     def __repr__(self) -> str:
         return f"<Config(user_id={self.user_id}, key={self.key})>"
+
+
+class Deal(Base):
+    """Deal/Opportunity model for CRM pipeline."""
+
+    __tablename__ = "deals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    title = Column(String(200), nullable=False)
+    value = Column(Float, default=0.0)  # Monetary value
+    currency = Column(String(3), default="USD")
+    stage = Column(String(50), default="new_lead", index=True)  # Pipeline stage
+    probability = Column(Integer, default=10)  # 0-100%
+    source = Column(String(50), default="whatsapp")  # Lead source
+    expected_close_date = Column(Date, nullable=True)
+    won_date = Column(Date, nullable=True)
+    lost_date = Column(Date, nullable=True)
+    lost_reason = Column(Text, nullable=True)
+    manually_qualified = Column(Boolean, default=False, nullable=False)  # Prevents bot auto-updates
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Relationships
+    user = relationship("User", back_populates="deals")
+    notes = relationship("Note", back_populates="deal", cascade="all, delete-orphan")
+
+    def __repr__(self) -> str:
+        return f"<Deal(id={self.id}, user_id={self.user_id}, title={self.title}, stage={self.stage})>"
+
+
+class Note(Base):
+    """Note/Activity model for tracking interactions."""
+
+    __tablename__ = "notes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    deal_id = Column(Integer, ForeignKey("deals.id"), nullable=True, index=True)
+    content = Column(Text, nullable=False)
+    note_type = Column(String(50), default="note")  # note, call, email, meeting, task
+    created_by = Column(UUID(as_uuid=False), nullable=False)  # UUID from auth.users
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    user = relationship("User", back_populates="notes")
+    deal = relationship("Deal", back_populates="notes")
+
+    def __repr__(self) -> str:
+        return f"<Note(id={self.id}, user_id={self.user_id}, type={self.note_type})>"
+
+
+class Tag(Base):
+    """Tag model for customer segmentation."""
+
+    __tablename__ = "tags"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), unique=True, nullable=False)
+    color = Column(String(7), default="#6B7280")  # Hex color
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    users = relationship("User", secondary="user_tags", back_populates="tags")
+
+    def __repr__(self) -> str:
+        return f"<Tag(id={self.id}, name={self.name})>"
+
+
+class UserTag(Base):
+    """Many-to-many relationship between Users and Tags."""
+
+    __tablename__ = "user_tags"
+
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    tag_id = Column(Integer, ForeignKey("tags.id"), primary_key=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<UserTag(user_id={self.user_id}, tag_id={self.tag_id})>"

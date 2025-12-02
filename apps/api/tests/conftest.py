@@ -19,8 +19,13 @@ api_dir = Path(__file__).parent.parent
 if str(api_dir) not in sys.path:
     sys.path.insert(0, str(api_dir))
 
-# Add shared packages to Python path
-shared_dir = Path(__file__).parent.parent.parent.parent / "packages" / "shared"
+# Add project root to Python path so 'packages' can be imported
+project_root = Path(__file__).parent.parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+# Add shared packages to Python path (optional if root is added, but keeping for safety)
+shared_dir = project_root / "packages" / "shared"
 if str(shared_dir) not in sys.path:
     sys.path.insert(0, str(shared_dir))
 
@@ -90,6 +95,7 @@ def mock_dependencies(monkeypatch):
     from src.database import get_db
     from unittest.mock import AsyncMock, MagicMock, patch
     from whatsapp_bot_database import crud
+    from fastapi import Header
     
     # Create a mock user object with proper attributes
     class MockUser:
@@ -104,9 +110,31 @@ def mock_dependencies(monkeypatch):
             self.sentiment = "neutral"
             self.conversation_mode = "AUTO"
             self.conversation_summary = "Test conversation summary"
+            self.whatsapp_profile_name = None
+            self.twilio_profile_name = None
+
+        def get(self, key, default=None):
+            """Mimic dictionary .get() method."""
+            return getattr(self, key, default)
+
+        def __getitem__(self, key):
+            """Mimic dictionary [] access."""
+            return getattr(self, key)
     
-    async def mock_get_current_user():
-        """Mock user for testing - returns object with attributes."""
+    async def mock_get_current_user(authorization: str = Header(None)):
+        """
+        Mock user for testing - returns object with attributes.
+        Now enforces authentication to fix permissive tests.
+        """
+        from fastapi import HTTPException, status
+        
+        # If no authorization header, raise 401 (mimic real behavior)
+        if not authorization:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Missing authorization header",
+            )
+            
         return MockUser()
     
     async def mock_get_db():
@@ -161,19 +189,22 @@ def mock_dependencies(monkeypatch):
     mock_db_state = {
         "configs": {
             "system_prompt": "You are a helpful assistant",
-            "product_name": "Test Product"
+            "product_name": "Test Product",
+            "welcome_message": "Welcome!",
+            "use_emojis": True,
+            "text_audio_ratio": 50
         }
     }
 
-    async def mock_get_all_configs(db):
+    async def mock_get_all_configs(db, user_id=None):
         """Mock get_all_configs to return stored config."""
         return mock_db_state["configs"]
     
-    async def mock_get_config(db, key):
+    async def mock_get_config(db, key, user_id=None):
         """Mock get_config to return specific config."""
         return mock_db_state["configs"].get(key)
 
-    async def mock_set_config(db, key, value):
+    async def mock_set_config(db, key, value, user_id=None):
         """Mock set_config to update specific config."""
         if value == {}:  # Handle deletion (empty dict)
             if key in mock_db_state["configs"]:
@@ -182,18 +213,20 @@ def mock_dependencies(monkeypatch):
             mock_db_state["configs"][key] = value
         return value
     
-    async def mock_update_config(db, key, value):
+    async def mock_update_config(db, key, value, user_id=None):
         """Mock update_config (alias for set_config)."""
-        return await mock_set_config(db, key, value)
+        return await mock_set_config(db, key, value, user_id)
+        
+    async def mock_get_integration_config(db, integration_type, user_id=None):
         """Mock get_integration_config."""
         return mock_db_state["configs"].get(f"{integration_type}_config")
 
-    async def mock_update_integration_config(db, integration_type, config_data):
+    async def mock_update_integration_config(db, integration_type, config_data, user_id=None):
         """Mock update_integration_config."""
         mock_db_state["configs"][f"{integration_type}_config"] = config_data
         return config_data
 
-    async def mock_delete_integration_config(db, integration_type):
+    async def mock_delete_integration_config(db, integration_type, user_id=None):
         """Mock delete_integration_config."""
         if f"{integration_type}_config" in mock_db_state["configs"]:
             del mock_db_state["configs"][f"{integration_type}_config"]
@@ -256,11 +289,48 @@ def mock_dependencies(monkeypatch):
             sys.path.insert(0, str(bot_engine_path))
         
         from graph import workflow
+        from services.config_manager import ConfigManager
+        
+        # Patch ConfigManager methods to use mock_db_state
+        async def mock_cm_load_all(self, db, user_id=None):
+            return mock_db_state["configs"]
+            
+        async def mock_cm_save_all(self, db, configs, user_id=None):
+            mock_db_state["configs"].update(configs)
+            
+        monkeypatch.setattr(ConfigManager, "load_all_configs", mock_cm_load_all)
+        monkeypatch.setattr(ConfigManager, "save_all_configs", mock_cm_save_all)
+        
         monkeypatch.setattr(workflow, "process_message", mock_process_message)
     except ImportError:
         # If bot-engine not available, tests will skip bot processing
         pass
     
+    # Mock RAG service
+    from unittest.mock import AsyncMock, MagicMock
+    mock_rag_service = MagicMock()
+    mock_rag_service.enabled = True
+    
+    # Async methods
+    mock_rag_service.upload_document = AsyncMock(return_value=1)
+    mock_rag_service.upload_documents = AsyncMock(return_value=1)
+    mock_rag_service.retrieve_context = AsyncMock(return_value="Test context")
+    
+    # Sync methods
+    mock_rag_service.get_collection_stats.return_value = {
+        "total_chunks": 1,
+        "collection_name": "test_collection",
+        "backend": "mock"
+    }
+    mock_rag_service.clear_collection.return_value = 1
+    
+    async def mock_get_rag_service():
+        return mock_rag_service
+        
+    # Patch get_rag_service in the router
+    from src.routers import rag
+    monkeypatch.setattr(rag, "get_rag_service", mock_get_rag_service)
+
     # Replace the dependencies in the app
     from src.main import app
     

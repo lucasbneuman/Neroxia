@@ -226,7 +226,10 @@ async def data_collector_node(state: ConversationState) -> Dict[str, Any]:
     """
     Extract structured data from user messages.
 
-    Uses GPT-4o-mini with structured output.
+    Priority order for data collection:
+    1. Twilio data (whatsapp_profile_name, phone) - highest priority
+    2. LLM extraction (email, needs, budget, pain_points) - fallback
+    
     Does NOT block the sale waiting for complete data.
     """
     logger.info("Executing data_collector_node")
@@ -239,8 +242,32 @@ async def data_collector_node(state: ConversationState) -> Dict[str, Any]:
         return {}
 
     last_message = user_messages[-1].content
+    
+    # Initialize updates dict
+    updates = {}
+    collected_data = state.get("collected_data", {})
+    
+    # PRIORITY 1: Check if we have Twilio data from db_user
+    db_user = state.get("db_user")
+    if db_user:
+        # Use WhatsApp profile name from Twilio if available and name not already set
+        if db_user.whatsapp_profile_name and not state.get("user_name"):
+            logger.info(f"✅ Using WhatsApp profile name from Twilio: {db_user.whatsapp_profile_name}")
+            updates["user_name"] = db_user.whatsapp_profile_name
+            collected_data["name"] = db_user.whatsapp_profile_name
+            collected_data["source_name"] = "twilio"  # Mark source
+        
+        # Use phone from Twilio if available
+        if db_user.phone and "phone" not in collected_data:
+            collected_data["phone"] = db_user.phone
+            collected_data["source_phone"] = "twilio"
+        
+        # Use country code if available
+        if db_user.country_code and "country_code" not in collected_data:
+            collected_data["country_code"] = db_user.country_code
 
-    # Extract data with config support
+    # PRIORITY 2: Extract data with LLM (for email, needs, budget, etc.)
+    # Only extract name if we don't have it from Twilio
     extracted_data = await llm_service.extract_data(
         last_message,
         state["messages"],
@@ -248,21 +275,27 @@ async def data_collector_node(state: ConversationState) -> Dict[str, Any]:
     )
 
     if extracted_data:
-        logger.info(f"Extracted data: {extracted_data}")
+        logger.info(f"Extracted data from LLM: {extracted_data}")
 
         # Merge with existing collected data
-        collected_data = state.get("collected_data", {})
-        collected_data.update(extracted_data)
+        # But DON'T overwrite Twilio data with LLM data
+        for key, value in extracted_data.items():
+            if key == "name":
+                # Only use LLM-extracted name if we don't have Twilio name
+                if not db_user or not db_user.whatsapp_profile_name:
+                    collected_data[key] = value
+                    collected_data["source_name"] = "llm"
+                    updates["user_name"] = value
+                    logger.info(f"Using LLM-extracted name (no Twilio data): {value}")
+                else:
+                    logger.info(f"Skipping LLM-extracted name, using Twilio data instead")
+            else:
+                # For other fields (email, needs, budget, etc.), use LLM data
+                collected_data[key] = value
+                if key == "email":
+                    updates["user_email"] = value
 
-        # Update user_name and user_email in state if found
-        updates = {"collected_data": collected_data}
-
-        # Always update name and email if newly extracted (allows user to correct/update)
-        if "name" in extracted_data:
-            updates["user_name"] = extracted_data["name"]
-
-        if "email" in extracted_data:
-            updates["user_email"] = extracted_data["email"]
+        updates["collected_data"] = collected_data
 
         # Async sync to HubSpot (non-blocking)
         hubspot_service = get_hubspot_service()
@@ -282,6 +315,10 @@ async def data_collector_node(state: ConversationState) -> Dict[str, Any]:
             current_stage = state.get("stage", "unknown")
             current_sentiment = state.get("sentiment", "neutral")
             notes_parts.append(f"Etapa: {current_stage} | Sentimiento: {current_sentiment}")
+            
+            # Add data source info
+            if collected_data.get("source_name") == "twilio":
+                notes_parts.append("Nombre verificado desde WhatsApp")
 
             # Use existing summary if available, otherwise use generated notes
             conversation_notes = state.get("conversation_summary") or " | ".join(notes_parts)
@@ -297,10 +334,11 @@ async def data_collector_node(state: ConversationState) -> Dict[str, Any]:
                 "sentiment": state.get("sentiment"),
                 "stage": state.get("stage"),
                 "conversation_summary": conversation_notes,
+                "whatsapp_profile_name": db_user.whatsapp_profile_name if db_user else None,
+                "country_code": db_user.country_code if db_user else None,
             }
             try:
                 # Get db_user from state if available
-                db_user = state.get("db_user")
                 result = await hubspot_service.sync_contact(user_data, db_user=db_user)
 
                 # Update our DB with HubSpot contact_id and lifecyclestage

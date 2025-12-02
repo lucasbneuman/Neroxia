@@ -11,6 +11,21 @@ export interface User {
     sentiment?: string
     stage?: string
     conversation_summary?: string
+
+    // Analysis data
+    intent_score?: number
+
+    // WhatsApp/Twilio data
+    whatsapp_profile_name?: string
+    country_code?: string
+    phone_formatted?: string
+    first_contact_timestamp?: string
+    media_count?: number
+    location_shared?: boolean
+
+    // Timestamps
+    created_at?: string
+    updated_at?: string
 }
 
 export interface Message {
@@ -75,3 +90,41 @@ export interface APIResponse<T = any> {
     message?: string
     configs?: any      // For config endpoints
 }
+
+export interface Tag {
+    id: number
+    name: string
+    color: string
+    created_at: string
+}
+
+export interface Note {
+    id: number
+    user_id: number
+    deal_id?: number
+    content: string
+    note_type: "note" | "call" | "email" | "meeting" | "task"
+    created_by: string
+    created_at: string
+}
+
+export interface Deal {
+    id: number
+    user_id: number
+    title: string
+    value: number
+    currency: string
+    stage: "new_lead" | "qualified" | "in_conversation" | "proposal_sent" | "won" | "lost"
+    probability: number
+    source: string
+    manually_qualified: boolean
+    expected_close_date?: string
+    won_date?: string
+    lost_date?: string
+    lost_reason?: string
+    created_at: string
+    updated_at: string
+    user?: User
+    notes?: Note[]
+}
+

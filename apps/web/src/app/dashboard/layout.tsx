@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useAuthStore } from "@/stores/auth-store"
-import { MessageSquare, Settings, FlaskConical, LogOut } from "lucide-react"
+import { MessageSquare, Settings, FlaskConical, LogOut, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { cn } from "@/lib/utils"
@@ -38,6 +38,12 @@ export default function DashboardLayout({
             icon: MessageSquare,
             label: "Chats",
             active: pathname?.startsWith("/dashboard/chat"),
+        },
+        {
+            href: "/dashboard/crm",
+            icon: BarChart3,
+            label: "CRM",
+            active: pathname?.startsWith("/dashboard/crm"),
         },
         {
             href: "/dashboard/config",

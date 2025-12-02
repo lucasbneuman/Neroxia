@@ -147,8 +147,8 @@ async def reset_config(
         # Clear cache
         config_manager.clear_cache()
         
-        # Reinitialize defaults
-        await config_manager.initialize_defaults(db, user_id=user_id)
+        # Overwrite with defaults
+        await config_manager.save_all_configs(db, config_manager.DEFAULT_CONFIG, user_id=user_id)
         
         # Load fresh configs
         configs = await config_manager.load_all_configs(db, user_id=user_id)

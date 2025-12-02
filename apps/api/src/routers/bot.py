@@ -72,9 +72,43 @@ async def process_bot_message(
 
         # Get or create user
         user = await crud.get_user_by_phone(db, request.phone)
+        is_new_user = False
+        is_test_conversation = bool(request.history)  # Test chat provides history
+        
         if not user:
             user = await crud.create_user(db, phone=request.phone)
+            is_new_user = True
             logger.info(f"Created new user: {request.phone}")
+        
+        # Create deal if needed (for new users OR test conversations without a deal)
+        should_create_deal = False
+        if is_new_user:
+            should_create_deal = True
+        elif is_test_conversation:
+            # Check if test user already has a deal
+            existing_deal = await crud.get_user_active_deal(db, user.id)
+            if not existing_deal:
+                should_create_deal = True
+        
+        if should_create_deal:
+            try:
+                deal_source = "test" if is_test_conversation else "whatsapp"
+                deal_title = f"[TEST] {request.phone}" if is_test_conversation else f"Lead: {request.phone}"
+                
+                deal = await crud.create_deal(
+                    db,
+                    user_id=user.id,
+                    title=deal_title,
+                    value=0.0,
+                    stage="new_lead",
+                    source=deal_source,
+                    probability=10
+                )
+                logger.info(f"Created deal for user: deal_id={deal.id}, source={deal_source}")
+            except Exception as deal_error:
+                logger.error(f"Failed to create deal: {deal_error}")
+                # Don't fail the request if deal creation fails
+
 
         # Load conversation history
         from langchain_core.messages import HumanMessage, AIMessage

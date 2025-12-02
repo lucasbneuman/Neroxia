@@ -726,19 +726,40 @@ La siguiente información proviene de los documentos oficiales cargados en el si
 
         name = user_data.get("name", "")
 
-        prompt = f"""Genera un mensaje de cierre cálido y profesional para un cliente que está listo para comprar.
+        prompt = f"""Genera un mensaje de cierre cálido y natural para un cliente de WhatsApp que está listo para comprar.
 
-Nombre del cliente: {name if name else "cliente"}
+Nombre del cliente: {name if name else ""}
 Link de pago: {payment_link}
 
-El mensaje debe:
-1. Agradecerles por su interés
-2. Confirmar que están listos para proceder
-3. Incluir el link de pago de forma natural
-4. Animarlos a contactar si tienen preguntas
-5. Ser conciso (máximo 2-3 oraciones)
+INSTRUCCIONES CRÍTICAS:
 
-Genera SOLO el texto del mensaje, sin comentarios adicionales."""
+1. **TONO**: Escribe como si estuvieras continuando una conversación de WhatsApp, NO como un email formal
+2. **PROHIBIDO**: NO uses plantillas formales, NO incluyas firmas, NO uses placeholders como "[Su Nombre/Empresa]", "[Nombre]", etc.
+3. **ESTILO**: Usa emojis de manera natural (✨, 🎉, 😊, etc.) para hacer el mensaje más amigable
+4. **PERSONALIZACIÓN**: 
+   - Si hay nombre: úsalo de forma natural ("¡Perfecto, {name}!")
+   - Si NO hay nombre: usa "¡Perfecto!" o "¡Excelente!" sin forzar un saludo genérico
+5. **ESTRUCTURA**: 2-3 oraciones máximo, directas y amigables
+6. **LINK**: Integra el link de pago de forma natural en la conversación
+
+EJEMPLOS DE LO QUE DEBES HACER:
+
+✅ CON nombre:
+"¡Perfecto, María! 🎉 Aquí está tu link de pago: {payment_link}
+Si tienes alguna duda, escríbeme sin problema. ¡Estoy aquí para ayudarte! 😊"
+
+✅ SIN nombre:
+"¡Excelente! 🎉 Te comparto el link para completar tu compra: {payment_link}
+Cualquier duda que tengas, no dudes en escribirme. ¡Estoy para ayudarte! ✨"
+
+EJEMPLOS DE LO QUE NO DEBES HACER:
+
+❌ "Estimado cliente, gracias por su interés..."
+❌ "Atentamente, [Su Nombre/Empresa]"
+❌ Cualquier texto que parezca un email formal
+❌ Firmas o despedidas formales
+
+Genera SOLO el mensaje conversacional, sin comentarios adicionales."""
 
         try:
             messages = [HumanMessage(content=prompt)]

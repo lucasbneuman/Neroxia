@@ -7,6 +7,95 @@
 
 ## 🔴 Critical Bugs (P0)
 
+### Bug #17: MockUser Object Missing Required Attributes - 🆕 NEW
+- **Reported**: 2025-12-02 08:20:00
+- **Reporter**: QA Agent
+- **Severity**: 🔴 Critical
+- **Status**: 🆕 NEW
+- **Priority**: P0 - Blocks 51 tests (48 unit + 3 integration)
+- **Affects**: All tests using MockUser in conftest.py
+- **Files**:
+  - `apps/api/tests/conftest.py` (MockUser class)
+  - `apps/api/src/routers/config.py` (lines 50, 91)
+  - `apps/bot-engine/src/graph/nodes.py` (line 254)
+- **Root Cause**: MockUser class missing `.get()` method and `whatsapp_profile_name` attribute
+- **Error Messages**:
+  1. `AttributeError: 'MockUser' object has no attribute 'get'` (Config endpoints)
+  2. `AttributeError: 'MockUser' object has no attribute 'whatsapp_profile_name'` (Bot workflow)
+- **Failing Tests** (51 total):
+  - **Auth API** (5 tests): `test_get_current_user_requires_auth`, `test_get_current_user_success`, `test_refresh_token_requires_auth`, `test_signup_empty_password`, `test_get_current_user_invalid_token`, `test_get_current_user_expired_token`
+  - **Config API** (9 tests): All config tests failing with 500 error
+  - **Conversations API** (12 tests): User details, manual messages, handoff tests
+  - **Handoff API** (6 tests): Take/return conversation, send manual message
+  - **RAG API** (6 tests): Stats, upload, delete, clear endpoints
+  - **Integrations API** (1 test): HubSpot workflow
+  - **Integration Tests** (3 tests): Configuration flow, error recovery, persistence
+- **Reproduction**:
+  1. Run `pytest tests/unit/test_config_api.py -v`
+  2. **Expected**: Tests pass with mocked user
+  3. **Actual**: 500 error - `'MockUser' object has no attribute 'get'`
+- **Fix Plan**:
+  1. Add `.get()` method to MockUser class (dict-like interface)
+  2. Add `whatsapp_profile_name` attribute to MockUser
+  3. Add `twilio_profile_name` attribute to MockUser
+  4. Ensure MockUser matches real User model interface
+  5. Re-run all failing tests to verify fix
+- **Impact**: 40.8% of unit tests failing (51/125), 30% of integration tests failing (3/10)
+
+### Bug #18: Bot-Engine Pytest Configuration Missing asyncio Marker - 🆕 NEW
+- **Reported**: 2025-12-02 08:20:00
+- **Reporter**: QA Agent
+- **Severity**: 🔴 Critical
+- **Status**: 🆕 NEW
+- **Priority**: P0 - Blocks all bot-engine tests
+- **Affects**: All 32 bot-engine tests cannot run
+- **Files**:
+  - `apps/bot-engine/pytest.ini` (missing asyncio marker)
+  - `apps/bot-engine/tests/unit/test_llm_service.py`
+  - `apps/bot-engine/tests/unit/test_nodes.py`
+  - `apps/bot-engine/tests/integration/test_llm_optimizations.py`
+- **Root Cause**: pytest.ini missing `asyncio` marker configuration
+- **Error Message**: `'asyncio' not found in 'markers' configuration option`
+- **Reproduction**:
+  1. Run `cd apps/bot-engine && pytest tests/ -v`
+  2. **Expected**: Tests run successfully
+  3. **Actual**: Collection fails with marker error
+- **Fix Plan**:
+  1. Add `asyncio: Async tests using pytest-asyncio` to markers section in pytest.ini
+  2. Verify pytest-asyncio is installed
+  3. Re-run tests to confirm fix
+- **Impact**: 100% of bot-engine tests blocked (32 tests)
+
+### Bug #19: Config Endpoints Expect Dict but Receive MockUser Object - 🆕 NEW
+- **Reported**: 2025-12-02 08:20:00
+- **Reporter**: QA Agent
+- **Severity**: 🔴 Critical
+- **Status**: 🆕 NEW
+- **Priority**: P0 - Blocks config functionality in tests
+- **Affects**: All config endpoints (GET, PUT, POST)
+- **Files**:
+  - `apps/api/src/routers/config.py` (lines 50, 91)
+  - `apps/api/src/routers/auth.py` (get_current_user dependency)
+- **Root Cause**: Config router expects `current_user.get("id")` but receives MockUser object
+- **Error Message**: `AttributeError: 'MockUser' object has no attribute 'get'`
+- **Code Location**:
+  ```python
+  # Line 50 in config.py
+  user_id = current_user.get("id")  # Expects dict, gets MockUser
+  
+  # Line 91 in config.py  
+  user_id = current_user.get("id")  # Same issue
+  ```
+- **Reproduction**:
+  1. Run `pytest tests/unit/test_config_api.py::TestConfigurationAPI::test_get_config_success -v`
+  2. **Expected**: 200 OK with config data
+  3. **Actual**: 500 Internal Server Error
+- **Fix Plan**:
+  1. **Option A**: Make MockUser dict-like with `__getitem__` and `.get()` methods
+  2. **Option B**: Change config.py to use `current_user.id` instead of `current_user.get("id")`
+  3. **Recommended**: Option A (maintains compatibility with existing code)
+- **Impact**: 9 config tests failing, 3 integration tests failing
+
 ### Bug #16: 401 Authentication Error on Page Reload - ✅ RESOLVED
 - **Reported**: 2025-11-25 08:27:00
 - **Reporter**: User
@@ -579,8 +668,8 @@ monkeypatch.setattr(workflow, "process_message", mock_process_message)
 
 ## 📊 Bug Statistics
 
-- **Open Bugs**: 1 (Bug #8 - IN PROGRESS)
-- **Critical**: 1 (Bug #8)
+- **Open Bugs**: 4 (Bugs #8, #17, #18, #19)
+- **Critical**: 4 (Bugs #8, #17, #18, #19)
 - **High**: 0
 - **Medium**: 0
 - **Low**: 0
@@ -588,6 +677,7 @@ monkeypatch.setattr(workflow, "process_message", mock_process_message)
 - **False Positives**: 2 (Bugs #4, #6)
 - **Average Fix Time**: 25 minutes
 - **Pending Verification**: 1 (Bug #8 - upload endpoint fix attempt #3)
+- **Test Failure Rate**: 40.8% unit tests (51/125), 30% integration (3/10), 100% bot-engine (32/32)
 
 ---
 

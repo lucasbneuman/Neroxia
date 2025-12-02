@@ -423,9 +423,10 @@ class HubSpotService:
         if user_data.get("phone"):
             properties["phone"] = user_data["phone"]
 
-        # Name: Split into firstname and lastname
-        if user_data.get("name"):
-            name_parts = user_data["name"].strip().split(maxsplit=1)
+        # Name: Prioritize WhatsApp profile name from Twilio, fallback to extracted name
+        name_to_use = user_data.get("whatsapp_profile_name") or user_data.get("name")
+        if name_to_use:
+            name_parts = name_to_use.strip().split(maxsplit=1)
             properties["firstname"] = name_parts[0]
             if len(name_parts) > 1:
                 properties["lastname"] = name_parts[1]
@@ -465,6 +466,13 @@ class HubSpotService:
         # Conversation Summary (Notes) - Use HubSpot's standard Notes field
         if user_data.get("conversation_summary"):
             properties["hs_content_membership_notes"] = user_data["conversation_summary"]
+
+        # Twilio-specific data - Custom fields
+        if user_data.get("whatsapp_profile_name"):
+            properties["whatsapp_profile_name"] = user_data["whatsapp_profile_name"]
+        
+        if user_data.get("country_code"):
+            properties["country_code"] = user_data["country_code"]
 
         # Lead Source
         properties["hs_lead_status"] = "NEW"  # or "OPEN", "IN_PROGRESS", etc.

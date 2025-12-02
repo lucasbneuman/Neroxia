@@ -121,6 +121,11 @@ async def signup(credentials: SignupRequest):
     """
     Sign up a new user with email and password.
     
+    Automatically creates:
+    - Supabase Auth user
+    - User profile
+    - Free trial subscription
+    
     Returns access token, refresh token, and user data.
     """
     try:
@@ -129,6 +134,7 @@ async def signup(credentials: SignupRequest):
         if credentials.name:
             user_metadata["name"] = credentials.name
         
+        # Create Supabase Auth user
         response = supabase.auth.sign_up({
             "email": credentials.email,
             "password": credentials.password,
@@ -142,6 +148,41 @@ async def signup(credentials: SignupRequest):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Signup failed. Email may already be registered.",
             )
+        
+        user_id = response.user.id
+        
+        # Import database dependencies
+        from ..database import get_db
+        from packages.database.whatsapp_bot_database.subscription_crud import (
+            create_user_profile,
+            create_user_subscription,
+            get_subscription_plan_by_name,
+        )
+        
+        # Create user profile and subscription in database
+        async with get_db() as db:
+            # Create user profile
+            await create_user_profile(
+                db=db,
+                auth_user_id=user_id,
+                company_name=None,
+                phone=None,
+                timezone="UTC",
+                language="es",
+                role="owner",
+            )
+            
+            # Get free trial plan
+            trial_plan = await get_subscription_plan_by_name(db, "free_trial")
+            if trial_plan:
+                # Create trial subscription
+                await create_user_subscription(
+                    db=db,
+                    user_id=user_id,
+                    plan_id=trial_plan.id,
+                    status="trial",
+                    trial_days=14,
+                )
         
         return {
             "access_token": response.session.access_token,

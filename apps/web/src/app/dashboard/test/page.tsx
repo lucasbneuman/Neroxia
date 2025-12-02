@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type { Message, CollectedData } from "@/types"
-import { processTestMessage } from "@/lib/api"
+import { processTestMessage, clearTestConversation } from "@/lib/api"
 import { TestChat } from "@/components/test/TestChat"
 import { CollectedDataPanel } from "@/components/test/CollectedDataPanel"
 
@@ -20,10 +20,49 @@ const DEFAULT_DATA: CollectedData = {
     notes: "-",
 }
 
+const STORAGE_KEYS = {
+    MESSAGES: "test_chat_messages",
+    DATA: "test_chat_data",
+}
+
 export default function TestPage() {
     const [messages, setMessages] = useState<Message[]>([])
     const [collectedData, setCollectedData] = useState<CollectedData>(DEFAULT_DATA)
     const [loading, setLoading] = useState(false)
+
+    // Load persisted data on mount
+    useEffect(() => {
+        const savedMessages = localStorage.getItem(STORAGE_KEYS.MESSAGES)
+        const savedData = localStorage.getItem(STORAGE_KEYS.DATA)
+
+        if (savedMessages) {
+            try {
+                setMessages(JSON.parse(savedMessages))
+            } catch (error) {
+                console.error("Error loading saved messages:", error)
+            }
+        }
+
+        if (savedData) {
+            try {
+                setCollectedData(JSON.parse(savedData))
+            } catch (error) {
+                console.error("Error loading saved data:", error)
+            }
+        }
+    }, [])
+
+    // Persist messages to localStorage
+    useEffect(() => {
+        if (messages.length > 0) {
+            localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(messages))
+        }
+    }, [messages])
+
+    // Persist collected data to localStorage
+    useEffect(() => {
+        localStorage.setItem(STORAGE_KEYS.DATA, JSON.stringify(collectedData))
+    }, [collectedData])
 
     const handleSendMessage = async (message: string) => {
         // Add user message immediately

@@ -386,6 +386,271 @@ Cancel a scheduled follow-up.
 
 ---
 
+## CRM Endpoints
+
+### Dashboard
+
+#### GET `/crm/dashboard/metrics`
+Get CRM dashboard metrics and analytics.
+
+**Response**:
+```json
+{
+  "total_active_deals": 15,
+  "total_won_deals": 8,
+  "total_revenue": 45000.00,
+  "conversion_rate": 34.78
+}
+```
+
+### Deals
+
+#### GET `/crm/deals`
+Get all deals with optional filtering.
+
+**Query Parameters**:
+- `stage` (optional): Filter by stage (`new_lead`, `qualified`, `in_conversation`, `proposal_sent`, `won`, `lost`)
+- `limit` (optional, default: 100): Maximum number of results
+- `offset` (optional, default: 0): Pagination offset
+
+**Response**:
+```json
+[
+  {
+    "id": 1,
+    "user_id": 123,
+    "title": "Lead: +1234567890",
+    "value": 1500.00,
+    "currency": "USD",
+    "stage": "qualified",
+    "probability": 25,
+    "source": "whatsapp",
+    "manually_qualified": false,
+    "expected_close_date": null,
+    "won_date": null,
+    "lost_date": null,
+    "lost_reason": null,
+    "created_at": "2025-11-27T10:00:00",
+    "updated_at": "2025-11-27T12:00:00",
+    "user": {
+      "id": 123,
+      "phone": "+1234567890",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "stage": "qualifying"
+    }
+  }
+]
+```
+
+#### POST `/crm/deals`
+Create a new deal.
+
+**Request**:
+```json
+{
+  "user_id": 123,
+  "title": "Custom Deal Title",
+  "value": 2500.00,
+  "stage": "new_lead",
+  "source": "whatsapp",
+  "probability": 10,
+  "expected_close_date": "2025-12-31"
+}
+```
+
+**Response**: Returns created deal object (same structure as GET)
+
+#### GET `/crm/deals/{deal_id}`
+Get a specific deal by ID.
+
+**Response**: Returns deal object with user relationship loaded
+
+#### PATCH `/crm/deals/{deal_id}`
+Update a deal (partial update). **Note**: Updating the `stage` field will automatically set `manually_qualified=true`.
+
+**Request**:
+```json
+{
+  "stage": "in_conversation",
+  "value": 3000.00,
+  "probability": 60
+}
+```
+
+**Response**: Returns updated deal object
+
+#### PATCH `/crm/deals/{deal_id}/stage`
+Update only the stage of a deal. This is a convenience endpoint for drag-and-drop operations.
+
+**Request**:
+```json
+{
+  "stage": "proposal_sent"
+}
+```
+
+**Response**: Returns updated deal object with new stage
+
+#### POST `/crm/deals/{deal_id}/won`
+Mark a deal as won.
+
+**Request** (optional):
+```json
+{
+  "won_date": "2025-11-27T15:00:00"
+}
+```
+
+**Response**: Returns updated deal with `stage="won"` and `probability=100`
+
+#### POST `/crm/deals/{deal_id}/lost`
+Mark a deal as lost.
+
+**Request**:
+```json
+{
+  "reason": "Budget constraints"
+}
+```
+
+**Response**: Returns updated deal with `stage="lost"` and `probability=0`
+
+#### DELETE `/crm/deals/{deal_id}`
+Delete a deal.
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Deal deleted successfully"
+}
+```
+
+### Notes
+
+#### GET `/crm/users/{user_id}/notes`
+Get all notes for a specific user.
+
+**Response**:
+```json
+[
+  {
+    "id": 1,
+    "user_id": 123,
+    "deal_id": 5,
+    "content": "Called customer, very interested in product",
+    "note_type": "call",
+    "created_by": "admin-uuid",
+    "created_at": "2025-11-27T14:00:00"
+  }
+]
+```
+
+#### POST `/crm/users/{user_id}/notes`
+Create a note for a user.
+
+**Request**:
+```json
+{
+  "content": "Follow-up scheduled for next week",
+  "note_type": "note",
+  "deal_id": 5
+}
+```
+
+**Note types**: `note`, `call`, `email`, `meeting`, `task`
+
+**Response**: Returns created note object
+
+#### DELETE `/crm/notes/{note_id}`
+Delete a note.
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Note deleted successfully"
+}
+```
+
+### Tags
+
+#### GET `/crm/tags`
+Get all available tags.
+
+**Response**:
+```json
+[
+  {
+    "id": 1,
+    "name": "Hot Lead",
+    "color": "#EF4444",
+    "created_at": "2025-11-27T10:00:00"
+  },
+  {
+    "id": 2,
+    "name": "VIP",
+    "color": "#8B5CF6",
+    "created_at": "2025-11-27T10:00:00"
+  }
+]
+```
+
+#### POST `/crm/tags`
+Create a new tag.
+
+**Request**:
+```json
+{
+  "name": "Enterprise",
+  "color": "#3B82F6"
+}
+```
+
+**Response**: Returns created tag object
+
+#### GET `/crm/users/{user_id}/tags`
+Get all tags assigned to a user.
+
+**Response**: Returns array of tag objects
+
+#### POST `/crm/users/{user_id}/tags/{tag_id}`
+Assign a tag to a user.
+
+**Response**: Returns created user-tag relationship
+
+#### DELETE `/crm/users/{user_id}/tags/{tag_id}`
+Remove a tag from a user.
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Tag removed from user"
+}
+```
+
+### Stage Synchronization
+
+The CRM includes automatic stage synchronization between the bot conversation (`User.stage`) and CRM deals (`Deal.stage`):
+
+**Automatic Sync (Bot → CRM)**:
+- When bot updates `User.stage`, the associated deal's stage updates automatically
+- Only applies if `manually_qualified=false`
+- Stage mapping:
+  - `welcome` → `new_lead`
+  - `qualifying` → `qualified`
+  - `closing` → `in_conversation`
+  - `sold` → `proposal_sent`
+
+**Manual Override Protection**:
+- When a deal's stage is updated via API (PUT `/crm/deals/{id}`), `manually_qualified` is set to `true`
+- Once `manually_qualified=true`, the bot can no longer auto-update that deal's stage
+- This prevents conflicts between manual CRM decisions and bot automation
+
+---
+
 ## Error Responses
 
 All endpoints may return error responses in this format:

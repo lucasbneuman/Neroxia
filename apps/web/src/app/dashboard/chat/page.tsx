@@ -49,6 +49,14 @@ export default function ChatsPage() {
         }
     }
 
+    const handleConversationDeleted = () => {
+        // Clear selection and refresh conversation list
+        setSelectedPhone(null)
+        setSelectedUser(null)
+        setMessages([])
+        // The ConversationList will auto-refresh due to autoRefresh prop
+    }
+
     return (
         <div className="h-full p-6">
             <div className="mb-6">
@@ -86,7 +94,10 @@ export default function ChatsPage() {
 
                 {/* Right Column: User Info + Handoff Controls */}
                 <div className="col-span-3 flex flex-col space-y-4">
-                    <UserDataPanel user={selectedUser} />
+                    <UserDataPanel
+                        user={selectedUser}
+                        onConversationDeleted={handleConversationDeleted}
+                    />
                     <HandoffControls
                         user={selectedUser}
                         onModeChange={handleModeChange}

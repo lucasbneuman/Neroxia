@@ -3,8 +3,8 @@ import { cn } from "@/lib/utils"
 
 export interface ButtonProps
     extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: "default" | "primary" | "secondary" | "danger"
-    size?: "default" | "sm" | "lg"
+    variant?: "default" | "primary" | "secondary" | "danger" | "outline" | "ghost"
+    size?: "default" | "sm" | "lg" | "icon"
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -16,12 +16,14 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
                     {
                         // Variants
                         "bg-gradient-to-r from-purple-600 to-purple-500 text-white hover:from-purple-700 hover:to-purple-600 shadow-soft hover:shadow-medium rounded-2xl": variant === "default" || variant === "primary",
-                        "bg-white dark:bg-gray-800 text-black dark:text-white border-2 border-gray-300 dark:border-gray-600 hover:border-purple-600 dark:hover:border-purple-500 hover:text-purple-600 dark:hover:text-purple-400 shadow-soft hover:shadow-medium rounded-2xl": variant === "secondary",
+                        "bg-white dark:bg-gray-800 text-black dark:text-white border-2 border-gray-300 dark:border-gray-600 hover:border-purple-600 dark:hover:border-purple-500 hover:text-purple-600 dark:hover:text-purple-400 shadow-soft hover:shadow-medium rounded-2xl": variant === "secondary" || variant === "outline",
                         "bg-gradient-to-r from-red-600 to-red-500 text-white hover:from-red-700 hover:to-red-600 shadow-soft hover:shadow-medium rounded-2xl": variant === "danger",
+                        "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300": variant === "ghost",
                         // Sizes
                         "h-10 px-5 py-2 text-sm": size === "default",
                         "h-8 px-4 text-xs": size === "sm",
                         "h-12 px-8 text-base": size === "lg",
+                        "h-10 w-10 p-0": size === "icon",
                     },
                     className
                 )}

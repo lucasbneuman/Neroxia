@@ -3,11 +3,12 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import joinedload
 
-from .models import Config, FollowUp, Message, User
+from .models import Config, Deal, FollowUp, Message, Note, Tag, User, UserTag
 
 
 # ============================================================================
@@ -448,3 +449,359 @@ async def init_default_configs(db: AsyncSession) -> None:
         existing = await get_config(db, key)
         if existing is None:
             await set_config(db, key, value)
+
+
+# ============================================================================
+# CRM - DEAL OPERATIONS
+# ============================================================================
+
+
+async def create_deal(
+    db: AsyncSession,
+    user_id: int,
+    title: str,
+    value: float = 0.0,
+    stage: str = "new_lead",
+    source: str = "whatsapp",
+    probability: int = 10,
+    expected_close_date: Optional[datetime] = None
+) -> Deal:
+    """Create a new deal."""
+    deal = Deal(
+        user_id=user_id,
+        title=title,
+        value=value,
+        stage=stage,
+        source=source,
+        probability=probability,
+        expected_close_date=expected_close_date
+    )
+    db.add(deal)
+    await db.commit()
+    await db.refresh(deal)
+    return deal
+
+
+async def get_deal_by_id(db: AsyncSession, deal_id: int) -> Optional[Deal]:
+    """Get deal by ID."""
+    result = await db.execute(
+        select(Deal).options(joinedload(Deal.user)).where(Deal.id == deal_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_user_deals(db: AsyncSession, user_id: int) -> List[Deal]:
+    """Get all deals for a user."""
+    result = await db.execute(
+        select(Deal).where(Deal.user_id == user_id).order_by(desc(Deal.created_at))
+    )
+    return list(result.scalars().all())
+
+
+async def get_all_deals(
+    db: AsyncSession,
+    stage: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0
+) -> List[Deal]:
+    """Get all deals with optional filtering."""
+    query = select(Deal).options(joinedload(Deal.user)).order_by(desc(Deal.created_at))
+    
+    if stage:
+        query = query.where(Deal.stage == stage)
+        
+    query = query.limit(limit).offset(offset)
+    
+    result = await db.execute(query)
+    return list(result.scalars().all())
+
+
+async def update_deal(db: AsyncSession, deal_id: int, **kwargs: Any) -> Optional[Deal]:
+    """Update deal fields. Marks as manually_qualified if stage is changed."""
+    deal = await get_deal_by_id(db, deal_id)
+    if deal:
+        # If stage is being updated, mark as manually qualified
+        if "stage" in kwargs:
+            kwargs["manually_qualified"] = True
+        
+        for key, value in kwargs.items():
+            if hasattr(deal, key):
+                setattr(deal, key, value)
+        
+        # Auto-update probability based on stage if not explicitly provided
+        if "stage" in kwargs and "probability" not in kwargs:
+            stage_probs = {
+                "new_lead": 10,
+                "qualified": 25,
+                "in_conversation": 50,
+                "proposal_sent": 75,
+                "won": 100,
+                "lost": 0
+            }
+            if kwargs["stage"] in stage_probs:
+                deal.probability = stage_probs[kwargs["stage"]]
+                
+        deal.updated_at = datetime.utcnow()
+        await db.commit()
+        await db.refresh(deal)
+    return deal
+
+
+async def mark_deal_won(db: AsyncSession, deal_id: int, won_date: Optional[datetime] = None) -> Optional[Deal]:
+    """Mark deal as won."""
+    return await update_deal(
+        db, 
+        deal_id, 
+        stage="won", 
+        probability=100, 
+        won_date=won_date or datetime.utcnow()
+    )
+
+
+async def mark_deal_lost(db: AsyncSession, deal_id: int, reason: str) -> Optional[Deal]:
+    """Mark deal as lost."""
+    return await update_deal(
+        db, 
+        deal_id, 
+        stage="lost", 
+        probability=0, 
+        lost_date=datetime.utcnow(),
+        lost_reason=reason
+    )
+
+
+async def delete_deal(db: AsyncSession, deal_id: int) -> bool:
+    """Delete a deal."""
+    deal = await get_deal_by_id(db, deal_id)
+    if deal:
+        await db.delete(deal)
+        await db.commit()
+        return True
+    return False
+
+
+# ============================================================================
+# CRM - NOTE OPERATIONS
+# ============================================================================
+
+
+async def create_note(
+    db: AsyncSession,
+    user_id: int,
+    content: str,
+    created_by: str,  # UUID string
+    deal_id: Optional[int] = None,
+    note_type: str = "note"
+) -> Note:
+    """Create a new note."""
+    note = Note(
+        user_id=user_id,
+        deal_id=deal_id,
+        content=content,
+        note_type=note_type,
+        created_by=created_by
+    )
+    db.add(note)
+    await db.commit()
+    await db.refresh(note)
+    return note
+
+
+async def get_user_notes(db: AsyncSession, user_id: int) -> List[Note]:
+    """Get all notes for a user."""
+    result = await db.execute(
+        select(Note).where(Note.user_id == user_id).order_by(desc(Note.created_at))
+    )
+    return list(result.scalars().all())
+
+
+async def delete_note(db: AsyncSession, note_id: int) -> bool:
+    """Delete a note."""
+    result = await db.execute(select(Note).where(Note.id == note_id))
+    note = result.scalar_one_or_none()
+    if note:
+        await db.delete(note)
+        await db.commit()
+        return True
+    return False
+
+
+# ============================================================================
+# CRM - TAG OPERATIONS
+# ============================================================================
+
+
+async def create_tag(db: AsyncSession, name: str, color: str = "#6B7280") -> Tag:
+    """Create a new tag."""
+    tag = Tag(name=name, color=color)
+    db.add(tag)
+    await db.commit()
+    await db.refresh(tag)
+    return tag
+
+
+async def get_all_tags(db: AsyncSession) -> List[Tag]:
+    """Get all tags."""
+    result = await db.execute(select(Tag).order_by(Tag.name))
+    return list(result.scalars().all())
+
+
+async def add_tag_to_user(db: AsyncSession, user_id: int, tag_id: int) -> UserTag:
+    """Assign tag to user."""
+    user_tag = UserTag(user_id=user_id, tag_id=tag_id)
+    db.add(user_tag)
+    try:
+        await db.commit()
+        await db.refresh(user_tag)
+        return user_tag
+    except Exception:
+        await db.rollback()
+        # Likely already exists
+        result = await db.execute(
+            select(UserTag).where(UserTag.user_id == user_id, UserTag.tag_id == tag_id)
+        )
+        return result.scalar_one()
+
+
+async def remove_tag_from_user(db: AsyncSession, user_id: int, tag_id: int) -> bool:
+    """Remove tag from user."""
+    result = await db.execute(
+        select(UserTag).where(UserTag.user_id == user_id, UserTag.tag_id == tag_id)
+    )
+    user_tag = result.scalar_one_or_none()
+    if user_tag:
+        await db.delete(user_tag)
+        await db.commit()
+        return True
+    return False
+
+
+async def get_user_tags(db: AsyncSession, user_id: int) -> List[Tag]:
+    """Get all tags for a user."""
+    result = await db.execute(
+        select(Tag)
+        .join(UserTag, Tag.id == UserTag.tag_id)
+        .where(UserTag.user_id == user_id)
+    )
+    return list(result.scalars().all())
+
+
+# ============================================================================
+# CRM - DASHBOARD METRICS
+# ============================================================================
+
+
+async def get_crm_metrics(db: AsyncSession) -> Dict[str, Any]:
+    """Get CRM dashboard metrics."""
+    # Total active deals (not won/lost)
+    active_deals_result = await db.execute(
+        select(Deal).where(Deal.stage.notin_(["won", "lost"]))
+    )
+    active_deals = list(active_deals_result.scalars().all())
+    
+    # Won deals
+    won_deals_result = await db.execute(
+        select(Deal).where(Deal.stage == "won")
+    )
+    won_deals = list(won_deals_result.scalars().all())
+    
+    # Total revenue
+    total_revenue = sum(deal.value for deal in won_deals)
+    
+    # Conversion rate
+    total_deals_count = await db.scalar(select(func.count(Deal.id)))
+    conversion_rate = (len(won_deals) / total_deals_count * 100) if total_deals_count > 0 else 0
+    
+    return {
+        "total_active_deals": len(active_deals),
+        "total_won_deals": len(won_deals),
+        "total_revenue": total_revenue,
+        "conversion_rate": round(conversion_rate, 2)
+    }
+
+
+# ============================================================================
+# CRM - STAGE SYNCHRONIZATION
+# ============================================================================
+
+# Mapping from User.stage (bot conversation) to Deal.stage (CRM)
+STAGE_MAPPING = {
+    "welcome": "new_lead",
+    "qualifying": "qualified",
+    "closing": "in_conversation",
+    "sold": "proposal_sent",
+}
+
+
+async def sync_deal_stage_from_user(
+    db: AsyncSession,
+    user_id: int,
+    new_user_stage: str,
+    force: bool = False
+) -> Optional[Deal]:
+    """
+    Sync deal stage when user conversation stage changes.
+    Only updates if manually_qualified=False or force=True.
+    
+    Args:
+        db: Database session
+        user_id: User ID
+        new_user_stage: New stage from User.stage
+        force: If True, update even if manually_qualified=True
+        
+    Returns:
+        Updated deal or None if no deal found or update skipped
+    """
+    # Get user's active deal (most recent non-won/lost)
+    result = await db.execute(
+        select(Deal)
+        .where(Deal.user_id == user_id)
+        .where(Deal.stage.notin_(["won", "lost"]))
+        .order_by(desc(Deal.created_at))
+        .limit(1)
+    )
+    deal = result.scalar_one_or_none()
+    
+    if not deal:
+        return None
+    
+    # Skip if manually qualified (unless forced)
+    if deal.manually_qualified and not force:
+        return None
+    
+    # Map user stage to deal stage
+    new_deal_stage = STAGE_MAPPING.get(new_user_stage)
+    if not new_deal_stage:
+        return None
+    
+    # Update deal stage (without marking as manually qualified)
+    deal.stage = new_deal_stage
+    
+    # Update probability based on stage
+    stage_probs = {
+        "new_lead": 10,
+        "qualified": 25,
+        "in_conversation": 50,
+        "proposal_sent": 75,
+    }
+    if new_deal_stage in stage_probs:
+        deal.probability = stage_probs[new_deal_stage]
+    
+    deal.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(deal)
+    
+    return deal
+
+
+async def get_user_active_deal(db: AsyncSession, user_id: int) -> Optional[Deal]:
+    """Get user's most recent active deal (not won/lost)."""
+    result = await db.execute(
+        select(Deal)
+        .options(joinedload(Deal.user))
+        .where(Deal.user_id == user_id)
+        .where(Deal.stage.notin_(["won", "lost"]))
+        .order_by(desc(Deal.created_at))
+        .limit(1)
+    )
+    return result.scalar_one_or_none()

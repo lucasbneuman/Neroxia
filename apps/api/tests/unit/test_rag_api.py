@@ -79,7 +79,8 @@ class TestRAGAPI:
         """Test uploading a text file to RAG."""
         # Create a test text file
         file_content = b"This is a test document for RAG processing."
-        files = {"file": ("test_doc.txt", io.BytesIO(file_content), "text/plain")}
+        # Field name must be 'files' to match endpoint
+        files = [("files", ("test_doc.txt", io.BytesIO(file_content), "text/plain"))]
         
         response = client.post(
             "/rag/upload",
@@ -152,8 +153,8 @@ class TestRAGAPI:
         assert response.status_code in [404, 503]
     
     def test_clear_rag_requires_auth(self, client: TestClient):
-        """Test that POST /rag/clear requires authentication."""
-        response = client.post("/rag/clear")
+        """Test that DELETE /rag/clear requires authentication."""
+        response = client.delete("/rag/clear")
         assert response.status_code == 401
     
     def test_clear_rag_collection(
@@ -162,7 +163,7 @@ class TestRAGAPI:
         auth_headers: Dict[str, str]
     ):
         """Test clearing RAG collection."""
-        response = client.post("/rag/clear", headers=auth_headers)
+        response = client.delete("/rag/clear", headers=auth_headers)
         
         # Should succeed or indicate RAG not available
         assert response.status_code in [200, 503]
@@ -190,7 +191,7 @@ class TestRAGAPI:
         
         # Step 1: Upload file
         file_content = b"Test document for workflow testing."
-        files = {"file": ("workflow_test.txt", io.BytesIO(file_content), "text/plain")}
+        files = [("files", ("workflow_test.txt", io.BytesIO(file_content), "text/plain"))]
         
         upload_response = client.post(
             "/rag/upload",
@@ -198,8 +199,7 @@ class TestRAGAPI:
             files=files
         )
         
-        if upload_response.status_code != 200:
-            pytest.skip("RAG upload not working")
+        assert upload_response.status_code == 200, f"RAG upload failed: {upload_response.text}"
         
         # Step 2: List files
         list_response = client.get("/rag/files", headers=auth_headers)
@@ -231,7 +231,7 @@ class TestRAGIntegration:
         
         # Upload a document with specific information
         file_content = b"Our product costs $299 and includes lifetime support."
-        files = {"file": ("pricing.txt", io.BytesIO(file_content), "text/plain")}
+        files = [("files", ("pricing.txt", io.BytesIO(file_content), "text/plain"))]
         
         upload_response = client.post(
             "/rag/upload",

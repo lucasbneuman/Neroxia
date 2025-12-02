@@ -1,0 +1,203 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.12.1, pytest-8.4.1, pluggy-1.6.0 -- C:\Python312\python.exe
+cachedir: .pytest_cache
+metadata: {'Python': '3.12.1', 'Platform': 'Windows-11-10.0.26100-SP0', 'Packages': {'pytest': '8.4.1', 'pluggy': '1.6.0'}, 'Plugins': {'anyio': '4.9.0', 'langsmith': '0.4.8', 'allure-pytest': '2.15.0', 'html': '4.1.1', 'metadata': '3.1.1'}, 'JAVA_HOME': 'C:\\Program Files\\Java\\jdk-11'}
+rootdir: C:\Users\avali\Desktop\Proyectos\whatsapp_sales_bot\apps\api
+configfile: pytest.ini
+plugins: anyio-4.9.0, langsmith-0.4.8, allure-pytest-2.15.0, html-4.1.1, metadata-3.1.1
+collecting ... collected 10 items
+
+tests/integration/test_user_flows.py::TestUserFlows::test_complete_configuration_flow FAILED [ 10%]
+tests/integration/test_user_flows.py::TestUserFlows::test_test_chat_workflow PASSED [ 20%]
+tests/integration/test_user_flows.py::TestUserFlows::test_configuration_affects_bot_behavior PASSED [ 30%]
+tests/integration/test_user_flows.py::TestUserFlows::test_complete_sales_conversation_flow PASSED [ 40%]
+tests/integration/test_user_flows.py::TestUserFlows::test_multi_user_concurrent_conversations PASSED [ 50%]
+tests/integration/test_user_flows.py::TestUserFlows::test_error_recovery_flow FAILED [ 60%]
+tests/integration/test_user_flows.py::TestUserFlows::test_configuration_persistence_across_conversations FAILED [ 70%]
+tests/integration/test_user_flows.py::TestAPIHealthAndStatus::test_root_endpoint PASSED [ 80%]
+tests/integration/test_user_flows.py::TestAPIHealthAndStatus::test_health_endpoint PASSED [ 90%]
+tests/integration/test_user_flows.py::TestAPIHealthAndStatus::test_bot_health_endpoint PASSED [100%]
+
+================================== FAILURES ===================================
+_______________ TestUserFlows.test_complete_configuration_flow ________________
+tests\integration\test_user_flows.py:35: in test_complete_configuration_flow
+    assert response.status_code == 200
+E   assert 500 == 200
+E    +  where 500 = <Response [500 Internal Server Error]>.status_code
+        auth_headers = {'Authorization': 'Bearer mock_test_token_for_api_tests'}
+        client     = <starlette.testclient.TestClient object at 0x000001B2A8EDE630>
+        response   = <Response [500 Internal Server Error]>
+        self       = <tests.integration.test_user_flows.TestUserFlows object at 0x000001B2A8EB96D0>
+        test_config = {'max_words_per_response': 100,
+ 'product_name': 'Test Product',
+ 'product_price': '$99',
+ 'response_delay_minutes': 0.5,
+ 'system_prompt': 'You are a test sales assistant',
+ 'text_audio_ratio': 0,
+ 'use_emojis': True,
+ 'welcome_message': 'Test welcome message'}
+------------------------------ Captured log call ------------------------------
+INFO     httpx:_client.py:1025 HTTP Request: GET http://testserver/config "HTTP/1.1 307 Temporary Redirect"
+ERROR    src.routers.config:config.py:67 Error retrieving configuration: 'MockUser' object has no attribute 'get'
+Traceback (most recent call last):
+  File "C:\Users\avali\Desktop\Proyectos\whatsapp_sales_bot\apps\api\src\routers\config.py", line 50, in get_config
+    user_id = current_user.get("id")
+              ^^^^^^^^^^^^^^^^
+AttributeError: 'MockUser' object has no attribute 'get'
+INFO     httpx:_client.py:1025 HTTP Request: GET http://testserver/config/ "HTTP/1.1 500 Internal Server Error"
+___________________ TestUserFlows.test_error_recovery_flow ____________________
+tests\integration\test_user_flows.py:287: in test_error_recovery_flow
+    assert response.status_code == 200
+E   assert 500 == 200
+E    +  where 500 = <Response [500 Internal Server Error]>.status_code
+        auth_headers = {'Authorization': 'Bearer mock_test_token_for_api_tests'}
+        client     = <starlette.testclient.TestClient object at 0x000001B2A8EDE630>
+        response   = <Response [500 Internal Server Error]>
+        self       = <tests.integration.test_user_flows.TestUserFlows object at 0x000001B2A8EDE090>
+        test_phone = '+7777777777'
+        valid_config = {'system_prompt': 'Test prompt', 'use_emojis': True}
+------------------------------ Captured log call ------------------------------
+INFO     httpx:_client.py:1025 HTTP Request: PUT http://testserver/config "HTTP/1.1 307 Temporary Redirect"
+ERROR    src.routers.config:config.py:119 Error updating configuration: 'MockUser' object has no attribute 'get'
+Traceback (most recent call last):
+  File "C:\Users\avali\Desktop\Proyectos\whatsapp_sales_bot\apps\api\src\routers\config.py", line 91, in update_config
+    user_id = current_user.get("id")
+              ^^^^^^^^^^^^^^^^
+AttributeError: 'MockUser' object has no attribute 'get'
+INFO     httpx:_client.py:1025 HTTP Request: PUT http://testserver/config/ "HTTP/1.1 500 Internal Server Error"
+INFO     httpx:_client.py:1025 HTTP Request: PUT http://testserver/config "HTTP/1.1 307 Temporary Redirect"
+ERROR    src.routers.config:config.py:119 Error updating configuration: 'MockUser' object has no attribute 'get'
+Traceback (most recent call last):
+  File "C:\Users\avali\Desktop\Proyectos\whatsapp_sales_bot\apps\api\src\routers\config.py", line 91, in update_config
+    user_id = current_user.get("id")
+              ^^^^^^^^^^^^^^^^
+AttributeError: 'MockUser' object has no attribute 'get'
+INFO     httpx:_client.py:1025 HTTP Request: PUT http://testserver/config/ "HTTP/1.1 500 Internal Server Error"
+______ TestUserFlows.test_configuration_persistence_across_conversations ______
+tests\integration\test_user_flows.py:328: in test_configuration_persistence_across_conversations
+    assert config_response.status_code == 200
+E   assert 500 == 200
+E    +  where 500 = <Response [500 Internal Server Error]>.status_code
+        auth_headers = {'Authorization': 'Bearer mock_test_token_for_api_tests'}
+        client     = <starlette.testclient.TestClient object at 0x000001B2A8EDE630>
+        config_response = <Response [500 Internal Server Error]>
+        phone      = '+9999999999'
+        response   = <Response [200 OK]>
+        self       = <tests.integration.test_user_flows.TestUserFlows object at 0x000001B2A8EDE2A0>
+        unique_prompt = 'Unique test prompt 1764674720'
+        users      = ['+8888888888', '+9999999999']
+------------------------------ Captured log call ------------------------------
+INFO     httpx:_client.py:1025 HTTP Request: PUT http://testserver/config "HTTP/1.1 307 Temporary Redirect"
+ERROR    src.routers.config:config.py:119 Error updating configuration: 'MockUser' object has no attribute 'get'
+Traceback (most recent call last):
+  File "C:\Users\avali\Desktop\Proyectos\whatsapp_sales_bot\apps\api\src\routers\config.py", line 91, in update_config
+    user_id = current_user.get("id")
+              ^^^^^^^^^^^^^^^^
+AttributeError: 'MockUser' object has no attribute 'get'
+INFO     httpx:_client.py:1025 HTTP Request: PUT http://testserver/config/ "HTTP/1.1 500 Internal Server Error"
+INFO     src.routers.bot:bot.py:71 Processing message from +8888888888
+INFO     src.routers.bot:bot.py:142 Calling process_message with phone=+8888888888, history_len=0
+INFO     graph.workflow:workflow.py:134 Processing message from +8888888888
+INFO     graph.nodes:nodes.py:91 Executing welcome_node
+WARNING  graph.nodes:nodes.py:112 No welcome_message configured, using fallback
+INFO     graph.nodes:nodes.py:124 Sending welcome message with initial questions
+INFO     graph.nodes:nodes.py:147 Executing intent_classifier_node
+INFO     httpx:_client.py:1740 HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO     services.llm_service:llm_service.py:416 Intent classified: {'category': 'interested', 'score': 0.4}
+INFO     graph.nodes:nodes.py:165 Intent: interested, Score: 0.4
+INFO     graph.nodes:nodes.py:184 Executing sentiment_analyzer_node
+INFO     httpx:_client.py:1740 HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO     services.llm_service:llm_service.py:448 Sentiment analyzed: neutral
+INFO     graph.nodes:nodes.py:198 Sentiment: neutral
+INFO     graph.nodes:nodes.py:235 Executing data_collector_node
+ERROR    graph.workflow:workflow.py:171 Error executing graph: 'MockUser' object has no attribute 'whatsapp_profile_name'
+ERROR    graph.workflow:workflow.py:172 Traceback: Traceback (most recent call last):
+  File "C:\Users\avali\Desktop\Proyectos\whatsapp_sales_bot\apps\bot-engine\src\graph\workflow.py", line 163, in process_message
+    result = await graph.ainvoke(initial_state)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\avali\AppData\Roaming\Python\Python312\site-packages\langgraph\pregel\main.py", line 3088, in ainvoke
+    async for chunk in self.astream(
+  File "C:\Users\avali\AppData\Roaming\Python\Python312\site-packages\langgraph\pregel\main.py", line 2926, in astream
+    async for _ in runner.atick(
+  File "C:\Users\avali\AppData\Roaming\Python\Python312\site-packages\langgraph\pregel\_runner.py", line 295, in atick
+    await arun_with_retry(
+  File "C:\Users\avali\AppData\Roaming\Python\Python312\site-packages\langgraph\pregel\_retry.py", line 137, in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\avali\AppData\Roaming\Python\Python312\site-packages\langgraph\_internal\_runnable.py", line 689, in ainvoke
+    input = await asyncio.create_task(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\avali\AppData\Roaming\Python\Python312\site-packages\langgraph\_internal\_runnable.py", line 457, in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\avali\Desktop\Proyectos\whatsapp_sales_bot\apps\bot-engine\src\graph\nodes.py", line 254, in data_collector_node
+    if db_user.whatsapp_profile_name and not state.get("user_name"):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MockUser' object has no attribute 'whatsapp_profile_name'
+During task with name 'data_collector' and id '3fb5341b-ea82-5f39-dd71-36533f618550'
+
+INFO     src.routers.bot:bot.py:153 process_message completed successfully
+INFO     src.routers.bot:bot.py:163 Bot response: I apologize, I'm having trouble responding right now. Could you please try again?...
+INFO     src.routers.bot:bot.py:193 Message processed successfully for +8888888888
+INFO     httpx:_client.py:1025 HTTP Request: POST http://testserver/bot/process "HTTP/1.1 200 OK"
+INFO     src.routers.bot:bot.py:71 Processing message from +9999999999
+INFO     src.routers.bot:bot.py:142 Calling process_message with phone=+9999999999, history_len=0
+INFO     graph.workflow:workflow.py:134 Processing message from +9999999999
+INFO     graph.nodes:nodes.py:91 Executing welcome_node
+WARNING  graph.nodes:nodes.py:112 No welcome_message configured, using fallback
+INFO     graph.nodes:nodes.py:124 Sending welcome message with initial questions
+INFO     graph.nodes:nodes.py:147 Executing intent_classifier_node
+INFO     httpx:_client.py:1740 HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO     services.llm_service:llm_service.py:416 Intent classified: {'category': 'interested', 'score': 0.5}
+INFO     graph.nodes:nodes.py:165 Intent: interested, Score: 0.5
+INFO     graph.nodes:nodes.py:184 Executing sentiment_analyzer_node
+INFO     httpx:_client.py:1740 HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO     services.llm_service:llm_service.py:448 Sentiment analyzed: neutral
+INFO     graph.nodes:nodes.py:198 Sentiment: neutral
+INFO     graph.nodes:nodes.py:235 Executing data_collector_node
+ERROR    graph.workflow:workflow.py:171 Error executing graph: 'MockUser' object has no attribute 'whatsapp_profile_name'
+ERROR    graph.workflow:workflow.py:172 Traceback: Traceback (most recent call last):
+  File "C:\Users\avali\Desktop\Proyectos\whatsapp_sales_bot\apps\bot-engine\src\graph\workflow.py", line 163, in process_message
+    result = await graph.ainvoke(initial_state)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\avali\AppData\Roaming\Python\Python312\site-packages\langgraph\pregel\main.py", line 3088, in ainvoke
+    async for chunk in self.astream(
+  File "C:\Users\avali\AppData\Roaming\Python\Python312\site-packages\langgraph\pregel\main.py", line 2926, in astream
+    async for _ in runner.atick(
+  File "C:\Users\avali\AppData\Roaming\Python\Python312\site-packages\langgraph\pregel\_runner.py", line 295, in atick
+    await arun_with_retry(
+  File "C:\Users\avali\AppData\Roaming\Python\Python312\site-packages\langgraph\pregel\_retry.py", line 137, in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\avali\AppData\Roaming\Python\Python312\site-packages\langgraph\_internal\_runnable.py", line 689, in ainvoke
+    input = await asyncio.create_task(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\avali\AppData\Roaming\Python\Python312\site-packages\langgraph\_internal\_runnable.py", line 457, in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\avali\Desktop\Proyectos\whatsapp_sales_bot\apps\bot-engine\src\graph\nodes.py", line 254, in data_collector_node
+    if db_user.whatsapp_profile_name and not state.get("user_name"):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MockUser' object has no attribute 'whatsapp_profile_name'
+During task with name 'data_collector' and id 'e4d8e2a4-d3f1-edaa-4a96-d3d60026f1a7'
+
+INFO     src.routers.bot:bot.py:153 process_message completed successfully
+INFO     src.routers.bot:bot.py:163 Bot response: I apologize, I'm having trouble responding right now. Could you please try again?...
+INFO     src.routers.bot:bot.py:193 Message processed successfully for +9999999999
+INFO     httpx:_client.py:1025 HTTP Request: POST http://testserver/bot/process "HTTP/1.1 200 OK"
+INFO     httpx:_client.py:1025 HTTP Request: GET http://testserver/config "HTTP/1.1 307 Temporary Redirect"
+ERROR    src.routers.config:config.py:67 Error retrieving configuration: 'MockUser' object has no attribute 'get'
+Traceback (most recent call last):
+  File "C:\Users\avali\Desktop\Proyectos\whatsapp_sales_bot\apps\api\src\routers\config.py", line 50, in get_config
+    user_id = current_user.get("id")
+              ^^^^^^^^^^^^^^^^
+AttributeError: 'MockUser' object has no attribute 'get'
+INFO     httpx:_client.py:1025 HTTP Request: GET http://testserver/config/ "HTTP/1.1 500 Internal Server Error"
+=========================== short test summary info ===========================
+FAILED tests/integration/test_user_flows.py::TestUserFlows::test_complete_configuration_flow - assert 500 == 200
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/integration/test_user_flows.py::TestUserFlows::test_error_recovery_flow - assert 500 == 200
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/integration/test_user_flows.py::TestUserFlows::test_configuration_persistence_across_conversations - assert 500 == 200
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+======================== 3 failed, 7 passed in 36.33s =========================

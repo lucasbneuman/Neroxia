@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Config, Conversation, Message, User, CollectedData, RAGStats, APIResponse } from '@/types';
+import type { Config, Conversation, Message, User, CollectedData, RAGStats, APIResponse, Deal } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -26,6 +26,15 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    console.error("API Error Details:", {
+      message: error.message,
+      code: error.code,
+      status: error.response?.status,
+      data: error.response?.data,
+      url: originalRequest?.url,
+      method: originalRequest?.method,
+    });
 
     // If error is 401 and we haven't retried yet
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -201,5 +210,82 @@ export const clearTestConversation = async (phone: string): Promise<APIResponse>
   const response = await api.delete(`/conversations/${phone}/clear`);
   return response.data;
 };
+
+// CRM API
+export const getCrmMetrics = async () => {
+  const response = await api.get('/crm/dashboard/metrics');
+  return response.data;
+};
+
+export const getDeals = async (stage?: string) => {
+  const response = await api.get('/crm/deals', { params: { stage } });
+  return response.data;
+};
+
+
+export const updateDealStage = async (dealId: number, stage: string) => {
+  const response = await api.patch(`/crm/deals/${dealId}/stage`, { stage });
+  return response.data;
+};
+
+export const updateDeal = async (dealId: number, data: Partial<Deal>) => {
+  const response = await api.patch(`/crm/deals/${dealId}`, data);
+  return response.data;
+};
+
+// Notes API
+export const getNotes = async (userId: number) => {
+  const response = await api.get(`/crm/users/${userId}/notes`);
+  return response.data;
+};
+
+export const createNote = async (userId: number, content: string, createdBy: string, dealId?: number, noteType: string = 'note') => {
+  const response = await api.post(`/crm/users/${userId}/notes`, {
+    content,
+    created_by: createdBy,
+    deal_id: dealId,
+    note_type: noteType
+  });
+  return response.data;
+};
+
+export const deleteNote = async (noteId: number) => {
+  const response = await api.delete(`/crm/notes/${noteId}`);
+  return response.data;
+};
+
+// Tags API
+export const getTags = async () => {
+  const response = await api.get('/crm/tags');
+  return response.data;
+};
+
+export const createTag = async (name: string, color: string) => {
+  const response = await api.post('/crm/tags', { name, color });
+  return response.data;
+};
+
+export const getUserTags = async (userId: number) => {
+  const response = await api.get(`/crm/users/${userId}/tags`);
+  return response.data;
+};
+
+export const addTagToUser = async (userId: number, tagId: number) => {
+  const response = await api.post(`/crm/users/${userId}/tags/${tagId}`);
+  return response.data;
+};
+
+export const removeTagFromUser = async (userId: number, tagId: number) => {
+  const response = await api.delete(`/crm/users/${userId}/tags/${tagId}`);
+  return response.data;
+};
+
+// Delete conversation
+export async function deleteConversation(phone: string, deleteFromCRM: boolean = false): Promise<{ status: string; message: string; messages_deleted: number; deals_deleted: number; crm_deleted: boolean }> {
+  const response = await api.delete(`/conversations/${phone}`, {
+    params: { delete_from_crm: deleteFromCRM }
+  });
+  return response.data;
+}
 
 export default api;
