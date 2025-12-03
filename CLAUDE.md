@@ -2,6 +2,27 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🚨 CRITICAL: Agent Protocol System
+
+**ALL agents** in `.claude/agents/` MUST follow the mandatory protocol defined in `.claude/AGENT_PROTOCOL.md`.
+
+### Key Protocol Rules (for all agents):
+
+1. **Before starting ANY task**: Read `AGENT_PROTOCOL.md`, `TASK.md`, and `BUG_TRACKER.md`
+2. **Workspace cleanliness**: Delete all temporary/diagnostic scripts after use
+3. **Script organization**: One-time-use scripts → `.claude/scripts/` (then delete after completion)
+4. **Task logging**: Update `.claude/TASK.md` after EVERY task (3 lines max)
+5. **Bug tracking**: Update `.claude/BUG_TRACKER.md` when bugs are found/fixed
+6. **Commits**: Create commit after EVERY completed subtask
+7. **Documentation**: Update `ARCHITECTURE.md`, `API_DOCUMENTATION.md`, or `CLAUDE.md` when modifying architecture/APIs
+8. **Response length**: Be concise (<100 words unless details explicitly requested)
+
+**Non-compliance will result in agent prompt rewriting.**
+
+See `.claude/AGENT_PROTOCOL.md` for complete rules and compliance checklist.
+
+---
+
 ## Project Overview
 
 WhatsApp Sales Bot is a multi-tenant SaaS platform for conversational sales via WhatsApp, built with a microservices architecture. The system uses LangGraph for AI conversation orchestration, FastAPI for the backend API, and Next.js for the frontend dashboard.
@@ -29,7 +50,12 @@ packages/
 - **Production**: PostgreSQL via Supabase
 - **ORM**: SQLAlchemy with async support (asyncpg for Postgres, aiosqlite for SQLite)
 - **Models**: Defined in `packages/database/whatsapp_bot_database/models.py`
-  - `User`: WhatsApp contacts with conversation tracking, HubSpot/Twilio integration fields
+  - `User`: WhatsApp contacts with conversation tracking and integration fields
+    - **Core fields**: phone (unique), name, email, auth_user_id (multi-tenant link)
+    - **Conversation state**: intent_score, sentiment, stage, conversation_mode
+    - **HubSpot sync**: hubspot_contact_id, hubspot_lifecyclestage, hubspot_synced_at
+    - **Twilio auto-populated**: whatsapp_profile_name, country_code, phone_formatted, first_contact_timestamp, media_count, location_shared, last_twilio_message_sid
+    - **Activity**: total_messages, last_message_at
   - `Message`: Conversation history
   - `Deal`: CRM pipeline management with stage synchronization
   - `Note`: CRM notes attached to users/deals
@@ -53,12 +79,45 @@ The bot uses an 11-node LangGraph workflow in `apps/bot-engine/src/graph/`:
 10. **handoff_node** - Escalates to human agent
 11. **summary_node** - Generates conversation summaries
 
-**State Management**: All nodes share `ConversationState` (TypedDict) defined in `state.py` containing:
-- Message history, user identification
-- Intent score, sentiment, stage
-- Collected data dictionary
-- Conversation mode (AUTO/MANUAL/NEEDS_ATTENTION)
-- Config, DB session, and user object references
+**State Management**: All nodes share `ConversationState` (TypedDict) defined in `apps/bot-engine/src/graph/state.py`:
+
+```python
+class ConversationState(TypedDict):
+    # Message history
+    messages: List[BaseMessage]  # LangChain message objects
+
+    # User identification
+    user_phone: str
+    user_name: Optional[str]
+    user_email: Optional[str]
+
+    # Conversation analysis (updated by nodes)
+    intent_score: float  # 0.0-1.0, purchase likelihood
+    sentiment: str  # "positive", "neutral", "negative"
+    stage: str  # "welcome", "qualifying", "nurturing", "closing", "sold", "follow_up"
+
+    # Conversation control
+    conversation_mode: str  # "AUTO", "MANUAL", "NEEDS_ATTENTION"
+
+    # Collected data
+    collected_data: Dict[str, Any]  # Structured: name, email, needs, budget, etc.
+
+    # Transaction tracking
+    payment_link_sent: bool
+    follow_up_scheduled: Optional[datetime]
+    follow_up_count: int
+
+    # Summary & response
+    conversation_summary: Optional[str]  # AI-generated summary
+    current_response: Optional[str]  # Latest bot response
+
+    # Configuration & database
+    config: Dict[str, Any]  # System prompts, TTS settings, etc.
+    db_session: Optional[Any]  # Async DB session
+    db_user: Optional[Any]  # SQLAlchemy User object
+```
+
+Each node receives state as input, performs its function, and returns updated state (immutable pattern).
 
 **RAG System**: ChromaDB vector store with OpenAI embeddings for product knowledge retrieval.
 
@@ -150,6 +209,8 @@ pytest -m unit           # Unit tests only
 pytest -m integration    # Integration tests only
 pytest -m rag           # RAG endpoint tests
 pytest -m auth          # Auth tests
+pytest -m config        # Configuration tests
+pytest -m bot           # Bot processing tests
 pytest -m conversations # Conversation tests
 
 # Run with coverage
@@ -291,25 +352,6 @@ SUPABASE_DATABASE_URL=postgresql+asyncpg://...
 
 LOG_LEVEL=INFO
 ```
-
-## Agent Coordination System
-
-This project uses a multi-agent coordination system documented in `.agents/`:
-
-**Before starting work**:
-1. Read `.agents/AGENT_PROTOCOL.md` - 4-step workflow
-2. Check `.agents/TASK_LOG.md` - Current active tasks (avoid conflicts)
-3. Check `.agents/BUG_TRACKER.md` - Known issues
-4. Register your task in `TASK_LOG.md` before starting
-
-**Key files**:
-- `AGENT_PROTOCOL.md` - Required workflow for all agents
-- `AGENT_ROLES.md` - Role definitions
-- `TASK_LOG.md` - Real-time task tracking
-- `BUG_TRACKER.md` - Bug tracking with priorities
-- `BRF_REQUESTS.md` - Backend Request Forms (UX → Dev coordination)
-
-**Rule**: Always update `TASK_LOG.md` when starting/completing tasks to prevent conflicts.
 
 ## Tech Stack Summary
 
