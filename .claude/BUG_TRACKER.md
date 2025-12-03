@@ -4,6 +4,75 @@ This file tracks bugs, issues, and their resolution status across the WhatsApp S
 
 ## Active Bugs
 
+### [BUG-005] Button component throws React error for asChild prop
+**Status:** Resolved
+**Severity:** Low
+**Component:** Frontend - UI Components
+**Reported:** 2025-12-03
+**Resolved:** 2025-12-03
+**Assigned:** Lead Developer
+
+**Description:**
+The Button component was receiving an `asChild` prop but not handling it, causing React to throw an error: "React does not recognize the `asChild` prop on a DOM element."
+
+**Steps to Reproduce:**
+1. Use Button component with asChild prop: `<Button asChild><a href="...">Link</a></Button>`
+2. Observe React warning in console
+
+**Expected Behavior:**
+- Button component should support asChild prop (Radix UI pattern)
+- When asChild=true, Button should render its child element with button styles
+- No React warnings
+
+**Actual Behavior:**
+```
+React does not recognize the `asChild` prop on a DOM element.
+at button (button.tsx:13)
+at IntegrationsPage (integrations/page.tsx:151)
+```
+
+**Environment:**
+- Service: Web (Next.js)
+- Component: Button UI component
+- Next.js version: 16.0.3
+
+**Root Cause:**
+The Button component (apps/web/src/components/ui/button.tsx) didn't have `asChild` in its props interface and wasn't handling the pattern where the child element should be rendered instead of a button element.
+
+**Files Affected:**
+1. `apps/web/src/components/ui/button.tsx` - Added asChild support
+
+**Fix Applied:**
+Implemented asChild pattern support:
+
+```tsx
+// Added to props interface
+asChild?: boolean
+
+// Added handling logic
+if (asChild) {
+    const child = React.Children.only(props.children as React.ReactElement);
+    return React.cloneElement(child, {
+        className: cn(buttonClasses, child.props.className),
+        ref,
+    });
+}
+```
+
+When asChild=true, the Button clones its child element and applies button classes to it, following the Radix UI composition pattern.
+
+**Validation Notes:**
+- Tested on: 2025-12-03
+- Result: No more React warnings
+- Method: Component properly renders anchor tags with button styling
+
+**Prevention:**
+- Follow Radix UI patterns for composable components
+- Add asChild support to wrapper components by default
+- Test components with different child element types
+
+---
+
 ### [BUG-004] Integration status endpoints return 404
 **Status:** Resolved
 **Severity:** Medium
@@ -380,10 +449,10 @@ None yet.
 
 ## Bug Statistics
 
-- Total Bugs Reported: 4
+- Total Bugs Reported: 5
 - Critical: 3
 - High: 0
 - Medium: 1
-- Low: 0
-- Resolved: 4
+- Low: 1
+- Resolved: 5
 - Open: 0

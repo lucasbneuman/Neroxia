@@ -27,14 +27,17 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    console.error("API Error Details:", {
-      message: error.message,
-      code: error.code,
-      status: error.response?.status,
-      data: error.response?.data,
-      url: originalRequest?.url,
-      method: originalRequest?.method,
-    });
+    // Only log detailed errors if they exist
+    if (error.response || error.request) {
+      console.error("API Error Details:", {
+        message: error.message,
+        code: error.code,
+        status: error.response?.status,
+        data: error.response?.data,
+        url: originalRequest?.url,
+        method: originalRequest?.method,
+      });
+    }
 
     // If error is 401 and we haven't retried yet
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -84,6 +87,25 @@ export const login = async (email: string, password: string) => {
     email,
     password,
   });
+  return response.data;
+};
+
+export const signup = async (email: string, password: string, name: string) => {
+  const response = await api.post('/auth/signup', {
+    email,
+    password,
+    name,
+  });
+  return response.data;
+};
+
+export const logout = async () => {
+  const response = await api.post('/auth/logout');
+  return response.data;
+};
+
+export const getCurrentUser = async () => {
+  const response = await api.get('/auth/me');
   return response.data;
 };
 
@@ -287,5 +309,104 @@ export async function deleteConversation(phone: string, deleteFromCRM: boolean =
   });
   return response.data;
 }
+
+// User Profile API
+export const getUserProfile = async () => {
+  const response = await api.get('/users/profile');
+  return response.data;
+};
+
+export const updateUserProfile = async (data: {
+  company_name?: string;
+  phone?: string;
+  timezone?: string;
+  language?: string;
+}) => {
+  const response = await api.put('/users/profile', data);
+  return response.data;
+};
+
+export const uploadAvatar = async (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.post('/users/avatar', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
+export const getUserSettings = async () => {
+  const response = await api.get('/users/settings');
+  return response.data;
+};
+
+export const updateUserSettings = async (preferences: Record<string, any>) => {
+  const response = await api.put('/users/settings', { preferences });
+  return response.data;
+};
+
+export const changePassword = async (currentPassword: string, newPassword: string) => {
+  const response = await api.put('/users/password', {
+    current_password: currentPassword,
+    new_password: newPassword,
+  });
+  return response.data;
+};
+
+export const deleteAccount = async () => {
+  const response = await api.delete('/users/account');
+  return response.data;
+};
+
+export const completeOnboarding = async () => {
+  const response = await api.post('/users/onboarding/complete');
+  return response.data;
+};
+
+export const updateOnboardingStep = async (step: number) => {
+  const response = await api.put(`/users/onboarding/step?step=${step}`);
+  return response.data;
+};
+
+// Subscription API
+export const getSubscriptionPlans = async () => {
+  const response = await api.get('/subscriptions/plans');
+  return response.data;
+};
+
+export const getCurrentSubscription = async () => {
+  const response = await api.get('/subscriptions/current');
+  return response.data;
+};
+
+export const getSubscriptionUsage = async () => {
+  const response = await api.get('/subscriptions/usage');
+  return response.data;
+};
+
+export const getBillingHistory = async () => {
+  const response = await api.get('/subscriptions/billing-history');
+  return response.data;
+};
+
+export const cancelSubscription = async (cancelAtPeriodEnd: boolean = true) => {
+  const response = await api.post('/subscriptions/cancel', {
+    cancel_at_period_end: cancelAtPeriodEnd,
+  });
+  return response.data;
+};
+
+// Integrations API
+export const getHubSpotStatus = async () => {
+  const response = await api.get('/integrations/hubspot/status');
+  return response.data;
+};
+
+export const getTwilioStatus = async () => {
+  const response = await api.get('/integrations/twilio/status');
+  return response.data;
+};
 
 export default api;

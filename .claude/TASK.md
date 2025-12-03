@@ -8,6 +8,11 @@
 
 ## Recent Tasks
 
+### [2025-12-03 18:15] - Lead Developer
+**Task:** Fixed Button asChild prop and improved API error logging
+**Changes:** `apps/web/src/components/ui/button.tsx`, `apps/web/src/lib/api.ts`
+**Status:** ✅ Complete
+
 ### [2025-12-03 15:00] - Lead Developer
 **Task:** Implemented integration status endpoints for HubSpot and Twilio
 **Changes:** `apps/api/src/routers/integrations.py`, `API_DOCUMENTATION.md`
