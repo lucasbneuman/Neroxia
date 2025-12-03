@@ -376,13 +376,91 @@ Cancel a scheduled follow-up.
 
 ## Integration Endpoints
 
-### HubSpot Integration
-- `/integrations/hubspot/sync` - Sync contact to HubSpot
-- `/integrations/hubspot/status` - Check HubSpot connection status
+### GET `/integrations/`
+Get all integration configurations (masked).
 
-### Twilio Integration
-- `/integrations/twilio/send` - Send WhatsApp message via Twilio
-- `/integrations/twilio/status` - Check Twilio connection status
+**Response**:
+```json
+{
+  "twilio": {
+    "account_sid": "ACxxxxxxxx...",
+    "whatsapp_number": "whatsapp:+14155238886",
+    "configured": true
+  },
+  "hubspot": {
+    "enabled": true,
+    "configured": true
+  }
+}
+```
+
+### GET `/integrations/hubspot/status`
+Get HubSpot integration status.
+
+**Response**:
+```json
+{
+  "configured": true,
+  "enabled": true,
+  "status": "active"
+}
+```
+
+**Status values**:
+- `active`: Configured and enabled
+- `configured`: Configured but disabled
+- `not_configured`: No credentials set
+
+### GET `/integrations/twilio/status`
+Get Twilio integration status.
+
+**Response**:
+```json
+{
+  "configured": true,
+  "whatsapp_number": "whatsapp:+14155238886",
+  "status": "active"
+}
+```
+
+**Status values**:
+- `active`: Fully configured
+- `not_configured`: Missing credentials
+
+### PUT `/integrations/hubspot`
+Update HubSpot configuration.
+
+**Request**:
+```json
+{
+  "access_token": "pat-na1-...",
+  "enabled": true
+}
+```
+
+### PUT `/integrations/twilio`
+Update Twilio configuration.
+
+**Request**:
+```json
+{
+  "account_sid": "ACxxxxxxxxxx",
+  "auth_token": "your_auth_token",
+  "whatsapp_number": "whatsapp:+14155238886"
+}
+```
+
+### DELETE `/integrations/hubspot`
+Remove HubSpot configuration.
+
+### DELETE `/integrations/twilio`
+Remove Twilio configuration.
+
+### POST `/integrations/hubspot/test`
+Test HubSpot connection with current credentials.
+
+### POST `/integrations/twilio/test`
+Test Twilio connection with current credentials.
 
 ---
 
@@ -648,6 +726,287 @@ The CRM includes automatic stage synchronization between the bot conversation (`
 - When a deal's stage is updated via API (PUT `/crm/deals/{id}`), `manually_qualified` is set to `true`
 - Once `manually_qualified=true`, the bot can no longer auto-update that deal's stage
 - This prevents conflicts between manual CRM decisions and bot automation
+
+---
+
+---
+
+## User Management Endpoints
+
+### GET `/users/profile`
+Get current authenticated user profile.
+
+**Response**:
+```json
+{
+  "id": 1,
+  "auth_user_id": "uuid",
+  "company_name": "Acme Corp",
+  "phone": "+1234567890",
+  "timezone": "UTC",
+  "language": "en",
+  "avatar_url": "https://...",
+  "role": "owner",
+  "onboarding_completed": true,
+  "preferences": {
+    "theme": "dark",
+    "notifications": true
+  }
+}
+```
+
+### PUT `/users/profile`
+Update user profile information.
+
+**Request**:
+```json
+{
+  "company_name": "New Name",
+  "phone": "+9876543210",
+  "timezone": "America/New_York",
+  "language": "es"
+}
+```
+
+### POST `/users/avatar`
+Upload user avatar image.
+
+**Request**: `multipart/form-data`
+- Field name: `file`
+
+### GET `/users/settings`
+Get user settings and preferences.
+
+**Response**:
+```json
+{
+  "preferences": {
+    "theme": "dark",
+    "notifications": true
+  },
+  "timezone": "UTC",
+  "language": "en"
+}
+```
+
+### PUT `/users/settings`
+Update user preferences.
+
+**Request**:
+```json
+{
+  "preferences": {
+    "theme": "light",
+    "notifications": false
+  }
+}
+```
+
+### PUT `/users/password`
+Change user password. Requires current password for verification.
+
+**Request**:
+```json
+{
+  "current_password": "old_password123",
+  "new_password": "new_secure_password456"
+}
+```
+
+**Response**:
+```json
+{
+  "status": "success",
+  "message": "Password updated successfully"
+}
+```
+
+### DELETE `/users/account`
+Delete user account permanently.
+
+**⚠️ WARNING**: This action is irreversible and deletes all user data.
+
+**Response**:
+```json
+{
+  "status": "success",
+  "message": "Account deleted successfully"
+}
+```
+
+### POST `/users/onboarding/complete`
+Mark onboarding wizard as completed.
+
+**Response**:
+```json
+{
+  "status": "success",
+  "message": "Onboarding completed"
+}
+```
+
+### PUT `/users/onboarding/step`
+Update current onboarding step.
+
+**Query Parameters**:
+- `step` (integer): Current step number
+
+**Response**:
+```json
+{
+  "status": "success",
+  "current_step": 3
+}
+```
+
+---
+
+## Subscription Endpoints
+
+### GET `/subscriptions/plans`
+Get all available subscription plans.
+
+**Response**:
+```json
+[
+  {
+    "id": 1,
+    "name": "professional",
+    "display_name": "Professional",
+    "price": 49.0,
+    "features": {
+      "messages_per_month": 5000,
+      "bots_limit": 3
+    }
+  }
+]
+```
+
+### GET `/subscriptions/current`
+Get current user's subscription details.
+
+**Response**:
+```json
+{
+  "id": 1,
+  "status": "active",
+  "plan": {
+    "name": "professional",
+    "display_name": "Professional"
+  },
+  "current_period_end": "2025-12-31T23:59:59",
+  "cancel_at_period_end": false
+}
+```
+
+### GET `/subscriptions/usage`
+Get current usage metrics vs plan limits.
+
+**Response**:
+```json
+{
+  "messages_sent": 1500,
+  "messages_limit": 5000,
+  "bots_created": 2,
+  "bots_limit": 3,
+  "rag_storage_mb": 120.5,
+  "rag_storage_limit_mb": 500
+}
+```
+
+### GET `/subscriptions/billing-history`
+Get payment history.
+
+**Response**:
+```json
+[
+  {
+    "id": 1,
+    "amount": 49.0,
+    "status": "paid",
+    "billing_date": "2025-11-01T10:00:00",
+    "invoice_url": "https://stripe.com/..."
+  }
+]
+```
+
+### POST `/subscriptions/cancel`
+Cancel subscription.
+
+**Request**:
+```json
+{
+  "cancel_at_period_end": true
+}
+```
+
+---
+
+## Webhook Endpoints
+
+### POST `/webhook/twilio`
+Receive incoming WhatsApp messages from Twilio.
+
+**⚠️ NOTE**: This endpoint is called by Twilio, not by your frontend.
+
+**Content-Type**: `application/x-www-form-urlencoded`
+
+**Form Parameters** (sent by Twilio):
+- `From` (string, required): User's phone number (format: `whatsapp:+1234567890`)
+- `To` (string, required): Your WhatsApp Business number
+- `Body` (string, required): Message text content
+- `MessageSid` (string, required): Unique message identifier
+- `ProfileName` (string, optional): WhatsApp profile name
+- `NumMedia` (string, optional): Number of media files attached (default: "0")
+- `MediaUrl0` (string, optional): URL to first media file
+- `MediaContentType0` (string, optional): MIME type of first media file
+- `Latitude` (string, optional): Location latitude if user shared location
+- `Longitude` (string, optional): Location longitude if user shared location
+- `Address` (string, optional): Location address if user shared location
+
+**Process Flow**:
+1. Extracts and cleans Twilio data
+2. Creates or updates user with Twilio metadata (profile name, country code, etc.)
+3. Processes message through LangGraph bot workflow
+4. Returns TwiML response for Twilio to send back to user
+
+**Response**: TwiML XML format
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Message>Bot response message here</Message>
+</Response>
+```
+
+**Error Response**: TwiML error message
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Message>Lo siento, hubo un error procesando tu mensaje. Por favor intenta de nuevo.</Message>
+</Response>
+```
+
+### GET `/webhook/twilio/status`
+Check if Twilio webhook endpoint is active and configured correctly.
+
+**Response**:
+```json
+{
+  "status": "active",
+  "endpoint": "/webhook/twilio",
+  "method": "POST",
+  "description": "Twilio WhatsApp webhook endpoint",
+  "data_collected": [
+    "phone_number",
+    "whatsapp_profile_name",
+    "country_code",
+    "media_files",
+    "location"
+  ]
+}
+```
+
+**Use Case**: Verify webhook configuration before connecting to Twilio.
 
 ---
 

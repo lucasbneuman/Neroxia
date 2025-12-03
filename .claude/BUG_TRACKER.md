@@ -4,6 +4,74 @@ This file tracks bugs, issues, and their resolution status across the WhatsApp S
 
 ## Active Bugs
 
+### [BUG-004] Integration status endpoints return 404
+**Status:** Resolved
+**Severity:** Medium
+**Component:** API - Integrations
+**Reported:** 2025-12-03
+**Resolved:** 2025-12-03
+**Assigned:** Lead Developer
+
+**Description:**
+The frontend Integration dashboard was calling `/integrations/hubspot/status` and `/integrations/twilio/status` endpoints which didn't exist in the API, resulting in 404 errors.
+
+**Steps to Reproduce:**
+1. Navigate to Integrations page in dashboard
+2. Observe console errors for status endpoints
+3. See 404 responses in API logs
+
+**Expected Behavior:**
+- Status endpoints should return integration configuration status
+- No 404 errors in console or logs
+
+**Actual Behavior:**
+```
+GET /integrations/hubspot/status HTTP/1.1" 404 Not Found
+GET /integrations/twilio/status HTTP/1.1" 404 Not Found
+```
+
+**Environment:**
+- Service: API (FastAPI)
+- Component: Integrations router
+
+**Root Cause:**
+The integrations router (`apps/api/src/routers/integrations.py`) had test endpoints (`/hubspot/test`, `/twilio/test`) and CRUD endpoints for configuration, but was missing the status check endpoints that the frontend expected.
+
+**Files Affected:**
+1. `apps/api/src/routers/integrations.py` - Added status endpoints (lines 82-155)
+2. `API_DOCUMENTATION.md` - Updated integration documentation
+
+**Fix Applied:**
+Added two new GET endpoints:
+
+1. **`GET /integrations/hubspot/status`** - Returns:
+   - `configured`: bool (has access_token)
+   - `enabled`: bool (from config)
+   - `status`: "active" | "configured" | "not_configured"
+
+2. **`GET /integrations/twilio/status`** - Returns:
+   - `configured`: bool (has all credentials)
+   - `whatsapp_number`: string | null
+   - `status`: "active" | "not_configured"
+
+Both endpoints query the configs table and return appropriate status based on stored credentials.
+
+**Validation Notes:**
+- Tested on: 2025-12-03
+- Result: Endpoints implemented, API server auto-reloaded
+- Method: Added endpoints following existing router patterns
+- Returns 200 OK with proper JSON responses
+
+**Additional Context:**
+These status endpoints are lighter than the test endpoints - they only check if credentials exist in the database without actually testing the connection to external services. This provides faster feedback for the UI.
+
+**Prevention:**
+- Ensure frontend API calls are documented before implementation
+- Add status endpoints as standard practice for integration routers
+- Consider generating OpenAPI specs to catch missing endpoints early
+
+---
+
 ### [BUG-003] User profile returns 404 after login
 **Status:** Resolved
 **Severity:** Critical
@@ -312,10 +380,10 @@ None yet.
 
 ## Bug Statistics
 
-- Total Bugs Reported: 3
+- Total Bugs Reported: 4
 - Critical: 3
 - High: 0
-- Medium: 0
+- Medium: 1
 - Low: 0
-- Resolved: 3
+- Resolved: 4
 - Open: 0

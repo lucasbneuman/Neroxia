@@ -79,6 +79,82 @@ async def get_integrations(
         )
 
 
+@router.get("/hubspot/status")
+async def get_hubspot_status(
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get HubSpot integration status.
+
+    Returns whether HubSpot is configured and enabled.
+    """
+    try:
+        hubspot_config = await crud.get_config(db, "hubspot")
+
+        if not hubspot_config:
+            return {
+                "configured": False,
+                "enabled": False,
+                "status": "not_configured"
+            }
+
+        is_configured = bool(hubspot_config.get("access_token"))
+        is_enabled = hubspot_config.get("enabled", False)
+
+        return {
+            "configured": is_configured,
+            "enabled": is_enabled,
+            "status": "active" if (is_configured and is_enabled) else ("configured" if is_configured else "not_configured")
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting HubSpot status: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get HubSpot status: {str(e)}"
+        )
+
+
+@router.get("/twilio/status")
+async def get_twilio_status(
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get Twilio integration status.
+
+    Returns whether Twilio is configured.
+    """
+    try:
+        twilio_config = await crud.get_config(db, "twilio")
+
+        if not twilio_config:
+            return {
+                "configured": False,
+                "status": "not_configured"
+            }
+
+        is_configured = bool(
+            twilio_config.get("account_sid") and
+            twilio_config.get("auth_token") and
+            twilio_config.get("whatsapp_number")
+        )
+
+        return {
+            "configured": is_configured,
+            "whatsapp_number": twilio_config.get("whatsapp_number", "") if is_configured else None,
+            "status": "active" if is_configured else "not_configured"
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting Twilio status: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get Twilio status: {str(e)}"
+        )
+
+
 @router.put("/twilio")
 async def update_twilio_config(
     config: TwilioConfig,

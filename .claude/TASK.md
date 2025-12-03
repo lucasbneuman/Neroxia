@@ -8,6 +8,11 @@
 
 ## Recent Tasks
 
+### [2025-12-03 15:00] - Lead Developer
+**Task:** Implemented integration status endpoints for HubSpot and Twilio
+**Changes:** `apps/api/src/routers/integrations.py`, `API_DOCUMENTATION.md`
+**Status:** ✅ Complete
+
 ### [2025-12-03 14:40] - Lead Developer
 **Task:** Fixed user profile 404 error with lazy creation pattern
 **Changes:** `apps/api/src/routers/users.py`

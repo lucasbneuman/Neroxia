@@ -89,7 +89,7 @@ async def get_current_user_profile(
     Get current user's profile.
 
     Returns extended profile information including company, preferences, etc.
-    If profile doesn't exist, creates it with default values (lazy creation).
+    If profile doesn't exist, creates it automatically (lazy creation).
     """
     user_id = current_user["id"]
 
