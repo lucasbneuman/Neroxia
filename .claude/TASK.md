@@ -8,6 +8,11 @@
 
 ## Recent Tasks
 
+### [2025-12-03 18:20] - Lead Developer
+**Task:** Implemented lazy subscription creation for users without subscriptions
+**Changes:** `apps/api/src/routers/subscriptions.py`
+**Status:** ✅ Complete
+
 ### [2025-12-03 18:15] - Lead Developer
 **Task:** Fixed Button asChild prop and improved API error logging
 **Changes:** `apps/web/src/components/ui/button.tsx`, `apps/web/src/lib/api.ts`

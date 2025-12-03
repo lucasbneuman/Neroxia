@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from ..routers.auth import get_current_user
-from packages.database.whatsapp_bot_database import AsyncSessionLocal
-from packages.database.whatsapp_bot_database.subscription_crud import (
+from ..database import get_db as get_db_session, AsyncSessionLocal
+from whatsapp_bot_database.subscription_crud import (
     get_all_subscription_plans,
     get_current_usage,
     get_user_billing_history,
@@ -140,15 +140,37 @@ async def get_current_subscription(
     Get current user's subscription.
 
     Returns subscription details including plan, status, and billing period.
+    If no subscription exists, creates one with free_trial plan (lazy creation).
     """
     user_id = current_user["id"]
 
     subscription = await get_user_subscription(db, user_id)
 
+    # Lazy creation: create free_trial subscription if none exists
     if not subscription:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No active subscription found",
+        from whatsapp_bot_database.subscription_crud import (
+            create_user_subscription,
+            get_subscription_plan_by_name,
+        )
+        from datetime import datetime, timedelta
+
+        # Get free_trial plan
+        trial_plan = await get_subscription_plan_by_name(db, "free_trial")
+        if not trial_plan:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Free trial plan not configured. Please contact support.",
+            )
+
+        # Create trial subscription
+        now = datetime.utcnow()
+        trial_days = 14
+        subscription = await create_user_subscription(
+            db=db,
+            user_id=user_id,
+            plan_id=trial_plan.id,
+            status="trial",
+            trial_days=trial_days,
         )
 
     return {
@@ -184,15 +206,38 @@ async def get_usage_metrics(
     Get current usage metrics vs limits.
 
     Returns usage for messages, bots, storage, and API calls.
+    If no subscription exists, creates one with free_trial plan (lazy creation).
     """
     user_id = current_user["id"]
 
     # Get subscription to get limits
     subscription = await get_user_subscription(db, user_id)
+
+    # Lazy creation: create free_trial subscription if none exists
     if not subscription:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No active subscription found",
+        from whatsapp_bot_database.subscription_crud import (
+            create_user_subscription,
+            get_subscription_plan_by_name,
+        )
+        from datetime import datetime, timedelta
+
+        # Get free_trial plan
+        trial_plan = await get_subscription_plan_by_name(db, "free_trial")
+        if not trial_plan:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Free trial plan not configured. Please contact support.",
+            )
+
+        # Create trial subscription
+        now = datetime.utcnow()
+        trial_days = 14
+        subscription = await create_user_subscription(
+            db=db,
+            user_id=user_id,
+            plan_id=trial_plan.id,
+            status="trial",
+            trial_days=trial_days,
         )
 
     # Get current usage

@@ -4,6 +4,99 @@ This file tracks bugs, issues, and their resolution status across the WhatsApp S
 
 ## Active Bugs
 
+### [BUG-006] Subscription endpoints return 404 for users without subscriptions
+**Status:** Resolved
+**Severity:** Critical
+**Component:** API - Subscriptions
+**Reported:** 2025-12-03
+**Resolved:** 2025-12-03
+**Assigned:** Lead Developer
+
+**Description:**
+The `/subscriptions/current` and `/subscriptions/usage` endpoints returned 404 errors for authenticated users who didn't have subscriptions assigned, preventing access to the subscription dashboard.
+
+**Steps to Reproduce:**
+1. Login with user account that has no subscription
+2. Navigate to subscription dashboard
+3. Observe API errors in console
+4. See 404 responses: `GET /subscriptions/current HTTP/1.1" 404 Not Found`
+
+**Expected Behavior:**
+- Users should always have a subscription (at minimum, free_trial)
+- Subscription endpoints should never return 404 for authenticated users
+- New users should automatically get free_trial plan
+
+**Actual Behavior:**
+Frontend errors:
+```
+API Error Details: {}
+at async getCurrentSubscription (src/lib/api.ts:380:20)
+at async loadData (src/app/dashboard/subscription/page.tsx:71:66)
+```
+
+API logs:
+```
+INFO: 127.0.0.1:58702 - "GET /subscriptions/current HTTP/1.1" 404 Not Found
+INFO: 127.0.0.1:49257 - "GET /subscriptions/usage HTTP/1.1" 404 Not Found
+```
+
+**Environment:**
+- Service: API (FastAPI)
+- Component: Subscriptions router
+
+**Root Cause:**
+Users logging in did not have subscriptions created during signup, or subscriptions failed to be created for some reason. The subscription endpoints raised HTTP 404 instead of handling this gracefully by creating a default subscription.
+
+**Files Affected:**
+1. `apps/api/src/routers/subscriptions.py` - Added lazy creation to endpoints (lines 149-174, 216-241)
+
+**Fix Applied:**
+Implemented "lazy creation" pattern in both endpoints:
+
+**`/subscriptions/current` endpoint** (lines 149-174):
+- If user has no subscription, automatically creates free_trial subscription
+- Uses 14-day trial period
+- Status set to "trial"
+
+**`/subscriptions/usage` endpoint** (lines 216-241):
+- Same lazy creation logic before checking usage
+- Ensures users always have subscription for usage tracking
+
+Logic:
+```python
+subscription = await get_user_subscription(db, user_id)
+
+if not subscription:
+    trial_plan = await get_subscription_plan_by_name(db, "free_trial")
+    subscription = await create_user_subscription(
+        db=db,
+        user_id=user_id,
+        plan_id=trial_plan.id,
+        status="trial",
+        trial_days=14,
+    )
+```
+
+**Validation Notes:**
+- Tested on: 2025-12-03
+- Result: API server restarted with fix
+- Method: Endpoints now auto-create subscriptions instead of returning 404
+
+**Additional Context:**
+This ensures a better UX for internal testing and development without requiring payment integration. Users get automatic free_trial subscriptions with:
+- 100 messages/month
+- 1 bot limit
+- 50MB RAG storage
+- 1000 API calls/day
+
+**Prevention:**
+- Monitor signup flow to ensure subscriptions are always created
+- Add database constraints or triggers to enforce subscription creation
+- Consider making subscription creation part of Supabase Auth signup hook
+- Add integration tests for new user signup + subscription creation flow
+
+---
+
 ### [BUG-005] Button component throws React error for asChild prop
 **Status:** Resolved
 **Severity:** Low
@@ -449,10 +542,10 @@ None yet.
 
 ## Bug Statistics
 
-- Total Bugs Reported: 5
-- Critical: 3
+- Total Bugs Reported: 6
+- Critical: 4
 - High: 0
 - Medium: 1
 - Low: 1
-- Resolved: 5
+- Resolved: 6
 - Open: 0
