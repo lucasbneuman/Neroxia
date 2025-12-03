@@ -7,8 +7,8 @@ from pydantic import BaseModel, EmailStr
 
 from ..core.supabase import supabase
 from ..routers.auth import get_current_user
-from packages.database.whatsapp_bot_database import AsyncSessionLocal
-from packages.database.whatsapp_bot_database.subscription_crud import (
+from ..database import get_db as get_db_session, AsyncSessionLocal
+from whatsapp_bot_database.subscription_crud import (
     create_user_profile,
     delete_user_profile,
     get_user_profile,
@@ -89,15 +89,22 @@ async def get_current_user_profile(
     Get current user's profile.
 
     Returns extended profile information including company, preferences, etc.
+    If profile doesn't exist, creates it with default values (lazy creation).
     """
     user_id = current_user["id"]
 
     profile = await get_user_profile(db, user_id)
 
+    # Lazy creation: if profile doesn't exist, create it with defaults
     if not profile:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User profile not found",
+        profile = await create_user_profile(
+            db=db,
+            auth_user_id=user_id,
+            company_name=None,
+            phone=None,
+            timezone="UTC",
+            language="es",
+            role="owner",
         )
 
     return {
