@@ -4,6 +4,91 @@ This file tracks bugs, issues, and their resolution status across the WhatsApp S
 
 ## Active Bugs
 
+### [BUG-007] Avatar upload fails with Supabase Storage bucket not found
+**Status:** Resolved
+**Severity:** Medium
+**Component:** API - User Management
+**Reported:** 2025-12-03
+**Resolved:** 2025-12-03
+**Assigned:** Lead Developer
+
+**Description:**
+The `/users/avatar` endpoint failed when uploading user profile pictures because it tried to use Supabase Storage bucket "user-avatars" which doesn't exist in development environments.
+
+**Steps to Reproduce:**
+1. Login to application
+2. Navigate to profile settings
+3. Attempt to upload avatar image
+4. Observe error: `{"detail": "Failed to upload avatar: {'statusCode': 404, 'error': Bucket not found, 'message': Bucket not found}"}`
+
+**Expected Behavior:**
+- Avatar upload should work in both development and production
+- Should gracefully handle missing Supabase Storage configuration
+- Files should be stored locally in development
+
+**Actual Behavior:**
+```json
+{
+    "detail": "Failed to upload avatar: {'statusCode': 404, 'error': Bucket not found, 'message': Bucket not found}"
+}
+```
+
+**Environment:**
+- Service: API (FastAPI)
+- Component: Avatar upload endpoint
+- Storage: Supabase Storage (not configured in dev)
+
+**Root Cause:**
+The endpoint always attempted to upload to Supabase Storage without checking if it was configured or available. In development environments without Supabase Storage set up, this caused hard failures.
+
+**Files Affected:**
+1. `apps/api/src/routers/users.py` - Modified avatar upload endpoint (lines 174-263)
+2. `apps/api/src/main.py` - Added static file serving for avatars (lines 4, 8, 89-92)
+
+**Fix Applied:**
+Implemented hybrid storage approach with automatic fallback:
+
+**Storage Logic:**
+1. Check if Supabase is configured (`SUPABASE_URL` + `SUPABASE_SERVICE_KEY`)
+2. If configured, try to upload to Supabase Storage
+3. If Supabase fails or not configured, fall back to local storage
+4. Local storage: `avatars/{user_id}/{timestamp}_{filename}`
+5. Return avatar URL with storage type indicator
+
+**Local Storage Implementation:**
+- Files saved to `apps/api/avatars/{user_id}/` directory
+- Unique filenames with timestamp to prevent collisions
+- Static file serving mounted at `/avatars` endpoint
+- Avatar URLs: `/avatars/{user_id}/{filename}`
+
+**Response Format:**
+```json
+{
+    "status": "success",
+    "avatar_url": "/avatars/user-uuid/1234567890.jpg",
+    "message": "Avatar uploaded successfully",
+    "storage": "local"
+}
+```
+
+**Validation Notes:**
+- Tested on: 2025-12-03
+- Result: Avatar uploads work without Supabase Storage
+- Method: Automatic fallback to local filesystem
+- File size limit: 5MB
+- Allowed types: image/*
+
+**Additional Context:**
+This solution enables avatar uploads to work immediately in development without requiring Supabase Storage configuration, while still supporting Supabase in production when configured. The hybrid approach provides better developer experience and deployment flexibility.
+
+**Prevention:**
+- Always check external service availability before use
+- Implement fallback strategies for optional cloud services
+- Add environment variable validation on startup
+- Document required vs optional configuration
+
+---
+
 ### [BUG-006] Subscription endpoints return 404 for users without subscriptions
 **Status:** Resolved
 **Severity:** Critical
@@ -542,10 +627,10 @@ None yet.
 
 ## Bug Statistics
 
-- Total Bugs Reported: 6
+- Total Bugs Reported: 7
 - Critical: 4
 - High: 0
-- Medium: 1
+- Medium: 2
 - Low: 1
-- Resolved: 6
+- Resolved: 7
 - Open: 0

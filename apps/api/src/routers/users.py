@@ -1,5 +1,6 @@
 """User management router - profiles, settings, and account management."""
 
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -180,8 +181,12 @@ async def upload_avatar(
     """
     Upload user avatar image.
 
-    Uploads to Supabase Storage and updates profile with avatar URL.
+    In development: Stores locally in avatars/ directory.
+    In production with Supabase Storage configured: Uploads to Supabase Storage.
     """
+    import os
+    from pathlib import Path
+
     user_id = current_user["id"]
 
     # Validate file type
@@ -200,15 +205,39 @@ async def upload_avatar(
         )
 
     try:
-        # Upload to Supabase Storage
-        file_path = f"avatars/{user_id}/{file.filename}"
+        # Check if Supabase Storage is available
+        use_supabase = os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_SERVICE_KEY")
 
-        storage_response = supabase.storage.from_("user-avatars").upload(
-            file_path, file_content, {"content-type": file.content_type}
-        )
+        if use_supabase:
+            # Try to upload to Supabase Storage
+            try:
+                file_path = f"avatars/{user_id}/{file.filename}"
 
-        # Get public URL
-        avatar_url = supabase.storage.from_("user-avatars").get_public_url(file_path)
+                storage_response = supabase.storage.from_("user-avatars").upload(
+                    file_path, file_content, {"content-type": file.content_type}
+                )
+
+                avatar_url = supabase.storage.from_("user-avatars").get_public_url(file_path)
+            except Exception as supabase_error:
+                # If Supabase fails, fall back to local storage
+                use_supabase = False
+
+        if not use_supabase:
+            # Use local storage for development
+            avatars_dir = Path("avatars") / user_id
+            avatars_dir.mkdir(parents=True, exist_ok=True)
+
+            # Generate unique filename to avoid collisions
+            file_extension = Path(file.filename).suffix
+            safe_filename = f"{user_id}_{int(datetime.now().timestamp())}{file_extension}"
+            file_path = avatars_dir / safe_filename
+
+            # Write file to disk
+            with open(file_path, "wb") as f:
+                f.write(file_content)
+
+            # Generate URL for local storage
+            avatar_url = f"/avatars/{user_id}/{safe_filename}"
 
         # Update profile
         profile = await update_user_profile(db, user_id, avatar_url=avatar_url)
@@ -223,8 +252,11 @@ async def upload_avatar(
             "status": "success",
             "avatar_url": avatar_url,
             "message": "Avatar uploaded successfully",
+            "storage": "supabase" if use_supabase else "local"
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

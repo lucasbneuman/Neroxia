@@ -8,6 +8,11 @@
 
 ## Recent Tasks
 
+### [2025-12-03 18:30] - Lead Developer
+**Task:** Fixed avatar upload with hybrid storage (Supabase + local fallback)
+**Changes:** `apps/api/src/routers/users.py`, `apps/api/src/main.py`
+**Status:** ✅ Complete
+
 ### [2025-12-03 18:20] - Lead Developer
 **Task:** Implemented lazy subscription creation for users without subscriptions
 **Changes:** `apps/api/src/routers/subscriptions.py`

@@ -1,9 +1,11 @@
 """Main application entry point."""
 
 import os
+from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -84,6 +86,10 @@ app.include_router(handoff.router)
 app.include_router(twilio_webhook.router)  # Twilio webhook for incoming messages
 app.include_router(crm.router)  # CRM module endpoints
 
+# Mount static files for avatars
+avatars_dir = Path("avatars")
+avatars_dir.mkdir(exist_ok=True)  # Create directory if it doesn't exist
+app.mount("/avatars", StaticFiles(directory=str(avatars_dir)), name="avatars")
 
 
 @app.get("/")
