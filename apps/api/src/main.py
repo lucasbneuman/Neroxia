@@ -20,6 +20,7 @@ from .routers import (
     followups,
     handoff,
     integrations,
+    meta_webhook,
     rag,
     subscriptions,
     twilio_webhook,
