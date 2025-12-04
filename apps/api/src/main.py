@@ -85,6 +85,7 @@ app.include_router(followups.router)
 app.include_router(integrations.router)
 app.include_router(handoff.router)
 app.include_router(twilio_webhook.router)  # Twilio webhook for incoming messages
+app.include_router(meta_webhook.router)  # Instagram + Messenger webhooks
 app.include_router(crm.router)  # CRM module endpoints
 
 # Mount static files for avatars

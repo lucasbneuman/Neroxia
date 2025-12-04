@@ -8,6 +8,21 @@
 
 ## Recent Tasks
 
+### [2025-12-04 19:45] - Documentation Architect
+**Task:** Documented Meta webhook endpoints (4 endpoints: Instagram + Messenger GET/POST) in API_DOCUMENTATION.md
+**Changes:** `API_DOCUMENTATION.md` (new "Meta Webhooks" section after Twilio webhooks, lines 1013-1242)
+**Status:** ✅ Complete (comprehensive docs with signatures, multi-tenant notes, Phase 3 status, BUG-008 reference)
+
+### [2025-12-04 19:15] - QA Lead
+**Task:** Validated Meta webhooks integration (Phase 3), created comprehensive tests, identified BUG-008 (signature validation weakness)
+**Changes:** `apps/api/tests/integration/test_meta_webhooks.py`, `.claude/BUG_TRACKER.md`
+**Status:** ✅ Complete (20 tests created, 19/20 passing, 1 security bug found)
+
+### [2025-12-04 18:30] - Lead Developer
+**Task:** Registered meta_webhook router in main.py (Phase 3 webhook integration completion)
+**Changes:** `apps/api/src/main.py` (line 88)
+**Status:** ✅ Complete (router added after twilio_webhook, app imports verified)
+
 ### [2025-12-04 17:05] - Lead Developer
 **Task:** Implemented Phase 2 multi-channel CRUD operations (get_user_by_identifier, create_user with channels, channel integration CRUD, deal source validation, active users filtering)
 **Changes:** `packages/database/whatsapp_bot_database/crud.py`, `packages/database/tests/test_crud_multichannel.py`

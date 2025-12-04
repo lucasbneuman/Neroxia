@@ -1010,6 +1010,237 @@ Check if Twilio webhook endpoint is active and configured correctly.
 
 ---
 
+## Meta Webhooks (Instagram + Messenger)
+
+The Meta webhooks enable multi-channel messaging support for Instagram Direct Messages and Facebook Messenger. These endpoints handle webhook verification during Meta app setup and process incoming messages from both platforms.
+
+**Multi-Tenant Isolation**: Messages are linked to tenants via `page_id` → `ChannelIntegration` lookup. Each tenant can connect their own Instagram/Messenger pages.
+
+**Phase Status**: Phase 3 complete (webhook foundation). Phase 4 will add bot workflow integration for automated responses.
+
+### GET `/webhook/instagram`
+
+Verify Instagram webhook during Meta Developer Console setup.
+
+**Purpose**: Meta calls this endpoint during webhook subscription to verify your server owns the URL.
+
+**Authentication**: Query parameter verification token (not JWT)
+
+**Query Parameters** (sent by Meta):
+- `hub.mode` (string, required): Must be "subscribe"
+- `hub.challenge` (string, required): Random string to echo back
+- `hub.verify_token` (string, required): Must match `FACEBOOK_VERIFY_TOKEN` env var
+
+**Response**: `200 OK`
+```json
+1234567890
+```
+Returns the `hub.challenge` value as an integer.
+
+**Error Responses**:
+- `400 Bad Request`: Invalid `hub.mode` (not "subscribe")
+- `403 Forbidden`: Invalid verify token (doesn't match `FACEBOOK_VERIFY_TOKEN`)
+- `500 Internal Server Error`: `FACEBOOK_VERIFY_TOKEN` not configured
+
+**Environment Variables Required**:
+- `FACEBOOK_VERIFY_TOKEN`: Custom token you create and configure in Meta Developer Console
+
+**Setup Instructions**:
+1. Set `FACEBOOK_VERIFY_TOKEN` in your environment (e.g., "my_secure_random_token_123")
+2. In Meta Developer Console, add webhook with URL: `https://yourdomain.com/webhook/instagram`
+3. Enter same verify token
+4. Meta will call this GET endpoint to verify
+
+---
+
+### POST `/webhook/instagram`
+
+Receive incoming Instagram Direct Messages.
+
+**Purpose**: Meta calls this endpoint when users send messages to your Instagram business account.
+
+**Authentication**: HMAC-SHA256 signature verification via `X-Hub-Signature-256` header
+
+**Headers** (sent by Meta):
+- `X-Hub-Signature-256` (string, required): HMAC signature in format `sha256=<hash>`
+- `Content-Type`: `application/json`
+
+**Request Body** (Meta webhook payload):
+```json
+{
+  "object": "page",
+  "entry": [{
+    "id": "PAGE_ID",
+    "time": 1234567890,
+    "messaging": [{
+      "sender": {"id": "USER_PSID"},
+      "recipient": {"id": "PAGE_ID"},
+      "timestamp": 1234567890,
+      "message": {
+        "mid": "MESSAGE_ID",
+        "text": "Hello, I'm interested in your product!"
+      }
+    }]
+  }]
+}
+```
+
+**Process Flow**:
+1. Verifies HMAC-SHA256 signature using `FACEBOOK_APP_SECRET`
+2. Extracts sender PSID (Page-Scoped User ID) and message text
+3. Looks up tenant via `page_id` in `ChannelIntegration` table
+4. Gets or creates `User` record with `channel="instagram"`, `channel_user_id=PSID`
+5. Saves message to `Message` table with `channel="instagram"`
+6. Links user to tenant via `auth_user_id` from integration
+
+**Response**: `200 OK`
+```json
+{
+  "status": "ok"
+}
+```
+
+**Error Responses**:
+- `403 Forbidden`: Invalid signature (HMAC verification failed)
+
+**Environment Variables Required**:
+- `FACEBOOK_APP_SECRET`: Your Meta app secret (for signature verification)
+
+**Notes**:
+- Non-text messages (images, audio, etc.) are skipped in Phase 3
+- If no `ChannelIntegration` found for `page_id`, message is logged but not processed
+- Users are created with PSID as placeholder name (will be enriched later)
+- Phase 4 will add bot workflow processing for automated responses
+
+**Security**:
+- All requests must have valid HMAC-SHA256 signature
+- Signature computed using app secret and raw request body
+- Uses constant-time comparison to prevent timing attacks
+
+---
+
+### GET `/webhook/messenger`
+
+Verify Facebook Messenger webhook during Meta Developer Console setup.
+
+**Purpose**: Identical to Instagram verification but for Messenger channel.
+
+**Authentication**: Query parameter verification token (not JWT)
+
+**Query Parameters** (sent by Meta):
+- `hub.mode` (string, required): Must be "subscribe"
+- `hub.challenge` (string, required): Random string to echo back
+- `hub.verify_token` (string, required): Must match `FACEBOOK_VERIFY_TOKEN` env var
+
+**Response**: `200 OK`
+```json
+1234567890
+```
+Returns the `hub.challenge` value as an integer.
+
+**Error Responses**:
+- `400 Bad Request`: Invalid `hub.mode` (not "subscribe")
+- `403 Forbidden`: Invalid verify token (doesn't match `FACEBOOK_VERIFY_TOKEN`)
+- `500 Internal Server Error`: `FACEBOOK_VERIFY_TOKEN` not configured
+
+**Environment Variables Required**:
+- `FACEBOOK_VERIFY_TOKEN`: Same token used for Instagram verification
+
+**Setup Instructions**: Same as Instagram webhook setup, but use URL `https://yourdomain.com/webhook/messenger`
+
+---
+
+### POST `/webhook/messenger`
+
+Receive incoming Facebook Messenger messages.
+
+**Purpose**: Meta calls this endpoint when users send messages via Facebook Messenger.
+
+**Authentication**: HMAC-SHA256 signature verification via `X-Hub-Signature-256` header
+
+**Headers** (sent by Meta):
+- `X-Hub-Signature-256` (string, required): HMAC signature in format `sha256=<hash>`
+- `Content-Type`: `application/json`
+
+**Request Body** (Meta webhook payload):
+```json
+{
+  "object": "page",
+  "entry": [{
+    "id": "PAGE_ID",
+    "time": 1234567890,
+    "messaging": [{
+      "sender": {"id": "USER_PSID"},
+      "recipient": {"id": "PAGE_ID"},
+      "timestamp": 1234567890,
+      "message": {
+        "mid": "MESSAGE_ID",
+        "text": "Can you help me with an order?"
+      }
+    }]
+  }]
+}
+```
+
+**Process Flow**: Identical to Instagram POST webhook:
+1. Verifies HMAC-SHA256 signature
+2. Extracts sender PSID and message text
+3. Looks up tenant via `page_id` in `ChannelIntegration` table
+4. Gets or creates `User` with `channel="messenger"`
+5. Saves message to database
+6. Links to tenant via `auth_user_id`
+
+**Response**: `200 OK`
+```json
+{
+  "status": "ok"
+}
+```
+
+**Error Responses**:
+- `403 Forbidden`: Invalid signature (HMAC verification failed)
+
+**Environment Variables Required**:
+- `FACEBOOK_APP_SECRET`: Your Meta app secret (for signature verification)
+
+**Notes**:
+- Same behavior as Instagram webhook (user creation, message storage, multi-tenant isolation)
+- Non-text messages skipped in Phase 3
+- Phase 4 will integrate with bot workflow
+
+---
+
+### Meta Webhook Common Concepts
+
+**PSID (Page-Scoped User ID)**:
+- Unique identifier for a user in context of a specific page
+- Different pages see different PSIDs for the same Facebook user
+- Used as `channel_user_id` in the `User` table
+
+**Multi-Tenant Isolation**:
+- Each tenant connects their own Instagram/Messenger pages via `ChannelIntegration`
+- Incoming messages are routed to correct tenant using `page_id` lookup
+- Users are linked to tenants via `integration.auth_user_id`
+
+**Signature Verification**:
+- Meta sends `X-Hub-Signature-256: sha256=<hmac_hash>` header
+- Server computes HMAC-SHA256 of raw request body using `FACEBOOK_APP_SECRET`
+- Signatures are compared using constant-time comparison (`hmac.compare_digest`)
+
+**Environment Variables Summary**:
+```env
+# Required for both Instagram and Messenger
+FACEBOOK_VERIFY_TOKEN=your_custom_token_here
+FACEBOOK_APP_SECRET=your_meta_app_secret
+```
+
+**Testing**:
+- Unit tests: `apps/api/tests/integration/test_meta_webhooks.py`
+- 20 comprehensive tests covering verification, signature validation, multi-tenant routing
+- Known Issue: BUG-008 - Signature validation accepts signatures without `sha256=` prefix (security hardening needed)
+
+---
+
 ## Error Responses
 
 All endpoints may return error responses in this format:

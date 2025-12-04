@@ -4,6 +4,55 @@ This file tracks bugs, issues, and their resolution status across the WhatsApp S
 
 ## Active Bugs
 
+### [BUG-008] Meta webhook signature verification accepts invalid format
+**Status:** Reported
+**Severity:** High
+**Component:** API - Meta Webhooks
+**Reported:** 2025-12-04
+**Assigned:** DEV agent
+
+**Description:**
+The `_verify_webhook_signature()` function in `meta_webhook.py` accepts signatures without the required `sha256=` prefix due to a fallback in line 167. This weakens security by allowing improperly formatted signatures to pass verification.
+
+**Steps to Reproduce:**
+1. Send POST request to `/webhook/instagram` or `/webhook/messenger`
+2. Include signature header without `sha256=` prefix (just the hex hash)
+3. Observe that signature verification passes when it should fail
+
+**Expected Behavior:**
+- Signatures MUST have the format `sha256=<hash>`
+- Signatures without the prefix should fail verification
+- Return 403 Forbidden for invalid signature format
+
+**Actual Behavior:**
+Signatures without `sha256=` prefix are accepted because of this logic:
+```python
+expected_signature = signature.split("=")[1] if "=" in signature else signature
+```
+The `else signature` fallback allows raw hashes to pass.
+
+**Environment:**
+- Service: API (FastAPI)
+- Component: Meta webhooks router
+- File: `apps/api/src/routers/meta_webhook.py` line 167
+
+**Security Impact:**
+While not a critical vulnerability (HMAC still validated), this reduces defense-in-depth by accepting non-standard signature formats that Meta wouldn't send.
+
+**Recommended Fix:**
+```python
+# Line 167 - reject signatures without proper format
+if "=" not in signature or not signature.startswith("sha256="):
+    logger.error("Invalid signature format")
+    return False
+expected_signature = signature.split("=")[1]
+```
+
+**Test Coverage:**
+Added test `test_signature_without_prefix_fails` in `test_meta_webhooks.py` to catch this regression.
+
+---
+
 ### [BUG-007] Avatar upload fails with Supabase Storage bucket not found
 **Status:** Resolved
 **Severity:** Medium
