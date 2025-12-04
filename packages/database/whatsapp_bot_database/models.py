@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, Date, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -12,18 +12,24 @@ Base = declarative_base()
 
 
 class User(Base):
-    """User/Customer model representing WhatsApp contacts."""
+    """User/Customer model representing contacts from WhatsApp, Instagram, and Messenger."""
 
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    phone = Column(String(20), unique=True, nullable=False, index=True)
+    phone = Column(String(20), unique=True, nullable=True, index=True)  # Nullable for Instagram/Messenger users
     name = Column(String(100), nullable=True)
     email = Column(String(100), nullable=True)
-    
+
     # Link to authenticated user (Supabase auth.users)
     auth_user_id = Column(UUID(as_uuid=False), nullable=True, index=True)  # UUID from auth.users
-    
+
+    # Multi-channel support
+    channel = Column(String(20), default="whatsapp", nullable=False, index=True)  # whatsapp, instagram, messenger
+    channel_user_id = Column(String(100), nullable=True, index=True)  # PSID for Instagram/Messenger
+    channel_username = Column(String(100), nullable=True)  # @username for Instagram
+    channel_profile_pic_url = Column(Text, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -59,12 +65,18 @@ class User(Base):
     notes = relationship("Note", back_populates="user", cascade="all, delete-orphan")
     tags = relationship("Tag", secondary="user_tags", back_populates="users")
 
+    __table_args__ = (
+        Index('idx_users_channel_user_id', 'channel', 'channel_user_id',
+              unique=True,
+              postgresql_where=text('channel_user_id IS NOT NULL')),
+    )
+
     def __repr__(self) -> str:
-        return f"<User(id={self.id}, phone={self.phone}, name={self.name})>"
+        return f"<User(id={self.id}, channel={self.channel}, phone={self.phone}, name={self.name})>"
 
 
 class Message(Base):
-    """Message model for storing conversation history."""
+    """Message model for storing conversation history across all channels."""
 
     __tablename__ = "messages"
 
@@ -75,11 +87,15 @@ class Message(Base):
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     message_metadata = Column(JSON, nullable=True)  # Store intent, sentiment at that moment
 
+    # Multi-channel support
+    channel = Column(String(20), default="whatsapp", nullable=False, index=True)  # whatsapp, instagram, messenger
+    channel_message_id = Column(String(100), nullable=True)  # Meta message ID for Instagram/Messenger
+
     # Relationships
     user = relationship("User", back_populates="messages")
 
     def __repr__(self) -> str:
-        return f"<Message(id={self.id}, user_id={self.user_id}, sender={self.sender})>"
+        return f"<Message(id={self.id}, user_id={self.user_id}, channel={self.channel}, sender={self.sender})>"
 
 
 class FollowUp(Base):
@@ -201,3 +217,30 @@ class UserTag(Base):
 
     def __repr__(self) -> str:
         return f"<UserTag(user_id={self.user_id}, tag_id={self.tag_id})>"
+
+
+class ChannelIntegration(Base):
+    """
+    Stores per-tenant channel integration credentials for Instagram and Messenger.
+    Each SaaS tenant can connect their own Facebook Pages.
+    """
+    __tablename__ = "channel_integrations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    auth_user_id = Column(UUID(as_uuid=False), nullable=False, index=True)  # UUID from auth.users
+    channel = Column(String(20), nullable=False, index=True)  # 'instagram' or 'messenger'
+    page_id = Column(String(50), nullable=True)
+    page_access_token = Column(Text, nullable=False)  # Long-lived Page Access Token
+    page_name = Column(String(200), nullable=True)
+    instagram_account_id = Column(String(50), nullable=True)  # For Instagram only
+    is_active = Column(Boolean, default=True, index=True)
+    webhook_verify_token = Column(String(100), nullable=True)  # Custom token for webhook verification
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('auth_user_id', 'channel', 'page_id', name='uq_user_channel_page'),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ChannelIntegration(id={self.id}, auth_user_id={self.auth_user_id}, channel={self.channel}, page_id={self.page_id})>"
