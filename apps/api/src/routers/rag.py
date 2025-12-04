@@ -78,17 +78,24 @@ async def upload_documents(
                     detail=f"Unsupported file type for {file.filename}. Allowed: {', '.join(allowed_extensions)}"
                 )
 
+            # Create user-specific directory
+            user_id = current_user.get("id")
+            if not user_id:
+                raise HTTPException(status_code=401, detail="User ID required")
+                
+            user_upload_dir = UPLOAD_DIR / str(user_id)
+            user_upload_dir.mkdir(parents=True, exist_ok=True)
+
             # Save uploaded file
-            file_path = UPLOAD_DIR / file.filename
+            file_path = user_upload_dir / file.filename
 
             with open(file_path, "wb") as f:
                 content = await file.read()
                 f.write(content)
 
-            logger.info(f"Saved uploaded file: {file.filename} ({len(content)} bytes)")
+            logger.info(f"Saved uploaded file: {file.filename} ({len(content)} bytes) for user {user_id}")
 
             # Process with RAG service
-            user_id = current_user.get("id") if current_user else None
             chunks_created = await rag_service.upload_document(str(file_path), user_id=user_id)
 
             logger.info(f"Processed {file.filename}: {chunks_created} chunks created")
@@ -126,7 +133,15 @@ async def list_files(
     try:
         files = []
         
-        for file_path in UPLOAD_DIR.iterdir():
+        user_id = current_user.get("id")
+        if not user_id:
+            return []
+            
+        user_upload_dir = UPLOAD_DIR / str(user_id)
+        if not user_upload_dir.exists():
+            return []
+        
+        for file_path in user_upload_dir.iterdir():
             if file_path.is_file():
                 stat = file_path.stat()
                 files.append(FileInfo(
@@ -158,7 +173,11 @@ async def delete_file(
     To fully remove, you may need to clear and rebuild the collection.
     """
     try:
-        file_path = UPLOAD_DIR / filename
+        user_id = current_user.get("id")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User ID required")
+            
+        file_path = UPLOAD_DIR / str(user_id) / filename
         
         if not file_path.exists():
             raise HTTPException(

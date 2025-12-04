@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
 
-from .models import Config, Deal, FollowUp, Message, Note, Tag, User, UserTag
+from .models import ChannelIntegration, Config, Deal, FollowUp, Message, Note, Tag, User, UserTag
 
 
 # ============================================================================
@@ -16,50 +16,122 @@ from .models import Config, Deal, FollowUp, Message, Note, Tag, User, UserTag
 # ============================================================================
 
 
-async def get_user_by_phone(db: AsyncSession, phone: str) -> Optional[User]:
+async def get_user_by_phone(db: AsyncSession, phone: str, auth_user_id: Optional[str] = None) -> Optional[User]:
     """
     Retrieve user by phone number.
 
     Args:
         db: Database session
         phone: User's phone number
+        auth_user_id: Optional SaaS user ID to filter by
 
     Returns:
         User object if found, None otherwise
     """
-    result = await db.execute(select(User).where(User.phone == phone))
+    query = select(User).where(User.phone == phone)
+    if auth_user_id:
+        query = query.where(User.auth_user_id == auth_user_id)
+        
+    result = await db.execute(query)
     return result.scalar_one_or_none()
 
 
-async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[User]:
+async def get_user_by_id(db: AsyncSession, user_id: int, auth_user_id: Optional[str] = None) -> Optional[User]:
     """
     Retrieve user by ID.
 
     Args:
         db: Database session
         user_id: User's ID
+        auth_user_id: Optional SaaS user ID to filter by
 
     Returns:
         User object if found, None otherwise
     """
-    result = await db.execute(select(User).where(User.id == user_id))
+    query = select(User).where(User.id == user_id)
+    if auth_user_id:
+        query = query.where(User.auth_user_id == auth_user_id)
+
+    result = await db.execute(query)
     return result.scalar_one_or_none()
 
 
-async def create_user(db: AsyncSession, phone: str, name: Optional[str] = None, email: Optional[str] = None) -> User:
+async def get_user_by_identifier(
+    db: AsyncSession,
+    identifier: str,
+    channel: str,
+    auth_user_id: Optional[str] = None
+) -> Optional[User]:
     """
-    Create a new user.
+    Get user by phone (WhatsApp) or channel_user_id (Instagram/Messenger).
 
     Args:
         db: Database session
-        phone: User's phone number
-        name: User's name (optional)
+        identifier: Phone number or PSID
+        channel: 'whatsapp', 'instagram', or 'messenger'
+        auth_user_id: Tenant ID for multi-tenant filtering
+
+    Returns:
+        User object or None
+    """
+    if channel == "whatsapp":
+        # Use existing phone lookup
+        return await get_user_by_phone(db, identifier, auth_user_id)
+    else:
+        # Lookup by channel_user_id
+        query = select(User).where(
+            User.channel == channel,
+            User.channel_user_id == identifier
+        )
+
+        if auth_user_id:
+            query = query.where(User.auth_user_id == auth_user_id)
+
+        result = await db.execute(query)
+        return result.scalar_one_or_none()
+
+
+async def create_user(
+    db: AsyncSession,
+    phone: Optional[str] = None,
+    name: Optional[str] = None,
+    email: Optional[str] = None,
+    channel: str = "whatsapp",
+    channel_user_id: Optional[str] = None,
+    channel_username: Optional[str] = None,
+    channel_profile_pic_url: Optional[str] = None,
+    auth_user_id: Optional[str] = None,
+    **kwargs
+) -> User:
+    """
+    Create a new user with multi-channel support.
+
+    Args:
+        db: Database session
+        phone: Phone number (nullable for Instagram/Messenger)
+        name: User's name
         email: User's email (optional)
+        channel: 'whatsapp', 'instagram', or 'messenger'
+        channel_user_id: PSID for Instagram/Messenger
+        channel_username: @username for Instagram
+        channel_profile_pic_url: Profile picture URL
+        auth_user_id: Tenant ID
+        **kwargs: Additional User model fields
 
     Returns:
         Created User object
     """
-    user = User(phone=phone, name=name, email=email)
+    user = User(
+        phone=phone,
+        name=name or "Unknown User",
+        email=email,
+        channel=channel,
+        channel_user_id=channel_user_id,
+        channel_username=channel_username,
+        channel_profile_pic_url=channel_profile_pic_url,
+        auth_user_id=auth_user_id,
+        **kwargs
+    )
     db.add(user)
     await db.commit()
     await db.refresh(user)
@@ -89,43 +161,216 @@ async def update_user(db: AsyncSession, user_id: int, **kwargs: Any) -> Optional
     return user
 
 
-async def get_all_active_users(db: AsyncSession, limit: int = 100) -> List[User]:
+async def get_all_active_users(
+    db: AsyncSession,
+    limit: int = 100,
+    offset: int = 0,
+    auth_user_id: Optional[str] = None,
+    channel: Optional[str] = None
+) -> List[User]:
     """
-    Get all users with recent activity.
+    Get all active users with optional channel filtering.
 
     Args:
         db: Database session
-        limit: Maximum number of users to retrieve
+        limit: Maximum users to return
+        offset: Pagination offset
+        auth_user_id: Filter by tenant
+        channel: Filter by channel ('whatsapp', 'instagram', 'messenger')
 
     Returns:
         List of User objects
     """
-    result = await db.execute(
-        select(User)
-        .where(User.last_message_at.isnot(None))
-        .order_by(desc(User.last_message_at))
-        .limit(limit)
-    )
+    query = select(User).where(User.total_messages > 0)
+
+    if auth_user_id:
+        query = query.where(User.auth_user_id == auth_user_id)
+
+    if channel:
+        query = query.where(User.channel == channel)
+
+    query = query.order_by(desc(User.last_message_at)).limit(limit).offset(offset)
+
+    result = await db.execute(query)
     return list(result.scalars().all())
 
 
-async def get_users_by_mode(db: AsyncSession, mode: str) -> List[User]:
+async def get_users_by_mode(db: AsyncSession, mode: str, auth_user_id: Optional[str] = None) -> List[User]:
     """
     Get all users in a specific conversation mode.
 
     Args:
         db: Database session
         mode: Conversation mode (AUTO/MANUAL/NEEDS_ATTENTION)
+        auth_user_id: Optional SaaS user ID to filter by
 
     Returns:
         List of User objects
     """
-    result = await db.execute(
-        select(User)
-        .where(User.conversation_mode == mode)
-        .order_by(desc(User.last_message_at))
-    )
+    query = select(User).where(User.conversation_mode == mode)
+
+    if auth_user_id:
+        query = query.where(User.auth_user_id == auth_user_id)
+
+    query = query.order_by(desc(User.last_message_at))
+
+    result = await db.execute(query)
     return list(result.scalars().all())
+
+
+# ============================================================================
+# CHANNEL INTEGRATION OPERATIONS
+# ============================================================================
+
+
+async def create_channel_integration(
+    db: AsyncSession,
+    auth_user_id: str,
+    channel: str,
+    page_id: str,
+    page_access_token: str,
+    page_name: Optional[str] = None,
+    instagram_account_id: Optional[str] = None,
+    webhook_verify_token: Optional[str] = None
+) -> ChannelIntegration:
+    """
+    Create new channel integration for a tenant.
+
+    Args:
+        db: Database session
+        auth_user_id: Tenant ID
+        channel: 'instagram' or 'messenger'
+        page_id: Facebook Page ID
+        page_access_token: Long-lived Page Access Token
+        page_name: Facebook Page name
+        instagram_account_id: Instagram Business Account ID (for Instagram only)
+        webhook_verify_token: Custom webhook verification token
+
+    Returns:
+        Created ChannelIntegration object
+    """
+    integration = ChannelIntegration(
+        auth_user_id=auth_user_id,
+        channel=channel,
+        page_id=page_id,
+        page_access_token=page_access_token,
+        page_name=page_name,
+        instagram_account_id=instagram_account_id,
+        webhook_verify_token=webhook_verify_token,
+        is_active=True
+    )
+
+    db.add(integration)
+    await db.commit()
+    await db.refresh(integration)
+    return integration
+
+
+async def get_channel_integration(
+    db: AsyncSession,
+    auth_user_id: str,
+    channel: str
+) -> Optional[ChannelIntegration]:
+    """
+    Get active channel integration for a tenant.
+
+    Args:
+        db: Database session
+        auth_user_id: Tenant ID
+        channel: 'instagram' or 'messenger'
+
+    Returns:
+        ChannelIntegration object or None
+    """
+    query = select(ChannelIntegration).where(
+        ChannelIntegration.auth_user_id == auth_user_id,
+        ChannelIntegration.channel == channel,
+        ChannelIntegration.is_active == True
+    )
+
+    result = await db.execute(query)
+    return result.scalar_one_or_none()
+
+
+async def get_channel_integration_by_page(
+    db: AsyncSession,
+    page_id: str,
+    channel: str
+) -> Optional[ChannelIntegration]:
+    """
+    Get integration by Facebook Page ID.
+
+    Used in webhooks to identify which tenant the message belongs to.
+
+    Args:
+        db: Database session
+        page_id: Facebook Page ID
+        channel: 'instagram' or 'messenger'
+
+    Returns:
+        ChannelIntegration object or None
+    """
+    query = select(ChannelIntegration).where(
+        ChannelIntegration.page_id == page_id,
+        ChannelIntegration.channel == channel,
+        ChannelIntegration.is_active == True
+    )
+
+    result = await db.execute(query)
+    return result.scalar_one_or_none()
+
+
+async def update_channel_integration(
+    db: AsyncSession,
+    integration_id: int,
+    **kwargs
+) -> ChannelIntegration:
+    """
+    Update existing channel integration.
+
+    Args:
+        db: Database session
+        integration_id: Integration ID
+        **kwargs: Fields to update
+
+    Returns:
+        Updated ChannelIntegration object
+
+    Raises:
+        ValueError: If integration not found
+    """
+    query = select(ChannelIntegration).where(ChannelIntegration.id == integration_id)
+    result = await db.execute(query)
+    integration = result.scalar_one_or_none()
+
+    if not integration:
+        raise ValueError(f"Integration {integration_id} not found")
+
+    for key, value in kwargs.items():
+        if hasattr(integration, key):
+            setattr(integration, key, value)
+
+    integration.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(integration)
+    return integration
+
+
+async def deactivate_channel_integration(
+    db: AsyncSession,
+    integration_id: int
+) -> ChannelIntegration:
+    """
+    Deactivate (soft delete) a channel integration.
+
+    Args:
+        db: Database session
+        integration_id: Integration ID
+
+    Returns:
+        Updated ChannelIntegration object
+    """
+    return await update_channel_integration(db, integration_id, is_active=False)
 
 
 # ============================================================================
@@ -283,6 +528,26 @@ async def get_user_follow_ups(db: AsyncSession, user_id: int) -> List[FollowUp]:
         select(FollowUp)
         .where(FollowUp.user_id == user_id)
         .order_by(desc(FollowUp.created_at))
+    )
+    return list(result.scalars().all())
+
+
+async def get_tenant_follow_ups(db: AsyncSession, auth_user_id: str) -> List[FollowUp]:
+    """
+    Get all follow-ups for a tenant.
+
+    Args:
+        db: Database session
+        auth_user_id: SaaS user ID
+
+    Returns:
+        List of FollowUp objects
+    """
+    result = await db.execute(
+        select(FollowUp)
+        .join(User)
+        .where(User.auth_user_id == auth_user_id)
+        .order_by(FollowUp.scheduled_time)
     )
     return list(result.scalars().all())
 
@@ -466,7 +731,30 @@ async def create_deal(
     probability: int = 10,
     expected_close_date: Optional[datetime] = None
 ) -> Deal:
-    """Create a new deal."""
+    """
+    Create deal with channel source tracking.
+
+    Args:
+        db: Database session
+        user_id: User ID
+        title: Deal title
+        value: Deal value
+        stage: Deal stage
+        source: 'whatsapp', 'instagram', 'messenger', or 'test'
+        probability: Win probability
+        expected_close_date: Expected close date
+
+    Returns:
+        Created Deal object
+
+    Raises:
+        ValueError: If source is invalid
+    """
+    # Validate source
+    valid_sources = ["whatsapp", "instagram", "messenger", "test"]
+    if source not in valid_sources:
+        raise ValueError(f"Invalid source. Must be one of: {valid_sources}")
+
     deal = Deal(
         user_id=user_id,
         title=title,

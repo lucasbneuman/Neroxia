@@ -61,7 +61,14 @@
       "Bash(docker-compose:*)",
       "Bash(cat:*)",
       "Bash(git check-ignore:*)",
-      "Bash(claude mcp:*)"
+      "Bash(claude mcp:*)",
+      "Bash(chcp 6500)",
+      "Bash(sqlite3:*)",
+      "Bash(exit 0)",
+      "Bash(npm run dev:*)",
+      "WebSearch",
+      "mcp__notion__notion-fetch",
+      "mcp__notion__notion-create-pages"
     ],
     "deny": [],
     "ask": []

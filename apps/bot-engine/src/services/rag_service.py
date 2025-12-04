@@ -285,9 +285,11 @@ class RAGService:
                 query_embedding = self.embeddings.embed_query(query)
 
                 # Search in ChromaDB
+                where_filter = {"user_id": user_id} if user_id else None
                 results = self.collection.query(
                     query_embeddings=[query_embedding],
                     n_results=k,
+                    where=where_filter
                 )
 
                 # Extract and format results
@@ -378,9 +380,14 @@ class RAGService:
                     logger.error("user_id required for clear_collection in multi-tenant mode")
                     return 0
             elif self.backend == "chromadb":
-                self.client.delete_collection(name=self.collection_name)
-                self.collection = self.client.create_collection(name=self.collection_name)
-                logger.info("ChromaDB collection cleared successfully")
+                if user_id:
+                    self.collection.delete(where={"user_id": user_id})
+                    logger.info(f"Cleared documents for user {user_id} from ChromaDB")
+                else:
+                    # Fallback for legacy/admin (or if no user_id provided, which shouldn't happen in multi-tenant)
+                    self.client.delete_collection(name=self.collection_name)
+                    self.collection = self.client.create_collection(name=self.collection_name)
+                    logger.info("ChromaDB collection cleared successfully (all users)")
         except Exception as e:
             logger.error(f"Error clearing collection: {e}")
             raise

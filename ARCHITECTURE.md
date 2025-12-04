@@ -164,6 +164,8 @@ pip install -e packages/shared
 
 **Routers**:
 - `/auth` - Authentication (Supabase)
+- `/users` - User profile management
+- `/subscriptions` - Subscription & billing management
 - `/conversations` - Conversation management
 - `/bot` - Bot message processing
 - `/config` - Configuration management
@@ -466,9 +468,33 @@ router_node (Conditional routing)
 **Models** (`models.py`):
 ```python
 class User(Base):
-    id: UUID
-    email: str
-    created_at: datetime
+    id: int
+    auth_user_id: UUID  # Link to Supabase Auth
+    phone: str
+    ...
+
+class UserProfile(Base):
+    id: int
+    auth_user_id: UUID
+    company_name: str
+    role: str
+    preferences: JSON
+    ...
+
+class SubscriptionPlan(Base):
+    id: int
+    name: str
+    price: float
+    features: JSON
+    ...
+
+class UserSubscription(Base):
+    id: int
+    user_id: UUID
+    plan_id: int
+    status: str
+    current_period_end: datetime
+    ...
 
 class Conversation(Base):
     id: UUID

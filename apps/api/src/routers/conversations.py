@@ -20,7 +20,7 @@ async def get_conversations(
     current_user: dict = Depends(get_current_user)
 ):
     """Get all active conversations."""
-    users = await crud.get_all_active_users(db, limit=limit)
+    users = await crud.get_all_active_users(db, limit=limit, auth_user_id=current_user["id"])
     
     # Format for frontend
     result = []
@@ -60,7 +60,7 @@ async def get_pending_conversations(
     current_user: dict = Depends(get_current_user)
 ):
     """Get conversations that need attention (NEEDS_ATTENTION or MANUAL mode)."""
-    users = await crud.get_all_active_users(db, limit=100)
+    users = await crud.get_all_active_users(db, limit=100, auth_user_id=current_user["id"])
     
     # Filter for conversations needing attention
     result = []
@@ -94,7 +94,7 @@ async def get_user_details(
 ):
     """Get detailed user information including collected data."""
     formatted_phone = format_phone_number(phone)
-    user = await crud.get_user_by_phone(db, formatted_phone)
+    user = await crud.get_user_by_phone(db, formatted_phone, auth_user_id=current_user["id"])
     
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -126,7 +126,7 @@ async def get_messages(
     # Ensure phone format
     formatted_phone = format_phone_number(phone)
     
-    user = await crud.get_user_by_phone(db, formatted_phone)
+    user = await crud.get_user_by_phone(db, formatted_phone, auth_user_id=current_user["id"])
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
         
@@ -158,7 +158,7 @@ async def take_control(
 ):
     """Take manual control of a conversation."""
     formatted_phone = format_phone_number(phone)
-    user = await crud.get_user_by_phone(db, formatted_phone)
+    user = await crud.get_user_by_phone(db, formatted_phone, auth_user_id=current_user["id"])
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
         
@@ -174,7 +174,7 @@ async def return_to_bot(
 ):
     """Return conversation control to the bot."""
     formatted_phone = format_phone_number(phone)
-    user = await crud.get_user_by_phone(db, formatted_phone)
+    user = await crud.get_user_by_phone(db, formatted_phone, auth_user_id=current_user["id"])
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
         
@@ -191,7 +191,7 @@ async def send_message(
 ):
     """Send a manual message to the user."""
     formatted_phone = format_phone_number(phone)
-    user = await crud.get_user_by_phone(db, formatted_phone)
+    user = await crud.get_user_by_phone(db, formatted_phone, auth_user_id=current_user["id"])
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
         
@@ -227,7 +227,7 @@ async def clear_conversation_history(
     Useful for clearing test conversations without losing user data.
     """
     formatted_phone = format_phone_number(phone)
-    user = await crud.get_user_by_phone(db, formatted_phone)
+    user = await crud.get_user_by_phone(db, formatted_phone, auth_user_id=current_user["id"])
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -265,7 +265,7 @@ async def delete_conversation(
         Status message with deletion details
     """
     formatted_phone = format_phone_number(phone)
-    user = await crud.get_user_by_phone(db, formatted_phone)
+    user = await crud.get_user_by_phone(db, formatted_phone, auth_user_id=current_user["id"])
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     

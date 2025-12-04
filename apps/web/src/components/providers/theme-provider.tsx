@@ -37,9 +37,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         const root = document.documentElement;
 
         if (theme === 'dark') {
-            root.setAttribute('data-theme', 'dark');
+            root.classList.add('dark');
         } else {
-            root.removeAttribute('data-theme');
+            root.classList.remove('dark');
         }
 
         localStorage.setItem('theme', theme);
@@ -53,11 +53,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setThemeState(prev => prev === 'light' ? 'dark' : 'light');
     };
 
-    // Prevent flash of wrong theme
-    if (!mounted) {
-        return <>{children}</>;
-    }
-
+    // Always provide context, even during SSR
+    // This prevents "useTheme must be used within a ThemeProvider" errors
     return (
         <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
             {children}

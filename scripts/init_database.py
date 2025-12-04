@@ -21,15 +21,15 @@ async def init_db():
             # Create all tables
             await conn.run_sync(Base.metadata.create_all)
         
-        print("✅ Database tables created successfully!")
+        print("[OK] Database tables created successfully!")
         print("\nCreated tables:")
         print("- users")
         print("- messages")
         print("- follow_ups")
         print("- configs")
-        
+
     except Exception as e:
-        print(f"❌ Error creating tables: {e}")
+        print(f"[ERROR] Error creating tables: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -49,8 +49,8 @@ if __name__ == "__main__":
     success = asyncio.run(init_db())
     
     if success:
-        print("\n✅ Database initialization complete!")
+        print("\n[OK] Database initialization complete!")
         sys.exit(0)
     else:
-        print("\n❌ Database initialization failed!")
+        print("\n[ERROR] Database initialization failed!")
         sys.exit(1)

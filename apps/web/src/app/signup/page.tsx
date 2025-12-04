@@ -7,32 +7,61 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/components/ui/toast';
-import { login } from '@/lib/api';
+import { signup } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 
-export default function LoginPage() {
+export default function SignupPage() {
     const router = useRouter();
     const setToken = useAuthStore((state) => state.setToken);
     const { addToast } = useToast();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+    });
     const [loading, setLoading] = useState(false);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setFormData({
+            ...formData,
+            [e.target.name]: e.target.value,
+        });
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validate passwords match
+        if (formData.password !== formData.confirmPassword) {
+            addToast('Las contraseñas no coinciden', 'error');
+            return;
+        }
+
+        // Validate password strength
+        if (formData.password.length < 8) {
+            addToast('La contraseña debe tener al menos 8 caracteres', 'error');
+            return;
+        }
+
         setLoading(true);
 
         try {
-            const data = await login(email, password);
-            // Save both access token and refresh token
+            const data = await signup(formData.email, formData.password, formData.name);
+
+            // Save tokens
             setToken(data.access_token);
             if (data.refresh_token) {
                 localStorage.setItem('refresh_token', data.refresh_token);
             }
-            addToast('¡Inicio de sesión exitoso!', 'success');
-            router.push('/dashboard/chat');
+
+            addToast('¡Cuenta creada exitosamente!', 'success');
+
+            // Redirect to onboarding
+            router.push('/onboarding');
         } catch (err: any) {
-            const errorMessage = err.response?.data?.detail || 'Error al iniciar sesión. Por favor, intenta de nuevo.';
+            const errorMessage = err.response?.data?.detail || 'Error al crear la cuenta. Por favor, intenta de nuevo.';
             addToast(errorMessage, 'error');
         } finally {
             setLoading(false);
@@ -50,12 +79,27 @@ export default function LoginPage() {
                         <div className="h-1 w-16 bg-gradient-to-r from-purple-600 to-purple-500 rounded-full"></div>
                     </div>
                     <p className="mt-4 text-center text-sm text-gray-600 font-bold">
-                        Intelligent Sales Automation
+                        Crear una cuenta nueva
                     </p>
                 </div>
 
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                     <div className="space-y-4">
+                        <div>
+                            <label htmlFor="name" className="block text-sm font-bold text-black dark:text-white mb-2">
+                                Nombre completo
+                            </label>
+                            <Input
+                                id="name"
+                                name="name"
+                                type="text"
+                                required
+                                value={formData.name}
+                                onChange={handleChange}
+                                placeholder="Juan Pérez"
+                            />
+                        </div>
+
                         <div>
                             <label htmlFor="email" className="block text-sm font-bold text-black dark:text-white mb-2">
                                 Email
@@ -66,25 +110,41 @@ export default function LoginPage() {
                                 type="email"
                                 autoComplete="email"
                                 required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                placeholder="admin@example.com"
+                                value={formData.email}
+                                onChange={handleChange}
+                                placeholder="juan@empresa.com"
                             />
                         </div>
 
                         <div>
                             <label htmlFor="password" className="block text-sm font-bold text-black dark:text-white mb-2">
-                                Password
+                                Contraseña
                             </label>
                             <Input
                                 id="password"
                                 name="password"
                                 type="password"
-                                autoComplete="current-password"
+                                autoComplete="new-password"
                                 required
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Enter your password"
+                                value={formData.password}
+                                onChange={handleChange}
+                                placeholder="Mínimo 8 caracteres"
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="confirmPassword" className="block text-sm font-bold text-black dark:text-white mb-2">
+                                Confirmar contraseña
+                            </label>
+                            <Input
+                                id="confirmPassword"
+                                name="confirmPassword"
+                                type="password"
+                                autoComplete="new-password"
+                                required
+                                value={formData.confirmPassword}
+                                onChange={handleChange}
+                                placeholder="Repite tu contraseña"
                             />
                         </div>
                     </div>
@@ -98,19 +158,19 @@ export default function LoginPage() {
                         {loading ? (
                             <span className="flex items-center justify-center gap-2">
                                 <LoadingSpinner size="sm" variant="default" />
-                                Iniciando sesión...
+                                Creando cuenta...
                             </span>
                         ) : (
-                            'Iniciar Sesión'
+                            'Crear cuenta'
                         )}
                     </Button>
                 </form>
 
                 <div className="text-center">
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                        ¿No tienes cuenta?{' '}
-                        <Link href="/signup" className="font-bold text-purple-600 hover:text-purple-500">
-                            Regístrate gratis
+                        ¿Ya tienes una cuenta?{' '}
+                        <Link href="/login" className="font-bold text-purple-600 hover:text-purple-500">
+                            Inicia sesión
                         </Link>
                     </p>
                 </div>
