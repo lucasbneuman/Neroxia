@@ -8,6 +8,26 @@
 
 ## Recent Tasks
 
+### [2025-12-08 17:30] - QA Tester Validator
+**Task:** Fixed BUG-008 (Meta webhook signature validation) + validated Phase 4A
+**Changes:** `apps/api/src/routers/meta_webhook.py`, `.claude/BUG_TRACKER.md`
+**Status:** ✅ Complete - All tests passing (20/20 Meta webhooks, 8/8 database CRUD, 14/14 message routing)
+
+### [2025-12-04 21:00] - Lead Developer
+**Task:** Completed Phase 4A foundation (ConversationState + CRUD helper for multi-channel config)
+**Changes:** `apps/bot-engine/src/graph/state.py`, `packages/database/whatsapp_bot_database/crud.py`
+**Status:** ✅ Complete
+
+### [2025-12-04 20:30] - Lead Developer
+**Task:** Implemented Phase 4 unified MessageSender dispatcher (routes messages to Twilio/Meta based on channel)
+**Changes:** `apps/bot-engine/src/services/message_sender.py` (validates config, normalizes responses, handles WhatsApp/Instagram/Messenger)
+**Status:** ✅ Complete
+
+### [2025-12-04 20:15] - Lead Developer
+**Task:** Implemented Phase 4 Meta sender service (send messages via Graph API for Instagram/Messenger)
+**Changes:** `apps/bot-engine/src/services/meta_sender.py`, `apps/bot-engine/requirements.txt` (added httpx>=0.25.0)
+**Status:** ✅ Complete (async with retry logic, character limits, typing indicators, error handling)
+
 ### [2025-12-04 19:45] - Documentation Architect
 **Task:** Documented Meta webhook endpoints (4 endpoints: Instagram + Messenger GET/POST) in API_DOCUMENTATION.md
 **Changes:** `API_DOCUMENTATION.md` (new "Meta Webhooks" section after Twilio webhooks, lines 1013-1242)

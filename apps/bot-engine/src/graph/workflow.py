@@ -110,38 +110,63 @@ def get_sales_graph():
 
 
 async def process_message(
-    user_phone: str,
-    message: str,
-    conversation_history: list,
-    config: Dict[str, Any],
+    user_phone: str = None,
+    message: str = None,
+    conversation_history: list = None,
+    config: Dict[str, Any] = None,
     db_session: Any = None,
     db_user: Any = None,
+    # Multi-channel support (Phase 4B)
+    user_identifier: str = None,
+    channel: str = "whatsapp",
+    channel_config: Dict[str, Any] = None,
 ) -> Dict[str, Any]:
     """
     Process a user message through the sales graph.
 
     Args:
-        user_phone: User's phone number
+        user_phone: User's phone number (DEPRECATED - use user_identifier)
         message: User's message text
         conversation_history: List of previous messages (BaseMessage objects)
         config: Configuration dict
         db_session: Database session for CRUD operations
         db_user: Database User object (for HubSpot sync)
+        user_identifier: Phone or PSID (replaces user_phone for multi-channel)
+        channel: Channel type - "whatsapp", "instagram", "messenger" (default: "whatsapp")
+        channel_config: Channel-specific config (page_access_token, page_id for Meta channels)
 
     Returns:
         Updated state dict with response
     """
-    logger.info(f"Processing message from {user_phone}")
+    # Backwards compatibility: use user_phone if user_identifier not provided
+    if user_identifier is None and user_phone is not None:
+        user_identifier = user_phone
+        logger.info(f"[Backwards Compat] Using user_phone as user_identifier: {user_phone}")
+
+    if user_identifier is None:
+        raise ValueError("Either user_identifier or user_phone must be provided")
+
+    logger.info(f"Processing message from {user_identifier} via {channel}")
 
     from langchain_core.messages import HumanMessage
 
     # Get graph
     graph = get_sales_graph()
 
-    # Prepare initial state
+    # Ensure channel_config is a dict (not None)
+    if channel_config is None:
+        channel_config = {}
+
+    # Prepare initial state with multi-channel support
     initial_state: ConversationState = {
         "messages": conversation_history + [HumanMessage(content=message)],
-        "user_phone": user_phone,
+        # Backwards compatibility: keep user_phone for WhatsApp or when identifier is phone
+        "user_phone": user_identifier if channel == "whatsapp" else user_phone,
+        # Multi-channel fields
+        "channel": channel,
+        "user_identifier": user_identifier,
+        "channel_config": channel_config,
+        # User info
         "user_name": None,  # Will be populated from DB or extracted
         "user_email": None,
         "intent_score": 0.0,
@@ -153,6 +178,7 @@ async def process_message(
         "follow_up_scheduled": None,
         "follow_up_count": 0,
         "current_response": None,
+        "conversation_summary": None,
         "config": config,
         "db_session": db_session,
         "db_user": db_user,  # Pass user object for HubSpot sync

@@ -68,7 +68,8 @@
       "Bash(npm run dev:*)",
       "WebSearch",
       "mcp__notion__notion-fetch",
-      "mcp__notion__notion-create-pages"
+      "mcp__notion__notion-create-pages",
+      "Bash(pytest:*)"
     ],
     "deny": [],
     "ask": []

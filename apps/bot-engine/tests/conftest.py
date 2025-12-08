@@ -42,13 +42,18 @@ def sample_config():
 
 @pytest.fixture
 def sample_conversation_state(sample_config):
-    """Sample conversation state for tests."""
+    """Sample conversation state for tests (WhatsApp channel by default)."""
     from langchain_core.messages import HumanMessage
     from graph.state import ConversationState
 
     state: ConversationState = {
         "messages": [HumanMessage(content="Hello")],
         "user_phone": "+1234567890",
+        # Multi-channel fields (Phase 4B)
+        "channel": "whatsapp",
+        "user_identifier": "+1234567890",
+        "channel_config": {},
+        # User info
         "user_name": "Test User",
         "user_email": "test@example.com",
         "intent_score": 0.5,
@@ -60,7 +65,9 @@ def sample_conversation_state(sample_config):
         "follow_up_scheduled": None,
         "follow_up_count": 0,
         "current_response": None,
+        "conversation_summary": None,
         "config": sample_config,
         "db_session": None,
+        "db_user": None,
     }
     return state

@@ -5,11 +5,12 @@ This file tracks bugs, issues, and their resolution status across the WhatsApp S
 ## Active Bugs
 
 ### [BUG-008] Meta webhook signature verification accepts invalid format
-**Status:** Reported
+**Status:** Resolved
 **Severity:** High
 **Component:** API - Meta Webhooks
 **Reported:** 2025-12-04
-**Assigned:** DEV agent
+**Resolved:** 2025-12-08
+**Assigned:** QA Tester Validator
 
 **Description:**
 The `_verify_webhook_signature()` function in `meta_webhook.py` accepts signatures without the required `sha256=` prefix due to a fallback in line 167. This weakens security by allowing improperly formatted signatures to pass verification.
@@ -39,17 +40,23 @@ The `else signature` fallback allows raw hashes to pass.
 **Security Impact:**
 While not a critical vulnerability (HMAC still validated), this reduces defense-in-depth by accepting non-standard signature formats that Meta wouldn't send.
 
-**Recommended Fix:**
+**Fix Applied:**
 ```python
-# Line 167 - reject signatures without proper format
+# Lines 166-172 - reject signatures without proper format
 if "=" not in signature or not signature.startswith("sha256="):
-    logger.error("Invalid signature format")
+    logger.error("Invalid signature format - missing sha256= prefix")
     return False
+
 expected_signature = signature.split("=")[1]
 ```
 
-**Test Coverage:**
-Added test `test_signature_without_prefix_fails` in `test_meta_webhooks.py` to catch this regression.
+**Validation Notes:**
+- Tested on: 2025-12-08
+- Result: Pass ✅
+- All 20 Meta webhook tests passing (100%)
+- Test `test_signature_without_prefix_fails` now passes
+- Signature validation properly rejects non-standard formats
+- Meta webhook integration security hardened
 
 ---
 

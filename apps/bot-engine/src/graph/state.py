@@ -17,8 +17,12 @@ class ConversationState(TypedDict):
     # Message history
     messages: List[BaseMessage]
 
-    # User identification
-    user_phone: str
+    # User identification (channel-aware)
+    user_phone: str  # Keep for backwards compatibility, may be None for Instagram/Messenger
+    channel: str  # "whatsapp", "instagram", "messenger"
+    user_identifier: str  # Phone or PSID (unified identifier)
+    channel_config: Dict[str, Any]  # Channel-specific config (page_access_token, etc.)
+
     user_name: Optional[str]
     user_email: Optional[str]
 

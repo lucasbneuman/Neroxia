@@ -356,6 +356,50 @@ async def update_channel_integration(
     return integration
 
 
+async def get_channel_config_for_user(
+    db: AsyncSession,
+    user: User
+) -> Dict[str, Any]:
+    """
+    Get channel-specific config for sending messages to a user.
+
+    For WhatsApp: Returns empty dict (uses env vars)
+    For Instagram/Messenger: Returns page_access_token and page_id
+
+    Args:
+        db: Database session
+        user: User object with channel and auth_user_id
+
+    Returns:
+        Dict with channel config or empty dict
+
+    Raises:
+        ValueError: If no active integration found for Meta channels
+    """
+    if user.channel == "whatsapp":
+        return {}  # Twilio uses env vars
+
+    # For Meta channels, get integration
+    # Query by auth_user_id and channel
+    # Assumption: One integration per tenant per channel
+    query = select(ChannelIntegration).where(
+        ChannelIntegration.auth_user_id == user.auth_user_id,
+        ChannelIntegration.channel == user.channel,
+        ChannelIntegration.is_active == True
+    ).limit(1)
+
+    result = await db.execute(query)
+    integration = result.scalar_one_or_none()
+
+    if not integration:
+        raise ValueError(f"No active {user.channel} integration for user {user.id}")
+
+    return {
+        "page_access_token": integration.page_access_token,
+        "page_id": integration.page_id
+    }
+
+
 async def deactivate_channel_integration(
     db: AsyncSession,
     integration_id: int

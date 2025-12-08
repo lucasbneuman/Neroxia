@@ -227,12 +227,19 @@ async def data_collector_node(state: ConversationState) -> Dict[str, Any]:
     Extract structured data from user messages.
 
     Priority order for data collection:
-    1. Twilio data (whatsapp_profile_name, phone) - highest priority
+    1. Twilio data (whatsapp_profile_name, phone) - highest priority (WhatsApp only)
     2. LLM extraction (email, needs, budget, pain_points) - fallback
-    
+
+    Phone collection:
+    - WhatsApp: Phone is required (already available in user_identifier)
+    - Instagram/Messenger: Phone is optional (user can provide via conversation)
+
     Does NOT block the sale waiting for complete data.
     """
     logger.info("Executing data_collector_node")
+
+    # Get channel to determine phone requirements
+    channel = state.get("channel", "whatsapp")
 
     llm_service = get_llm_service()
 
@@ -323,8 +330,11 @@ async def data_collector_node(state: ConversationState) -> Dict[str, Any]:
             # Use existing summary if available, otherwise use generated notes
             conversation_notes = state.get("conversation_summary") or " | ".join(notes_parts)
 
+            # For non-WhatsApp channels, phone may not be available
+            phone_number = state.get("user_phone") or collected_data.get("phone")
+
             user_data = {
-                "phone": state["user_phone"],
+                "phone": phone_number,  # May be None for Instagram/Messenger
                 "name": state.get("user_name"),
                 "email": state.get("user_email"),
                 "needs": collected_data.get("needs"),

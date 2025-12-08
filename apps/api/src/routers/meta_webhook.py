@@ -163,8 +163,13 @@ def _verify_webhook_signature(body: bytes, signature: str) -> bool:
         logger.error("Missing app_secret or signature header")
         return False
 
+    # Reject signatures without proper format
+    if "=" not in signature or not signature.startswith("sha256="):
+        logger.error("Invalid signature format - missing sha256= prefix")
+        return False
+
     # Remove 'sha256=' prefix
-    expected_signature = signature.split("=")[1] if "=" in signature else signature
+    expected_signature = signature.split("=")[1]
 
     # Compute HMAC
     mac = hmac.new(
