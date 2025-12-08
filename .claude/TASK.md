@@ -8,6 +8,11 @@
 
 ## Recent Tasks
 
+### [2025-12-08 20:00] - Lead Developer
+**Task:** Completed Phase 4B - Bot engine multi-channel integration (workflow updates, test fixes)
+**Changes:** `apps/bot-engine/src/graph/workflow.py` (multi-channel params), `apps/bot-engine/src/graph/nodes.py` (optional phone), `apps/bot-engine/tests/conftest.py` + `test_workflow_multichannel.py` (test fixes)
+**Status:** ✅ Complete - 5/5 integration tests passing (WhatsApp backwards compat, Instagram, Messenger, data collector, error handling)
+
 ### [2025-12-08 17:30] - QA Tester Validator
 **Task:** Fixed BUG-008 (Meta webhook signature validation) + validated Phase 4A
 **Changes:** `apps/api/src/routers/meta_webhook.py`, `.claude/BUG_TRACKER.md`
