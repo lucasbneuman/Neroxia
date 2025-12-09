@@ -69,7 +69,8 @@
       "WebSearch",
       "mcp__notion__notion-fetch",
       "mcp__notion__notion-create-pages",
-      "Bash(pytest:*)"
+      "Bash(pytest:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []
