@@ -8,6 +8,11 @@
 
 ## Recent Tasks
 
+### [2025-12-09 00:45] - Documentation Architect
+**Task:** Updated ARCHITECTURE.md with Phase 5 multi-channel HubSpot sync changes
+**Changes:** `ARCHITECTURE.md` (updated HubSpot integration sections, added Multi-Channel HubSpot Synchronization section, updated services table)
+**Status:** ✅ Complete - Documentation reflects multi-channel support (optional phone, lead_source tracking, custom properties, lifecycle mapping, backwards compatibility)
+
 ### [2025-12-08 22:15] - Lead Developer
 **Task:** Completed Phase 5 - HubSpot multi-channel sync with lead source tracking
 **Changes:** `apps/bot-engine/src/services/hubspot_sync.py` (optional phone, lead_source, channel_user_id), `apps/bot-engine/src/graph/nodes.py` (data_collector_node email/phone validation), `apps/bot-engine/tests/unit/test_hubspot_sync.py` (10 tests)

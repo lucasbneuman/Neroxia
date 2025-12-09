@@ -2,8 +2,8 @@
 
 > **Purpose**: Central documentation for coordinating multiple agents working on the WhatsApp Sales Bot SaaS platform.
 
-**Last Updated**: 2025-11-22  
-**Architecture Version**: 2.0.0 - Microservices  
+**Last Updated**: 2025-12-09
+**Architecture Version**: 2.0.0 - Microservices
 **Branch**: saas-migration
 
 ---
@@ -33,7 +33,7 @@ A **multi-tenant SaaS platform** for conversational sales via WhatsApp, powered 
 - **Supabase** for PostgreSQL database and authentication
 - **OpenAI GPT-4o/GPT-4o-mini** for AI conversations
 - **ChromaDB** for RAG (Retrieval Augmented Generation)
-- **HubSpot CRM** integration for automatic contact synchronization
+- **HubSpot CRM** integration with multi-channel contact synchronization (WhatsApp, Instagram, Messenger)
 
 ### Key Features
 
@@ -41,7 +41,7 @@ A **multi-tenant SaaS platform** for conversational sales via WhatsApp, powered 
 - ✅ Automatic data extraction and validation
 - ✅ Text-to-Speech with configurable voice and audio/text ratio
 - ✅ RAG-powered knowledge base from uploaded documents
-- ✅ Real-time HubSpot CRM synchronization
+- ✅ Real-time HubSpot CRM synchronization with lead source tracking across channels
 - ✅ Multi-stage conversation flow (welcome → qualifying → nurturing → closing → sold)
 - ✅ Human handoff capability for complex cases
 
@@ -433,7 +433,7 @@ intent_classifier_node (GPT-4o-mini → intent_score: 0-1)
     ↓
 sentiment_analyzer_node (GPT-4o-mini → sentiment: positive/neutral/negative)
     ↓
-data_collector_node (Extract + Validate + HubSpot Sync)
+data_collector_node (Extract + Validate + Multi-Channel HubSpot Sync)
     ↓
 router_node (Conditional routing)
     ├── conversation_node (GPT-4o + RAG)
@@ -449,10 +449,37 @@ router_node (Conditional routing)
 | `llm_service.py` | LLM calls | GPT-4o, GPT-4o-mini |
 | `rag_service.py` | Vector search | ChromaDB + OpenAI embeddings |
 | `tts_service.py` | Audio generation | OpenAI TTS |
-| `hubspot_sync.py` | CRM sync | HubSpot API |
+| `hubspot_sync.py` | Multi-channel CRM sync | HubSpot Contacts API + Custom Properties API |
 | `twilio_service.py` | WhatsApp messaging | Twilio API |
 | `scheduler_service.py` | Follow-up scheduling | APScheduler |
 | `config_manager.py` | Configuration | Database |
+
+#### Multi-Channel HubSpot Synchronization
+
+**Contact Creation:**
+- Phone is optional (required for WhatsApp, optional for Instagram/Messenger)
+- Email or phone required for sync (at least one identifier)
+- Contacts searched by: email → phone → channel_user_id (PSID)
+
+**Custom Properties:**
+- `lead_source` (enumeration): whatsapp | instagram | messenger
+- `channel_user_id` (string): PSID for Instagram/Messenger users
+- `intent_score` (number): Purchase intent score (0-1)
+- `sentiment` (enumeration): positive | neutral | negative
+- `needs` (text): User needs/requirements
+- `pain_points` (text): User pain points
+- `budget` (text): Budget information
+
+**Lifecycle Stage Mapping:**
+- welcome → Lead
+- qualifying → Marketing Qualified Lead (MQL)
+- nurturing → Sales Qualified Lead (SQL)
+- closing → Opportunity
+- sold → Customer
+
+**Backwards Compatibility:**
+- WhatsApp contacts sync as before (phone required)
+- Existing contacts unaffected
 
 **Key Models**:
 - **Intent Classifier**: `gpt-4o-mini` (fast, cheap)
