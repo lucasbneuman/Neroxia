@@ -1,0 +1,32 @@
+{
+  "name": "whatsapp-sales-bot",
+  "type": "docker-compose",
+  "dockerComposeFile": "docker-compose.prod.yml",
+  "environmentFile": ".env.prod",
+  "domains": [
+    {
+      "service": "api",
+      "domain": "api.yourdomain.com"
+    },
+    {
+      "service": "web",
+      "domain": "app.yourdomain.com"
+    }
+  ],
+  "healthChecks": {
+    "api": {
+      "path": "/health",
+      "port": 8000
+    },
+    "web": {
+      "path": "/api/health",
+      "port": 3000
+    }
+  },
+  "volumes": [
+    "postgres_data",
+    "api_uploads",
+    "api_chroma",
+    "api_avatars"
+  ]
+}
