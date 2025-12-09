@@ -4,6 +4,51 @@ This file tracks bugs, issues, and their resolution status across the WhatsApp S
 
 ## Active Bugs
 
+### [ISSUE-009] Meta webhook-to-bot integration not implemented
+**Status:** Deferred to Phase 6
+**Severity:** Medium (Non-blocking)
+**Component:** API - Meta Webhooks
+**Reported:** 2025-12-08
+**Assigned:** Lead Developer (Phase 6)
+
+**Description:**
+Meta webhooks (`/webhook/instagram`, `/webhook/messenger`) currently receive messages from Instagram/Messenger but don't process them through the bot engine. The `_process_instagram_message()` and `_process_messenger_message()` functions are stub implementations.
+
+**Current Behavior:**
+```python
+# apps/api/src/routers/meta_webhook.py lines 92-96
+for entry in payload.get("entry", []):
+    for messaging_event in entry.get("messaging", []):
+        await _process_instagram_message(messaging_event, db)  # ❌ Stub only
+```
+
+**Expected Behavior:**
+- Query user by PSID using `get_user_by_identifier()`
+- Fetch channel config from `ChannelIntegration` table
+- Call `process_message()` from bot engine with channel parameters
+- Send bot response via `MessageSender.send_message()`
+- Handle async processing (background tasks for long conversations)
+
+**Why Deferred to Phase 6:**
+- Phase 6 implements OAuth flow for users to connect Facebook/Instagram pages
+- Without OAuth, there are no page access tokens configured
+- Cannot test webhook→bot flow until users can actually connect their pages
+- Phase 5 (HubSpot sync) doesn't depend on this functionality
+
+**Implementation Pattern:**
+Follow existing `twilio_webhook.py` pattern (lines 50-120):
+1. Extract message from webhook payload
+2. Query user by identifier
+3. Fetch channel config
+4. Call bot engine
+5. Send response
+
+**Priority:** Can be implemented during Phase 6 when OAuth is ready for end-to-end testing.
+
+**Reference:** Phase 4 Architectural Review (`.claude/PHASE4_ARCHITECTURAL_REVIEW.md` lines 115-136)
+
+---
+
 ### [BUG-008] Meta webhook signature verification accepts invalid format
 **Status:** Resolved
 **Severity:** High

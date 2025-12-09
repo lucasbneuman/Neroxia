@@ -70,7 +70,9 @@
       "mcp__notion__notion-fetch",
       "mcp__notion__notion-create-pages",
       "Bash(pytest:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(if exist \".claude\\scripts\\phase4a_validation_report.md\" del \".claude\\scripts\\phase4a_validation_report.md\")",
+      "Bash(if exist \".claude\\scripts\\validate_phase4a_20251204.py\" del \".claude\\scripts\\validate_phase4a_20251204.py\")"
     ],
     "deny": [],
     "ask": []

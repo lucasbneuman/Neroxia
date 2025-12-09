@@ -8,6 +8,11 @@
 
 ## Recent Tasks
 
+### [2025-12-08 22:15] - Lead Developer
+**Task:** Completed Phase 5 - HubSpot multi-channel sync with lead source tracking
+**Changes:** `apps/bot-engine/src/services/hubspot_sync.py` (optional phone, lead_source, channel_user_id), `apps/bot-engine/src/graph/nodes.py` (data_collector_node email/phone validation), `apps/bot-engine/tests/unit/test_hubspot_sync.py` (10 tests)
+**Status:** ✅ Complete - Phone optional, email/phone/PSID search, lead source tracking (whatsapp/instagram/messenger), backwards compatible with WhatsApp
+
 ### [2025-12-08 21:30] - Architecture Engineer
 **Task:** Completed comprehensive Phase 4 architectural review (4A + 4B multi-channel implementation)
 **Changes:** `.claude/PHASE4_ARCHITECTURAL_REVIEW.md` (full review report - 8.5/10 score, approved for Phase 5)

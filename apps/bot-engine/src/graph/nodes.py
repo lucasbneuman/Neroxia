@@ -332,36 +332,48 @@ async def data_collector_node(state: ConversationState) -> Dict[str, Any]:
 
             # For non-WhatsApp channels, phone may not be available
             phone_number = state.get("user_phone") or collected_data.get("phone")
+            email = state.get("user_email")
 
-            user_data = {
-                "phone": phone_number,  # May be None for Instagram/Messenger
-                "name": state.get("user_name"),
-                "email": state.get("user_email"),
-                "needs": collected_data.get("needs"),
-                "pain_points": collected_data.get("pain_points"),
-                "budget": collected_data.get("budget"),
-                "intent_score": state.get("intent_score"),
-                "sentiment": state.get("sentiment"),
-                "stage": state.get("stage"),
-                "conversation_summary": conversation_notes,
-                "whatsapp_profile_name": db_user.whatsapp_profile_name if db_user else None,
-                "country_code": db_user.country_code if db_user else None,
-            }
-            try:
-                # Get db_user from state if available
-                result = await hubspot_service.sync_contact(user_data, db_user=db_user)
+            # Only sync if we have at least email OR phone (Phase 5 requirement)
+            if not email and not phone_number:
+                logger.warning(
+                    f"Cannot sync to HubSpot: no email or phone for {state.get('channel')} "
+                    f"user {state.get('user_identifier')}"
+                )
+            else:
+                user_data = {
+                    "phone": phone_number,  # May be None for Instagram/Messenger
+                    "name": state.get("user_name"),
+                    "email": email,
+                    "needs": collected_data.get("needs"),
+                    "pain_points": collected_data.get("pain_points"),
+                    "budget": collected_data.get("budget"),
+                    "intent_score": state.get("intent_score"),
+                    "sentiment": state.get("sentiment"),
+                    "stage": state.get("stage"),
+                    "conversation_summary": conversation_notes,
+                    "whatsapp_profile_name": db_user.whatsapp_profile_name if db_user else None,
+                    "country_code": db_user.country_code if db_user else None,
+                }
+                try:
+                    # Pass state for multi-channel support (Phase 5)
+                    result = await hubspot_service.sync_contact(
+                        user_data,
+                        state=state,
+                        db_user=db_user
+                    )
 
-                # Update our DB with HubSpot contact_id and lifecyclestage
-                if result and db_user:
-                    db_user.hubspot_contact_id = result["contact_id"]
-                    db_user.hubspot_lifecyclestage = result["lifecyclestage"]
-                    db_user.hubspot_synced_at = result["synced_at"]
-                    logger.info(f"✅ Updated DB with HubSpot data: {result['action']} contact {result['contact_id']}")
+                    # Update our DB with HubSpot contact_id and lifecyclestage
+                    if result and db_user:
+                        db_user.hubspot_contact_id = result["contact_id"]
+                        db_user.hubspot_lifecyclestage = result["lifecyclestage"]
+                        db_user.hubspot_synced_at = result["synced_at"]
+                        logger.info(f"✅ Updated DB with HubSpot data: {result['action']} contact {result['contact_id']}")
 
-            except Exception as e:
-                logger.error(f"HubSpot sync failed (non-blocking): {e}")
-                import traceback
-                traceback.print_exc()
+                except Exception as e:
+                    logger.error(f"HubSpot sync failed (non-blocking): {e}")
+                    import traceback
+                    traceback.print_exc()
 
         return updates
 
