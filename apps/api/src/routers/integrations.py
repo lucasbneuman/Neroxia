@@ -1,10 +1,13 @@
-"""Integration configuration router (Twilio, HubSpot)."""
+"""Integration configuration router (Twilio, HubSpot, Facebook)."""
 
+import os
 from typing import Dict, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+import httpx
 
 from whatsapp_bot_database import crud
 from whatsapp_bot_shared import get_logger
@@ -389,4 +392,226 @@ async def test_hubspot_connection(
         raise HTTPException(
             status_code=500,
             detail=f"HubSpot connection test failed: {str(e)}"
+        )
+
+
+# ========================================
+# Facebook OAuth Integration (Phase 6)
+# ========================================
+
+
+@router.get("/facebook/connect")
+async def connect_facebook(
+    channel: str = Query(..., regex="^(instagram|messenger)$"),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Initiate Facebook OAuth flow for page connection.
+
+    Redirects user to Facebook OAuth dialog to authorize page access.
+
+    Query params:
+    - channel: "instagram" or "messenger"
+
+    Returns:
+    - oauth_url: URL to redirect user to for Facebook authorization
+    """
+    fb_app_id = os.getenv("FACEBOOK_APP_ID")
+    redirect_uri = os.getenv("FACEBOOK_OAUTH_REDIRECT_URI")
+
+    if not fb_app_id:
+        raise HTTPException(
+            status_code=500,
+            detail="FACEBOOK_APP_ID not configured"
+        )
+
+    if not redirect_uri:
+        raise HTTPException(
+            status_code=500,
+            detail="FACEBOOK_OAUTH_REDIRECT_URI not configured"
+        )
+
+    # Required permissions based on channel
+    if channel == "instagram":
+        scope = "instagram_basic,instagram_manage_messages,pages_manage_metadata,pages_read_engagement"
+    else:  # messenger
+        scope = "pages_messaging,pages_manage_metadata,pages_read_engagement"
+
+    # Build OAuth URL with state for tracking user + channel
+    state = f"{current_user['id']}:{channel}"
+    oauth_url = (
+        f"https://www.facebook.com/v18.0/dialog/oauth?"
+        f"client_id={fb_app_id}&"
+        f"redirect_uri={redirect_uri}&"
+        f"scope={scope}&"
+        f"state={state}"
+    )
+
+    logger.info(f"Initiating Facebook OAuth for user {current_user['id']} - channel: {channel}")
+
+    return {"oauth_url": oauth_url}
+
+
+@router.get("/facebook/callback")
+async def facebook_callback(
+    code: str = Query(...),
+    state: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Facebook OAuth callback endpoint.
+
+    Receives authorization code from Facebook, exchanges it for access token,
+    retrieves page information, subscribes to webhooks, and stores credentials.
+
+    Query params:
+    - code: Authorization code from Facebook
+    - state: User ID and channel (format: "user_id:channel")
+
+    Returns:
+    - Redirects to frontend with status=success or status=error
+    """
+    fb_app_id = os.getenv("FACEBOOK_APP_ID")
+    fb_app_secret = os.getenv("FACEBOOK_APP_SECRET")
+    redirect_uri = os.getenv("FACEBOOK_OAUTH_REDIRECT_URI")
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:7860")
+
+    if not all([fb_app_id, fb_app_secret, redirect_uri]):
+        logger.error("Facebook OAuth credentials not configured")
+        return RedirectResponse(
+            url=f"{frontend_url}/dashboard/integrations?status=error&message=oauth_not_configured"
+        )
+
+    # Parse state (user_id:channel)
+    try:
+        user_id, channel = state.split(":")
+    except ValueError:
+        logger.error(f"Invalid state parameter: {state}")
+        return RedirectResponse(
+            url=f"{frontend_url}/dashboard/integrations?status=error&message=invalid_state"
+        )
+
+    try:
+        async with httpx.AsyncClient() as client:
+            # Step 1: Exchange code for user access token
+            token_url = (
+                f"https://graph.facebook.com/v18.0/oauth/access_token?"
+                f"client_id={fb_app_id}&"
+                f"redirect_uri={redirect_uri}&"
+                f"client_secret={fb_app_secret}&"
+                f"code={code}"
+            )
+
+            token_response = await client.get(token_url)
+            if token_response.status_code != 200:
+                logger.error(f"Failed to exchange code for token: {token_response.text}")
+                return RedirectResponse(
+                    url=f"{frontend_url}/dashboard/integrations?status=error&message=token_exchange_failed"
+                )
+
+            token_data = token_response.json()
+            user_access_token = token_data.get("access_token")
+
+            if not user_access_token:
+                logger.error("No access token in response")
+                return RedirectResponse(
+                    url=f"{frontend_url}/dashboard/integrations?status=error&message=no_access_token"
+                )
+
+            # Step 2: Get user's Facebook Pages
+            pages_url = f"https://graph.facebook.com/v18.0/me/accounts?access_token={user_access_token}"
+            pages_response = await client.get(pages_url)
+
+            if pages_response.status_code != 200:
+                logger.error(f"Failed to fetch pages: {pages_response.text}")
+                return RedirectResponse(
+                    url=f"{frontend_url}/dashboard/integrations?status=error&message=fetch_pages_failed"
+                )
+
+            pages_data = pages_response.json()
+            pages = pages_data.get("data", [])
+
+            if not pages:
+                logger.error("No Facebook Pages found for user")
+                return RedirectResponse(
+                    url=f"{frontend_url}/dashboard/integrations?status=error&message=no_pages_found"
+                )
+
+            # Use first page (in production, let user select)
+            page = pages[0]
+            page_id = page["id"]
+            page_access_token = page["access_token"]  # Long-lived Page Access Token
+            page_name = page["name"]
+
+            # Step 3: For Instagram, get Instagram Business Account ID
+            instagram_account_id = None
+            if channel == "instagram":
+                ig_url = (
+                    f"https://graph.facebook.com/v18.0/{page_id}?"
+                    f"fields=instagram_business_account&"
+                    f"access_token={page_access_token}"
+                )
+                ig_response = await client.get(ig_url)
+
+                if ig_response.status_code == 200:
+                    ig_data = ig_response.json()
+                    instagram_account_id = ig_data.get("instagram_business_account", {}).get("id")
+
+                    if not instagram_account_id:
+                        logger.error(f"Page {page_name} has no linked Instagram Business Account")
+                        return RedirectResponse(
+                            url=f"{frontend_url}/dashboard/integrations?status=error&message=no_instagram_account"
+                        )
+                else:
+                    logger.error(f"Failed to fetch Instagram account: {ig_response.text}")
+                    return RedirectResponse(
+                        url=f"{frontend_url}/dashboard/integrations?status=error&message=instagram_fetch_failed"
+                    )
+
+            # Step 4: Subscribe page to webhooks
+            if channel == "instagram":
+                # Subscribe Instagram account to messages
+                subscribe_url = f"https://graph.facebook.com/v18.0/{instagram_account_id}/subscribed_apps"
+                subscribed_fields = "messages,messaging_postbacks"
+            else:  # messenger
+                # Subscribe Facebook Page to messages
+                subscribe_url = f"https://graph.facebook.com/v18.0/{page_id}/subscribed_apps"
+                subscribed_fields = "messages,messaging_postbacks,messaging_optins"
+
+            subscribe_response = await client.post(
+                subscribe_url,
+                params={
+                    "access_token": page_access_token,
+                    "subscribed_fields": subscribed_fields
+                }
+            )
+
+            if subscribe_response.status_code not in (200, 201):
+                logger.warning(f"Webhook subscription may have failed: {subscribe_response.text}")
+                # Don't fail the entire flow - webhook can be configured manually
+            else:
+                logger.info(f"Successfully subscribed {channel} webhooks for page {page_id}")
+
+        # Step 5: Store integration in database
+        integration = await crud.create_channel_integration(
+            db=db,
+            auth_user_id=user_id,
+            channel=channel,
+            page_id=page_id,
+            page_access_token=page_access_token,  # TODO: Encrypt in production
+            page_name=page_name,
+            instagram_account_id=instagram_account_id,
+        )
+
+        logger.info(f"Created {channel} integration for user {user_id} - page: {page_name}")
+
+        # Redirect to frontend success page
+        return RedirectResponse(
+            url=f"{frontend_url}/dashboard/integrations?status=success&channel={channel}&page={page_name}"
+        )
+
+    except Exception as e:
+        logger.error(f"Error in Facebook OAuth callback: {e}", exc_info=True)
+        return RedirectResponse(
+            url=f"{frontend_url}/dashboard/integrations?status=error&message=unexpected_error"
         )

@@ -8,6 +8,11 @@
 
 ## Recent Tasks
 
+### [2025-12-09 01:30] - Lead Developer
+**Task:** Completed Phase 6 - Facebook OAuth + webhook-to-bot integration (ISSUE-009 resolved)
+**Changes:** `apps/api/src/routers/integrations.py` (OAuth endpoints), `apps/api/src/routers/meta_webhook.py` (bot integration + background tasks), `CLAUDE.md` (env vars), `.claude/BUG_TRACKER.md` (ISSUE-009 resolved)
+**Status:** ✅ Complete - OAuth flow for Instagram/Messenger, webhooks call bot engine, background task processing, tokens stored in DB
+
 ### [2025-12-09 00:45] - Documentation Architect
 **Task:** Updated ARCHITECTURE.md with Phase 5 multi-channel HubSpot sync changes
 **Changes:** `ARCHITECTURE.md` (updated HubSpot integration sections, added Multi-Channel HubSpot Synchronization section, updated services table)

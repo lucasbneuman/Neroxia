@@ -5,7 +5,7 @@ Handles incoming webhooks from Meta's Graph API for both Instagram Direct Messag
 and Facebook Messenger, including signature verification and message processing.
 """
 
-from fastapi import APIRouter, Request, Query, HTTPException, Depends
+from fastapi import APIRouter, Request, Query, HTTPException, Depends, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 import hmac
 import hashlib
@@ -57,6 +57,7 @@ async def instagram_webhook_verify(
 @router.post("/instagram")
 async def instagram_webhook(
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -76,6 +77,9 @@ async def instagram_webhook(
         }]
       }]
     }
+
+    Note: Message processing is done in background to avoid blocking webhook response.
+    Meta expects 200 OK within 20 seconds.
     """
     # Verify signature
     body = await request.body()
@@ -87,12 +91,14 @@ async def instagram_webhook(
 
     payload = await request.json()
 
-    # Process webhook events
+    # Process webhook events in background
     if payload.get("object") == "page":
         for entry in payload.get("entry", []):
             for messaging_event in entry.get("messaging", []):
-                await _process_instagram_message(messaging_event, db)
+                # Process each message in background
+                background_tasks.add_task(_process_instagram_message, messaging_event, db)
 
+    # Return immediately to Meta
     return {"status": "ok"}
 
 
@@ -127,9 +133,15 @@ async def messenger_webhook_verify(
 @router.post("/messenger")
 async def messenger_webhook(
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
-    """Receive Facebook Messenger messages."""
+    """
+    Receive Facebook Messenger messages.
+
+    Note: Message processing is done in background to avoid blocking webhook response.
+    Meta expects 200 OK within 20 seconds.
+    """
     body = await request.body()
     signature = request.headers.get("X-Hub-Signature-256")
 
@@ -139,11 +151,14 @@ async def messenger_webhook(
 
     payload = await request.json()
 
+    # Process webhook events in background
     if payload.get("object") == "page":
         for entry in payload.get("entry", []):
             for messaging_event in entry.get("messaging", []):
-                await _process_messenger_message(messaging_event, db)
+                # Process each message in background
+                background_tasks.add_task(_process_messenger_message, messaging_event, db)
 
+    # Return immediately to Meta
     return {"status": "ok"}
 
 
@@ -183,7 +198,11 @@ def _verify_webhook_signature(body: bytes, signature: str) -> bool:
 
 
 async def _process_instagram_message(event: Dict[str, Any], db: AsyncSession):
-    """Process incoming Instagram Direct Message."""
+    """
+    Process incoming Instagram Direct Message.
+
+    Calls bot engine to generate response and sends it back via Meta Graph API.
+    """
     sender_psid = event.get("sender", {}).get("id")
     recipient_page_id = event.get("recipient", {}).get("id")
     message = event.get("message", {})
@@ -229,12 +248,58 @@ async def _process_instagram_message(event: Dict[str, Any], db: AsyncSession):
     )
     await db.commit()
 
-    # For Phase 3: Just log. Phase 4 will connect to bot workflow
-    logger.info(f"Message received from Instagram user {sender_psid}: {message_text}")
+    # Get channel config for bot engine
+    try:
+        channel_config = await crud.get_channel_config_for_user(db, user)
+    except ValueError as e:
+        logger.error(f"No channel config for Instagram user {sender_psid}: {e}")
+        return
+
+    # Call bot engine to process message
+    try:
+        # Import bot workflow
+        import sys
+        from pathlib import Path
+
+        bot_engine_path = Path(__file__).parent.parent.parent.parent / "bot-engine" / "src"
+        if str(bot_engine_path) not in sys.path:
+            sys.path.insert(0, str(bot_engine_path))
+
+        from graph.workflow import process_message
+
+        # Get conversation history
+        messages = await crud.get_messages(db, user.id, limit=20)
+        conversation_history = []  # Convert to LangChain format if needed
+
+        # Get config
+        config = await crud.get_config(db, "bot") or {}
+
+        # Process message through bot engine
+        state = await process_message(
+            user_identifier=sender_psid,
+            message=message_text,
+            conversation_history=conversation_history,
+            config=config,
+            db_session=db,
+            db_user=user,
+            channel="instagram",
+            channel_config=channel_config,
+        )
+
+        # Response is sent automatically by MessageSender in bot engine
+        logger.info(f"Processed Instagram message from {sender_psid} - bot response sent")
+
+    except Exception as e:
+        logger.error(f"Error calling bot engine for Instagram message: {e}", exc_info=True)
+        # Don't raise - webhook should always return 200 OK
 
 
 async def _process_messenger_message(event: Dict[str, Any], db: AsyncSession):
-    """Process incoming Facebook Messenger message."""
+    """
+    Process incoming Facebook Messenger message.
+
+    Calls bot engine to generate response and sends it back via Meta Graph API.
+    """
     sender_psid = event.get("sender", {}).get("id")
     recipient_page_id = event.get("recipient", {}).get("id")
     message = event.get("message", {})
@@ -280,8 +345,50 @@ async def _process_messenger_message(event: Dict[str, Any], db: AsyncSession):
     )
     await db.commit()
 
-    # For Phase 3: Just log. Phase 4 will connect to bot workflow
-    logger.info(f"Message received from Messenger user {sender_psid}: {message_text}")
+    # Get channel config for bot engine
+    try:
+        channel_config = await crud.get_channel_config_for_user(db, user)
+    except ValueError as e:
+        logger.error(f"No channel config for Messenger user {sender_psid}: {e}")
+        return
+
+    # Call bot engine to process message
+    try:
+        # Import bot workflow
+        import sys
+        from pathlib import Path
+
+        bot_engine_path = Path(__file__).parent.parent.parent.parent / "bot-engine" / "src"
+        if str(bot_engine_path) not in sys.path:
+            sys.path.insert(0, str(bot_engine_path))
+
+        from graph.workflow import process_message
+
+        # Get conversation history
+        messages = await crud.get_messages(db, user.id, limit=20)
+        conversation_history = []  # Convert to LangChain format if needed
+
+        # Get config
+        config = await crud.get_config(db, "bot") or {}
+
+        # Process message through bot engine
+        state = await process_message(
+            user_identifier=sender_psid,
+            message=message_text,
+            conversation_history=conversation_history,
+            config=config,
+            db_session=db,
+            db_user=user,
+            channel="messenger",
+            channel_config=channel_config,
+        )
+
+        # Response is sent automatically by MessageSender in bot engine
+        logger.info(f"Processed Messenger message from {sender_psid} - bot response sent")
+
+    except Exception as e:
+        logger.error(f"Error calling bot engine for Messenger message: {e}", exc_info=True)
+        # Don't raise - webhook should always return 200 OK
 
 
 async def _get_integration(
