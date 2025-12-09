@@ -12,6 +12,10 @@ export interface User {
     stage?: string
     conversation_summary?: string
 
+    // Multi-channel support
+    channel: "whatsapp" | "instagram" | "messenger"
+    channel_user_id?: string
+
     // Analysis data
     intent_score?: number
 

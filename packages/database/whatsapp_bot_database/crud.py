@@ -417,6 +417,28 @@ async def deactivate_channel_integration(
     return await update_channel_integration(db, integration_id, is_active=False)
 
 
+async def get_channel_integrations_by_user(
+    db: AsyncSession,
+    auth_user_id: str
+) -> list[ChannelIntegration]:
+    """
+    Get all channel integrations for a tenant.
+
+    Args:
+        db: Database session
+        auth_user_id: Tenant ID
+
+    Returns:
+        List of ChannelIntegration objects (both active and inactive)
+    """
+    query = select(ChannelIntegration).where(
+        ChannelIntegration.auth_user_id == auth_user_id
+    ).order_by(ChannelIntegration.created_at.desc())
+
+    result = await db.execute(query)
+    return list(result.scalars().all())
+
+
 # ============================================================================
 # MESSAGE OPERATIONS
 # ============================================================================

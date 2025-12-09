@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { ChannelBadge } from "@/components/ui/channel-badge"
 import { getDeals } from "@/lib/api"
 import type { Deal } from "@/types"
 import { cn } from "@/lib/utils"
@@ -33,6 +34,7 @@ export default function ContactsPage() {
     const [loading, setLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState("")
     const [stageFilter, setStageFilter] = useState<string>("all")
+    const [channelFilter, setChannelFilter] = useState<string>("all")
 
     useEffect(() => {
         loadDeals()
@@ -52,13 +54,24 @@ export default function ContactsPage() {
     }
 
     const filteredDeals = deals.filter(deal => {
-        if (!searchQuery) return true
-        const query = searchQuery.toLowerCase()
-        const userName = deal.user?.name?.toLowerCase() || ""
-        const userPhone = deal.user?.phone?.toLowerCase() || ""
-        const dealTitle = deal.title.toLowerCase()
+        // Search filter
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase()
+            const userName = deal.user?.name?.toLowerCase() || ""
+            const userPhone = deal.user?.phone?.toLowerCase() || ""
+            const dealTitle = deal.title.toLowerCase()
 
-        return userName.includes(query) || userPhone.includes(query) || dealTitle.includes(query)
+            if (!userName.includes(query) && !userPhone.includes(query) && !dealTitle.includes(query)) {
+                return false
+            }
+        }
+
+        // Channel filter
+        if (channelFilter !== "all" && deal.user?.channel !== channelFilter) {
+            return false
+        }
+
+        return true
     })
 
     const formatDate = (dateString: string) => {
@@ -96,10 +109,17 @@ export default function ContactsPage() {
                         </SelectContent>
                     </Select>
 
-                    <Button variant="outline" className="gap-2">
-                        <Filter size={16} />
-                        Más Filtros
-                    </Button>
+                    <Select value={channelFilter} onValueChange={setChannelFilter}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Filtrar por canal" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todos los canales</SelectItem>
+                            <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                            <SelectItem value="instagram">Instagram</SelectItem>
+                            <SelectItem value="messenger">Messenger</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
 
@@ -110,6 +130,7 @@ export default function ContactsPage() {
                         <thead>
                             <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
                                 <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Contacto</th>
+                                <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Canal</th>
                                 <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Etapa</th>
                                 <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Valor</th>
                                 <th className="text-left py-4 px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Probabilidad</th>
@@ -120,13 +141,13 @@ export default function ContactsPage() {
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={6} className="py-12 text-center">
+                                    <td colSpan={7} className="py-12 text-center">
                                         <LoadingSpinner size="lg" />
                                     </td>
                                 </tr>
                             ) : filteredDeals.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="py-12 text-center text-gray-500 dark:text-gray-400">
+                                    <td colSpan={7} className="py-12 text-center text-gray-500 dark:text-gray-400">
                                         No se encontraron contactos
                                     </td>
                                 </tr>
@@ -155,6 +176,12 @@ export default function ContactsPage() {
                                                     </div>
                                                 </div>
                                             </div>
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <ChannelBadge
+                                                channel={deal.user?.channel || 'whatsapp'}
+                                                variant="outline"
+                                            />
                                         </td>
                                         <td className="py-4 px-6">
                                             <span className={cn(

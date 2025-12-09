@@ -7,12 +7,15 @@ import { ConversationList } from "@/components/chat/ConversationList"
 import { ChatView } from "@/components/chat/ChatView"
 import { UserDataPanel } from "@/components/chat/UserDataPanel"
 import { HandoffControls } from "@/components/chat/HandoffControls"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Filter } from "lucide-react"
 
 export default function ChatsPage() {
     const [selectedPhone, setSelectedPhone] = useState<string | null>(null)
     const [selectedUser, setSelectedUser] = useState<User | null>(null)
     const [messages, setMessages] = useState<Message[]>([])
     const [loading, setLoading] = useState(false)
+    const [channelFilter, setChannelFilter] = useState<string>("all")
 
     const loadConversation = async (phone: string) => {
         setLoading(true)
@@ -66,13 +69,32 @@ export default function ChatsPage() {
                 </p>
             </div>
 
-            <div className="grid grid-cols-12 gap-6 h-[calc(100vh-200px)]">
+            {/* Channel Filter */}
+            <div className="mb-4">
+                <div className="flex items-center gap-2">
+                    <Filter size={18} className="text-gray-500" />
+                    <Select value={channelFilter} onValueChange={setChannelFilter}>
+                        <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="Filtrar por canal" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todos los canales</SelectItem>
+                            <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                            <SelectItem value="instagram">Instagram</SelectItem>
+                            <SelectItem value="messenger">Messenger</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-12 gap-6 h-[calc(100vh-260px)]">
                 {/* Left Column: Conversation List */}
                 <div className="col-span-3 border border-gray-300 dark:border-gray-700 rounded overflow-hidden bg-white dark:bg-gray-800">
                     <ConversationList
                         onSelectConversation={handleSelectConversation}
                         selectedPhone={selectedPhone}
                         autoRefresh={true}
+                        channelFilter={channelFilter === "all" ? undefined : channelFilter as "whatsapp" | "instagram" | "messenger"}
                     />
                 </div>
 

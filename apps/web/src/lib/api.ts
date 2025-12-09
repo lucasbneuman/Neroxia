@@ -166,7 +166,10 @@ export const getConversations = async (): Promise<Conversation[]> => {
       last_message_at: item.timestamp,
       sentiment: item.sentiment,
       stage: item.stage,
-      conversation_summary: item.conversation_summary
+      conversation_summary: item.conversation_summary,
+      // Multi-channel support
+      channel: item.channel || 'whatsapp',
+      channel_user_id: item.channel_user_id
     },
     last_message: item.lastMessage || '',
     unread: item.unread || false

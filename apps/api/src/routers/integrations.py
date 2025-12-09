@@ -615,3 +615,28 @@ async def facebook_callback(
         return RedirectResponse(
             url=f"{frontend_url}/dashboard/integrations?status=error&message=unexpected_error"
         )
+
+@router.get("/list")
+async def list_channel_integrations(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    List user's channel integrations (Instagram, Messenger).
+    
+    Returns array of integration objects with status and page info.
+    """
+    user_id = current_user["id"]
+    
+    # Get all channel integrations for this user
+    integrations = await crud.get_channel_integrations_by_user(db, user_id)
+    
+    return [
+        {
+            "channel": integration.channel,
+            "connected": integration.is_active,
+            "page_name": integration.page_name,
+            "page_id": integration.page_id,
+        }
+        for integration in integrations
+    ]

@@ -5,31 +5,79 @@ import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/components/ui/toast';
 import { getHubSpotStatus, getTwilioStatus } from '@/lib/api';
-import { CheckCircle2, XCircle, ExternalLink, Copy, Phone, Users } from 'lucide-react';
+import { CheckCircle2, XCircle, ExternalLink, Copy, Phone, Users, Instagram, Facebook, AlertCircle } from 'lucide-react';
+
+interface ChannelIntegration {
+    channel: 'instagram' | 'messenger';
+    connected: boolean;
+    page_name?: string;
+    page_id?: string;
+}
 
 export default function IntegrationsPage() {
     const { addToast } = useToast();
     const [loading, setLoading] = useState(true);
     const [hubspotConnected, setHubspotConnected] = useState(false);
     const [twilioConnected, setTwilioConnected] = useState(false);
+    const [channelIntegrations, setChannelIntegrations] = useState<ChannelIntegration[]>([]);
 
     useEffect(() => {
         loadStatus();
+        checkOAuthCallback();
     }, []);
 
+    const checkOAuthCallback = () => {
+        const params = new URLSearchParams(window.location.search);
+        const status = params.get('status');
+
+        if (status === 'success') {
+            addToast('¡Cuenta conectada exitosamente!', 'success');
+            window.history.replaceState({}, '', '/dashboard/integrations');
+            loadStatus();
+        } else if (status === 'error') {
+            addToast('Error al conectar la cuenta', 'error');
+            window.history.replaceState({}, '', '/dashboard/integrations');
+        }
+    };
+
     const loadStatus = async () => {
+        setLoading(true);
         try {
-            const [hubspot, twilio] = await Promise.all([
+            const [hubspot, twilio, channels] = await Promise.all([
                 getHubSpotStatus().catch(() => ({ status: 'disconnected' })),
                 getTwilioStatus().catch(() => ({ status: 'disconnected' })),
+                fetch('/api/integrations/list', {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                }).then(res => res.json()).catch(() => [])
             ]);
 
             setHubspotConnected(hubspot.status === 'active');
             setTwilioConnected(twilio.status === 'active');
+            setChannelIntegrations(channels);
         } catch (error) {
             console.error('Error loading integration status:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const connectChannel = async (channel: 'instagram' | 'messenger') => {
+        try {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+            const token = localStorage.getItem('token');
+
+            const response = await fetch(`${API_URL}/integrations/facebook/connect?channel=${channel}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to initiate OAuth');
+            }
+
+            const data = await response.json();
+            window.location.href = data.oauth_url;
+        } catch (error) {
+            addToast('Error al iniciar la conexión', 'error');
         }
     };
 
@@ -60,6 +108,132 @@ export default function IntegrationsPage() {
             </div>
 
             <div className="space-y-6">
+                {/* Instagram Integration */}
+                <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6">
+                    <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center">
+                                <Instagram className="w-6 h-6 text-pink-600" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-black dark:text-white">Instagram Direct</h2>
+                                <p className="text-sm text-gray-600">Recibe y responde a mensajes directos automáticamente</p>
+                            </div>
+                        </div>
+                        {channelIntegrations.find(i => i.channel === 'instagram')?.connected ? (
+                            <div className="flex items-center gap-2 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-semibold">
+                                <CheckCircle2 className="w-4 h-4" />
+                                Conectado
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-semibold">
+                                <XCircle className="w-4 h-4" />
+                                No conectado
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="space-y-4">
+                        <p className="text-gray-700 dark:text-gray-300">
+                            Conecta tu cuenta de Instagram Business para gestionar mensajes directos automáticamente con tu bot de ventas.
+                        </p>
+
+                        {channelIntegrations.find(i => i.channel === 'instagram')?.connected ? (
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-sm text-gray-500">Página conectada:</p>
+                                    <p className="font-medium text-black dark:text-white">
+                                        {channelIntegrations.find(i => i.channel === 'instagram')?.page_name}
+                                    </p>
+                                </div>
+                                <Button variant="outline" className="w-full" disabled>
+                                    Desconectar
+                                </Button>
+                            </div>
+                        ) : (
+                            <Button
+                                onClick={() => connectChannel('instagram')}
+                                className="w-full bg-pink-500 hover:bg-pink-600 text-white"
+                            >
+                                <ExternalLink className="w-4 h-4 mr-2" />
+                                Conectar Instagram
+                            </Button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Messenger Integration */}
+                <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6">
+                    <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <Facebook className="w-6 h-6 text-blue-600" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-black dark:text-white">Facebook Messenger</h2>
+                                <p className="text-sm text-gray-600">Recibe y responde a mensajes de Messenger automáticamente</p>
+                            </div>
+                        </div>
+                        {channelIntegrations.find(i => i.channel === 'messenger')?.connected ? (
+                            <div className="flex items-center gap-2 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-semibold">
+                                <CheckCircle2 className="w-4 h-4" />
+                                Conectado
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-semibold">
+                                <XCircle className="w-4 h-4" />
+                                No conectado
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="space-y-4">
+                        <p className="text-gray-700 dark:text-gray-300">
+                            Conecta tu página de Facebook para responder automáticamente a mensajes de Messenger con tu bot.
+                        </p>
+
+                        {channelIntegrations.find(i => i.channel === 'messenger')?.connected ? (
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-sm text-gray-500">Página conectada:</p>
+                                    <p className="font-medium text-black dark:text-white">
+                                        {channelIntegrations.find(i => i.channel === 'messenger')?.page_name}
+                                    </p>
+                                </div>
+                                <Button variant="outline" className="w-full" disabled>
+                                    Desconectar
+                                </Button>
+                            </div>
+                        ) : (
+                            <Button
+                                onClick={() => connectChannel('messenger')}
+                                className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+                            >
+                                <ExternalLink className="w-4 h-4 mr-2" />
+                                Conectar Messenger
+                            </Button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Setup Instructions */}
+                <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-purple-600 mt-0.5 shrink-0" />
+                        <div>
+                            <h3 className="font-bold text-purple-900 mb-2">Cómo conectar Instagram/Messenger</h3>
+                            <ol className="space-y-2 text-sm text-purple-800">
+                                <li>1. Haz clic en "Conectar Instagram" o "Conectar Messenger"</li>
+                                <li>2. Inicia sesión en Facebook</li>
+                                <li>3. Selecciona la página que deseas conectar</li>
+                                <li>4. Acepta los permisos solicitados</li>
+                                <li>5. Serás redirigido de vuelta aquí</li>
+                                <li>6. ¡Comienza a recibir mensajes automáticamente!</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Twilio Integration */}
                 <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6">
                     <div className="flex items-start justify-between mb-4">

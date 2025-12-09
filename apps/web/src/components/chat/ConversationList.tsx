@@ -4,18 +4,21 @@ import { useEffect, useState } from "react"
 import type { Conversation } from "@/types"
 import { getConversations } from "@/lib/api"
 import { Button } from "@/components/ui/button"
+import { ChannelBadge } from "@/components/ui/channel-badge"
 import { cn } from "@/lib/utils"
 
 interface ConversationListProps {
     onSelectConversation: (phone: string) => void
     selectedPhone: string | null
     autoRefresh?: boolean
+    channelFilter?: "whatsapp" | "instagram" | "messenger"
 }
 
 export function ConversationList({
     onSelectConversation,
     selectedPhone,
-    autoRefresh = true
+    autoRefresh = true,
+    channelFilter
 }: ConversationListProps) {
     const [conversations, setConversations] = useState<Conversation[]>([])
     const [loading, setLoading] = useState(true)
@@ -40,7 +43,7 @@ export function ConversationList({
             const interval = setInterval(fetchConversations, 5000) // Refresh every 5 seconds
             return () => clearInterval(interval)
         }
-    }, [autoRefresh])
+    }, [autoRefresh, channelFilter])
 
     const getModeIndicator = (mode: string) => {
         switch (mode) {
@@ -87,10 +90,17 @@ export function ConversationList({
         )
     }
 
-    if (conversations.length === 0) {
+    // Apply channel filter
+    const filteredConversations = channelFilter
+        ? conversations.filter(conv => conv.user?.channel === channelFilter)
+        : conversations
+
+    if (filteredConversations.length === 0) {
         return (
             <div className="p-4 text-center text-gray-400">
-                No hay conversaciones activas
+                {channelFilter
+                    ? `No hay conversaciones en ${channelFilter}`
+                    : "No hay conversaciones activas"}
             </div>
         )
     }
@@ -104,7 +114,7 @@ export function ConversationList({
                 </Button>
             </div>
 
-            {conversations.map((conversation) => {
+            {filteredConversations.map((conversation) => {
                 // Skip conversations without user data (Bug #2 fix)
                 if (!conversation.user) {
                     console.warn('Conversation missing user data:', conversation)
@@ -129,10 +139,19 @@ export function ConversationList({
                         )}
                     >
                         <div className="flex justify-between items-start mb-1">
-                            <span className="text-sm text-black dark:text-white">
-                                {getModeIndicator(conversation.user?.conversation_mode || 'AUTO')} {displayName}
-                            </span>
-                            <span className="text-xs text-gray-500">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <span className="text-sm text-black dark:text-white">
+                                    {getModeIndicator(conversation.user?.conversation_mode || 'AUTO')}
+                                </span>
+                                <span className="text-sm text-black dark:text-white truncate">
+                                    {displayName}
+                                </span>
+                                <ChannelBadge
+                                    channel={conversation.user?.channel || 'whatsapp'}
+                                    variant="outline"
+                                />
+                            </div>
+                            <span className="text-xs text-gray-500 ml-2 shrink-0">
                                 {formatTimestamp(conversation.user?.last_message_at)}
                             </span>
                         </div>
