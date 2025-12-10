@@ -8,6 +8,11 @@
 
 ## Recent Tasks
 
+### [2025-12-09 20:45] - Main Agent
+**Task:** Workspace cleanup and database validation
+**Changes:** `.claude/scripts/` (removed 3 temp scripts), `.claude/DATABASE_VALIDATION_REPORT.md` (removed), `apps/web/next.config.ts`, `apps/web/package.json`, `.claude/settings.local.json`
+**Status:** ✅ Complete - Verified migration 006 fully applied (all indexes/columns exist), cleaned temp files, committed dev config updates
+
 ### [2025-12-09 04:00] - QA Lead
 **Task:** Completed Phase 9 - Test Suite Creation & Infrastructure Fix
 **Changes:** `apps/api/tests/integration/test_instagram_flow.py` (7 tests), `apps/api/tests/integration/test_messenger_flow.py` (6 tests), `apps/api/pytest.ini` (asyncio marker), `.claude/QA_REPORT_INSTAGRAM_FACEBOOK.md` (Phase 9 updates)
