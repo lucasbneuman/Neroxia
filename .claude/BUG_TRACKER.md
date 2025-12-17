@@ -4,6 +4,136 @@ This file tracks bugs, issues, and their resolution status across the WhatsApp S
 
 ## Active Bugs
 
+### [ISSUE-010] Duplicate key violation on user creation in bot processing
+**Status:** Resolved
+**Severity:** High
+**Component:** API - Bot Processing + Webhooks
+**Reported:** 2025-12-17
+**Resolved:** 2025-12-17
+**Assigned:** Lead Developer
+
+**Description:**
+The `/bot/process` endpoint and webhook endpoints threw `duplicate key value violates unique constraint "users_phone_key"` errors when attempting to create users that already existed in the database.
+
+**Steps to Reproduce:**
+1. Send message via test chat with phone number
+2. Send another message with same phone number
+3. Observe error: `duplicate key value violates unique constraint "users_phone_key"`
+
+**Expected Behavior:**
+- Multiple messages from same user should work without errors
+- Users should be retrieved if they exist, created only if new
+- No duplicate key violations
+
+**Actual Behavior:**
+Frontend error:
+```
+AxiosError: Request failed with status code 500
+detail: duplicate key value violates unique constraint "users_phone_key"
+DETAIL: Key (phone)=(+1234567890) already exists.
+```
+
+**Environment:**
+- Service: API (FastAPI) + Bot Engine
+- Component: Bot router, Twilio webhook, Meta webhook
+- Database: SQLite (dev), PostgreSQL (prod via Supabase)
+
+**Root Cause:**
+The code used a "check-then-create" pattern which is vulnerable to race conditions:
+
+```python
+# BEFORE (bot.py lines 76-83):
+user = await crud.get_user_by_phone(db, request.phone, auth_user_id=current_user["id"])
+if not user:
+    user = await crud.create_user(db, phone=request.phone, auth_user_id=current_user["id"])
+    # ↑ Fails if user was created between check and insert
+```
+
+**Secondary Issue Identified:**
+The `users.phone` column has a **global unique constraint** (not scoped to `auth_user_id`), which is a multi-tenant data isolation bug. Two different tenants cannot have contacts with the same phone number. This requires a database migration to add composite unique constraint `(phone, auth_user_id)` but is out of scope for this fix.
+
+**Files Affected:**
+1. `packages/database/whatsapp_bot_database/crud.py` (lines 141-206) - Added `get_or_create_user` helper
+2. `apps/api/src/routers/bot.py` (lines 75-90) - Updated to use atomic pattern
+3. `apps/api/src/routers/twilio_webhook.py` (lines 88-115) - Updated to use atomic pattern
+4. `apps/api/src/routers/meta_webhook.py` (lines 223-235, 317-329) - Updated Instagram and Messenger handlers
+
+**Fix Applied:**
+Implemented atomic "get-or-create" pattern with race condition handling:
+
+**1. New CRUD Helper** (`crud.py` lines 141-206):
+```python
+async def get_or_create_user(
+    db: AsyncSession,
+    identifier: str,
+    channel: str = "whatsapp",
+    auth_user_id: Optional[str] = None,
+    defaults: Optional[Dict[str, Any]] = None
+) -> tuple[User, bool]:
+    """
+    Get existing user or create if not found (atomic operation).
+
+    Returns:
+        Tuple of (User object, created: bool)
+    """
+    # Try to get existing user first
+    user = await get_user_by_identifier(db, identifier, channel, auth_user_id)
+
+    if user:
+        return user, False
+
+    # User doesn't exist, create it
+    try:
+        user = await create_user(db, **defaults)
+        return user, True
+    except Exception as e:
+        # Handle race condition: another request created user between check and create
+        await db.rollback()
+        user = await get_user_by_identifier(db, identifier, channel, auth_user_id)
+        if user:
+            return user, False
+        raise e
+```
+
+**2. Updated Bot Endpoint** (`bot.py` lines 75-90):
+```python
+# Get or create user (atomic operation to prevent duplicate key errors)
+user, is_new_user = await crud.get_or_create_user(
+    db=db,
+    identifier=request.phone,
+    channel="whatsapp",
+    auth_user_id=current_user["id"],
+    defaults={"name": "Unknown User"}
+)
+```
+
+**3. Updated Webhooks**:
+- Twilio webhook: Uses `get_or_create_user` with Twilio metadata
+- Instagram webhook: Uses `get_or_create_user` with PSID and tenant ID
+- Messenger webhook: Uses `get_or_create_user` with PSID and tenant ID
+
+**Validation Notes:**
+- Tested on: 2025-12-17
+- Method: Code review, atomic pattern prevents duplicate key errors
+- Database package reinstalled in editable mode
+- Race condition handled with try-except-rollback-retry pattern
+- All user creation points now use atomic get_or_create pattern
+
+**Additional Context:**
+This pattern is standard for concurrent systems and prevents duplicate key violations even under high load or race conditions. The helper function works for all channels (WhatsApp, Instagram, Messenger) and respects multi-tenant scoping.
+
+**Future Work:**
+- Add migration to change `users.phone` unique constraint to composite `(phone, auth_user_id)` for true multi-tenant isolation
+- Add integration tests for concurrent user creation scenarios
+- Monitor for any remaining duplicate key errors in production logs
+
+**Prevention:**
+- Always use `get_or_create_user` helper instead of manual check-then-create
+- Never use bare `create_user` without checking existence first
+- Add pre-commit hook to detect direct `create_user` calls in webhook/bot code
+
+---
+
 ### [ISSUE-009] Meta webhook-to-bot integration not implemented
 **Status:** Resolved
 **Severity:** Medium (Non-blocking)

@@ -72,15 +72,22 @@ async def process_bot_message(
     try:
         logger.info(f"Processing message from {request.phone}")
 
-        # Get or create user
-        user = await crud.get_user_by_phone(db, request.phone, auth_user_id=current_user["id"])
-        is_new_user = False
+        # Get or create user (atomic operation to prevent duplicate key errors)
+        user, is_new_user = await crud.get_or_create_user(
+            db=db,
+            identifier=request.phone,
+            channel="whatsapp",
+            auth_user_id=current_user["id"],
+            defaults={
+                "name": "Unknown User",
+            }
+        )
         is_test_conversation = bool(request.history)  # Test chat provides history
-        
-        if not user:
-            user = await crud.create_user(db, phone=request.phone, auth_user_id=current_user["id"])
-            is_new_user = True
+
+        if is_new_user:
             logger.info(f"Created new user: {request.phone} for tenant {current_user['id']}")
+        else:
+            logger.info(f"Found existing user: {request.phone} (id={user.id})")
         
         # Create deal if needed (for new users OR test conversations without a deal)
         should_create_deal = False

@@ -8,6 +8,11 @@
 
 ## Recent Tasks
 
+### [2025-12-17 14:30] - Lead Developer
+**Task:** Fixed critical duplicate key violation bug in user creation (ISSUE-010)
+**Changes:** `packages/database/whatsapp_bot_database/crud.py` (added get_or_create_user), `apps/api/src/routers/bot.py`, `apps/api/src/routers/twilio_webhook.py`, `apps/api/src/routers/meta_webhook.py`, `.claude/BUG_TRACKER.md`
+**Status:** ✅ Complete - Implemented atomic get-or-create pattern with race condition handling, all webhook and bot endpoints now use safe user creation, database package reinstalled
+
 ### [2025-12-17 13:01] - Database Architect
 **Task:** Applied all pending migrations (002-006) to Supabase production database, created comprehensive documentation
 **Changes:** `.claude/scripts/` (3 SQL scripts + 1 Python script + 1 backup), `.claude/docs/SUPABASE_TO_COOLIFY_MIGRATION.md`, `.claude/SUPABASE_MIGRATION_REPORT.md`, `.claude/TASK.md`

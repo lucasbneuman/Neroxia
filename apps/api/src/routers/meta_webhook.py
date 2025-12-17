@@ -220,21 +220,18 @@ async def _process_instagram_message(event: Dict[str, Any], db: AsyncSession):
         logger.warning(f"No integration found for Instagram page: {recipient_page_id}")
         return
 
-    # Get or create user
-    user = await crud.get_user_by_identifier(
-        db, identifier=sender_psid, channel="instagram"
+    # Get or create user (atomic operation)
+    user, created = await crud.get_or_create_user(
+        db=db,
+        identifier=sender_psid,
+        channel="instagram",
+        auth_user_id=integration.auth_user_id,
+        defaults={
+            "name": sender_psid,  # Use PSID as placeholder name
+        }
     )
 
-    if not user:
-        # Create new Instagram user
-        user = await crud.create_user(
-            db,
-            phone=None,  # Instagram users don't have phone initially
-            name=sender_psid,  # Use PSID as placeholder name
-            channel="instagram",
-            channel_user_id=sender_psid,
-            auth_user_id=integration.auth_user_id
-        )
+    if created:
         logger.info(f"Created new Instagram user: {user.id}")
 
     # Save incoming message
@@ -317,21 +314,18 @@ async def _process_messenger_message(event: Dict[str, Any], db: AsyncSession):
         logger.warning(f"No integration found for Messenger page: {recipient_page_id}")
         return
 
-    # Get or create user
-    user = await crud.get_user_by_identifier(
-        db, identifier=sender_psid, channel="messenger"
+    # Get or create user (atomic operation)
+    user, created = await crud.get_or_create_user(
+        db=db,
+        identifier=sender_psid,
+        channel="messenger",
+        auth_user_id=integration.auth_user_id,
+        defaults={
+            "name": sender_psid,  # Use PSID as placeholder name
+        }
     )
 
-    if not user:
-        # Create new Messenger user
-        user = await crud.create_user(
-            db,
-            phone=None,  # Messenger users don't have phone initially
-            name=sender_psid,  # Use PSID as placeholder name
-            channel="messenger",
-            channel_user_id=sender_psid,
-            auth_user_id=integration.auth_user_id
-        )
+    if created:
         logger.info(f"Created new Messenger user: {user.id}")
 
     # Save incoming message

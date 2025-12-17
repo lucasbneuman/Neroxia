@@ -84,21 +84,22 @@ async def twilio_webhook(
         
         # Check if location was shared
         location_shared = bool(Latitude and Longitude)
-        
-        # Get or create user with Twilio data
-        user = await crud.get_user_by_phone(db, phone)
-        
-        if not user:
-            # Create new user with Twilio data
-            logger.info(f"Creating new user from Twilio webhook: {phone}")
-            user = await crud.create_user(
-                db=db,
-                phone=phone,
-                whatsapp_profile_name=ProfileName,
-                country_code=country_code,
-                phone_formatted=phone,
-                first_contact_timestamp=datetime.utcnow(),
-            )
+
+        # Get or create user with Twilio data (atomic operation)
+        user, created = await crud.get_or_create_user(
+            db=db,
+            identifier=phone,
+            channel="whatsapp",
+            auth_user_id=None,  # Twilio webhooks are not tenant-scoped
+            defaults={
+                "whatsapp_profile_name": ProfileName,
+                "country_code": country_code,
+                "phone_formatted": phone,
+                "first_contact_timestamp": datetime.utcnow(),
+            }
+        )
+
+        if created:
             logger.info(f"✅ Created user with WhatsApp profile name: {ProfileName}")
         else:
             # Update existing user with Twilio data

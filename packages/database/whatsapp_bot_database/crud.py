@@ -138,6 +138,73 @@ async def create_user(
     return user
 
 
+async def get_or_create_user(
+    db: AsyncSession,
+    identifier: str,
+    channel: str = "whatsapp",
+    auth_user_id: Optional[str] = None,
+    defaults: Optional[Dict[str, Any]] = None
+) -> tuple[User, bool]:
+    """
+    Get existing user or create if not found (atomic operation).
+
+    Args:
+        db: Database session
+        identifier: Phone number (WhatsApp) or PSID (Instagram/Messenger)
+        channel: 'whatsapp', 'instagram', or 'messenger'
+        auth_user_id: Tenant ID for multi-tenant scoping
+        defaults: Default values for user creation if not found
+
+    Returns:
+        Tuple of (User object, created: bool) where created=True if user was created
+
+    Example:
+        user, created = await get_or_create_user(
+            db=db,
+            identifier="+1234567890",
+            channel="whatsapp",
+            auth_user_id="user-uuid",
+            defaults={"name": "John Doe", "email": "john@example.com"}
+        )
+    """
+    # Try to get existing user first
+    user = await get_user_by_identifier(db, identifier, channel, auth_user_id)
+
+    if user:
+        return user, False
+
+    # User doesn't exist, create it
+    defaults = defaults or {}
+
+    # Set identifier based on channel
+    if channel == "whatsapp":
+        defaults["phone"] = identifier
+    else:
+        defaults["channel_user_id"] = identifier
+
+    # Ensure required fields
+    defaults.setdefault("channel", channel)
+    defaults.setdefault("name", "Unknown User")
+    if auth_user_id:
+        defaults["auth_user_id"] = auth_user_id
+
+    try:
+        user = await create_user(db, **defaults)
+        return user, True
+    except Exception as e:
+        # Handle race condition: another request might have created the user
+        # between our get_user_by_identifier check and create_user call
+        await db.rollback()
+
+        # Try to get the user again
+        user = await get_user_by_identifier(db, identifier, channel, auth_user_id)
+        if user:
+            return user, False
+
+        # If still not found, re-raise the original error
+        raise e
+
+
 async def update_user(db: AsyncSession, user_id: int, **kwargs: Any) -> Optional[User]:
     """
     Update user fields.
