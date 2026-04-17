@@ -191,4 +191,4 @@ coolify exec postgres pg_dump -U postgres whatsapp_bot > backup_$(date +%Y%m%d).
 For issues or questions:
 - Check logs first: `coolify logs <service>`
 - Review health checks
-- Consult main documentation in `ARCHITECTURE.md`
+- Consult canonical architecture docs in `../01-architecture/sad.md` and `../01-architecture/sdd.md`

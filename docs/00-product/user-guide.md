@@ -444,9 +444,9 @@ El sidebar del dashboard está organizado en dos secciones:
 ## 🆘 Soporte
 
 ### Documentación Técnica
-- **ARCHITECTURE.md**: Arquitectura del sistema
-- **API_DOCUMENTATION.md**: Referencia completa de endpoints
-- **CLAUDE.md**: Guía para desarrollo
+- **`../01-architecture/sad.md`**: Arquitectura canónica del sistema
+- **`../08-developers/api-reference.md`**: Referencia completa de endpoints
+- **`../08-developers/README.md`**: Guía de onboarding técnico
 
 ### Enlaces Útiles
 - **Twilio Docs**: https://www.twilio.com/docs/whatsapp/quickstart

@@ -91,7 +91,7 @@ psql "postgresql://..." -c "\COPY messages TO 'messages_backup.csv' CSV HEADER"
 ```bash
 # Option 1: Use consolidated migration script (recommended)
 psql "postgresql://salesbot_app:PASSWORD@coolify-postgres-host:5432/sales_bot_production" \
-  -f .claude/scripts/apply_supabase_migrations.sql
+  -f <one-time migration SQL script>
 
 # Option 2: Restore from dump (includes data)
 pg_restore --dbname="postgresql://salesbot_app:PASSWORD@coolify-postgres-host:5432/sales_bot_production" \
@@ -103,7 +103,7 @@ pg_restore --dbname="postgresql://salesbot_app:PASSWORD@coolify-postgres-host:54
 ```bash
 # Run verification script
 psql "postgresql://salesbot_app:PASSWORD@coolify-postgres-host:5432/sales_bot_production" \
-  -f .claude/scripts/verify_supabase_schema.sql
+  -f <one-time verification SQL script>
 ```
 
 ### Phase 3: Data Migration
@@ -245,7 +245,7 @@ async def health_check_db():
 #### 6.2 Post-Migration Validation
 ```bash
 # Run comprehensive verification
-psql "postgresql://..." -f .claude/scripts/verify_supabase_schema.sql
+psql "postgresql://..." -f <one-time verification SQL script>
 
 # Check row counts match
 psql "postgresql://..." -c "SELECT 'users' AS table, COUNT(*) FROM users UNION ALL SELECT 'messages', COUNT(*) FROM messages;"
@@ -418,11 +418,11 @@ gpg --decrypt backup_encrypted.gpg | pg_restore --dbname="postgresql://..."
 
 ## References
 
-- **Migration Script:** `.claude/scripts/apply_supabase_migrations.sql`
-- **Verification Script:** `.claude/scripts/verify_supabase_schema.sql`
-- **Backup Location:** `.claude/scripts/backups/`
+- **Migration Script:** create an explicit one-time SQL script for the cutover window
+- **Verification Script:** create an explicit one-time verification SQL script for the cutover window
+- **Backup Location:** keep external backups outside the active repository
 - **Database Models:** `packages/database/whatsapp_bot_database/models.py`
-- **Coolify Deployment:** `DEPLOYMENT_COOLIFY.md`
+- **Coolify Deployment:** `deployment-coolify.md`
 
 ---
 

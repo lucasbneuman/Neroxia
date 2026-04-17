@@ -942,7 +942,7 @@ docker-compose up --build
 - **README.md** - Quick start guide
 - **MIGRATION_PLAN.md** - Detailed migration steps
 - **WORK_LOG.md** - Agent coordination log
-- **HUBSPOT_SETUP.md** - HubSpot integration guide
+- **docs/08-developers/hubspot-setup.md** - HubSpot integration guide
 - **API Docs** - http://localhost:8000/docs (when running)
 
 ---
@@ -951,7 +951,7 @@ docker-compose up --build
 
 **BEFORE STARTING ANY WORK**:
 
-1. ✅ Read this ARCHITECTURE.md to understand decisions
+1. ✅ Read `sad.md` and `sdd.md` first to understand current decisions
 2. ✅ Read WORK_LOG.md to see what others are doing
 3. ✅ Update WORK_LOG.md with your task
 4. ✅ When done, update WORK_LOG.md with completion status

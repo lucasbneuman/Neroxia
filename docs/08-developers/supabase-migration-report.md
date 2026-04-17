@@ -141,17 +141,17 @@ Result: ✅ No schema errors
 ## Files Created
 
 ### Migration Scripts
-1. **`.claude/scripts/apply_supabase_migrations.sql`** (473 lines)
+1. **One-time migration SQL script** (removed after use during repository cleanup)
    - Consolidated idempotent migration script
    - Safe to run multiple times (uses IF NOT EXISTS)
    - Includes all migrations 002-006 + additional columns
 
-2. **`.claude/scripts/verify_supabase_schema.sql`** (246 lines)
+2. **One-time schema verification SQL script** (removed after use during repository cleanup)
    - 13 verification queries
    - Checks tables, columns, indexes, constraints
    - Reports expected vs actual schema
 
-3. **`.claude/scripts/apply_migrations.py`** (283 lines)
+3. **One-time Python migration runner** (removed after use during repository cleanup)
    - Python migration application script
    - Automatic schema backup before migration
    - Transaction support with rollback
@@ -159,13 +159,13 @@ Result: ✅ No schema errors
    - Error handling and reporting
 
 ### Backups
-4. **`.claude/scripts/backups/schema_backup_20251217_125752.sql`**
+4. **Schema backup generated during migration** (not retained in the cleaned repository)
    - Pre-migration schema backup
    - Captured current state before changes
    - Can be used for rollback if needed
 
 ### Documentation
-5. **`.claude/docs/SUPABASE_TO_COOLIFY_MIGRATION.md`** (500+ lines)
+5. **`supabase-to-coolify-migration.md`** (migration planning reference)
    - Comprehensive migration guide for future Coolify deployment
    - Step-by-step migration strategy
    - Authentication options (keep Supabase Auth vs self-host)
@@ -297,7 +297,7 @@ ORDER BY idx_scan ASC;
 
 2. **Review backup**
    ```bash
-   cat .claude/scripts/backups/schema_backup_20251217_125752.sql
+review the generated schema backup captured during the migration window
    ```
 
 3. **Restore schema (if needed)**
@@ -312,7 +312,7 @@ ORDER BY idx_scan ASC;
 
 4. **Verify rollback**
    ```bash
-   psql "postgresql://..." -f .claude/scripts/verify_supabase_schema.sql
+run an equivalent schema verification query against the target database
    ```
 
 5. **Restart API**
@@ -382,7 +382,7 @@ ORDER BY idx_scan ASC;
 
 ### Backup Security
 - ✅ Schema backup created before changes
-- ✅ Backup stored in `.claude/scripts/backups/` (gitignored)
+- ✅ Backup was generated during the migration, but one-time artifacts were removed during repository cleanup
 - ✅ 30-day retention recommended
 - ⚠️ Consider encrypting backups for long-term storage
 
