@@ -106,6 +106,7 @@ async def upload_documents(
         return {
             "status": "success",
             "uploaded": len(uploaded_files),
+            "filename": uploaded_files[0] if len(uploaded_files) == 1 else None,
             "files": uploaded_files,
             "total_chunks": total_chunks,
             "message": f"Successfully uploaded {len(uploaded_files)} file(s) with {total_chunks} total chunks"

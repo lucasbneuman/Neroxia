@@ -1,20 +1,23 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Users, DollarSign, TrendingUp, Activity, AlertCircle } from "lucide-react"
 import { MetricCard } from "@/components/crm/MetricCard"
 import { getCrmMetrics } from "@/lib/api"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 
+interface CrmMetrics {
+    total_active_deals: number
+    conversion_rate: number
+    total_revenue: number
+    total_won_deals: number
+}
+
 export default function CrmDashboardPage() {
-    const [metrics, setMetrics] = useState<any>(null)
+    const [metrics, setMetrics] = useState<CrmMetrics | null>(null)
     const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-        loadMetrics()
-    }, [])
-
-    const loadMetrics = async () => {
+    const loadMetrics = useCallback(async () => {
         try {
             const data = await getCrmMetrics()
             setMetrics(data)
@@ -23,7 +26,11 @@ export default function CrmDashboardPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [])
+
+    useEffect(() => {
+        void loadMetrics()
+    }, [loadMetrics])
 
     if (loading) {
         return (

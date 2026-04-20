@@ -1,194 +1,218 @@
 # Deployment Guide - Coolify
 
-This guide covers deploying the WhatsApp Sales Bot to Coolify (self-hosted PaaS).
+Esta app debe desplegarse en Coolify como proyecto `Docker Compose`, usando:
 
-## Prerequisites
+- `.coolify/config.json`
+- `docker-compose.prod.yml`
 
-- Coolify instance running (v4.x+)
-- Domain names configured:
-  - `api.yourdomain.com` → API service
-  - `app.yourdomain.com` → Frontend
-- Git repository accessible to Coolify
-- Required API keys (OpenAI, Twilio, HubSpot, Facebook)
+## Resumen
 
-## Deployment Steps
+- Tipo de proyecto en Coolify: `Docker Compose`
+- Archivo de despliegue: `docker-compose.prod.yml`
+- Healthcheck API: `/health`
+- Healthcheck Web: `/api/health`
+- Servicios esperados:
+  - `postgres`
+  - `api`
+  - `web`
 
-### 1. Create New Project in Coolify
+## Variables mínimas de producción
 
-1. Log in to Coolify dashboard
-2. Click "New Project"
-3. Select "Docker Compose"
-4. Connect Git repository
-5. Set branch to `main` (or your production branch)
+### Base de datos
 
-### 2. Configure Environment Variables
+Usa una de estas estrategias:
 
-In Coolify project settings, add all variables from `.env.prod.example`:
+1. `DATABASE_URL`
+   Valor recomendado si el API usará la base incluida en `docker-compose.prod.yml`.
+   Debe ser async-compatible para SQLAlchemy:
+   `postgresql+asyncpg://USER:PASSWORD@HOST:5432/DBNAME`
 
-**Critical Variables:**
-- `DATABASE_URL` - Auto-configured by Coolify PostgreSQL service
-- `JWT_SECRET` - Generate with: `openssl rand -base64 32`
-- `OPENAI_API_KEY` - From OpenAI platform
-- `SUPABASE_*` - From Supabase project settings
-- `FACEBOOK_*` - From Meta Developers Console
+2. `SUPABASE_DATABASE_URL`
+   Úsala si prefieres una base externa de Supabase.
+   Si viene en formato `postgresql://` o `postgres://`, el backend ahora la normaliza a `postgresql+asyncpg://`.
 
-### 3. Configure Domains
+### Backend/API
 
-**API Service:**
-- Domain: `api.yourdomain.com`
-- Port: 8000
-- Health check: `/health`
+- `JWT_SECRET`
+- `ALLOWED_ORIGINS`
+- `FRONTEND_URL`
+- `OPENAI_API_KEY`
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_KEY`
 
-**Web Service:**
-- Domain: `app.yourdomain.com`
-- Port: 3000
-- Health check: `/api/health`
+### Frontend/Web
 
-### 4. Database Setup
+- `NEXT_PUBLIC_API_URL`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-Coolify will auto-provision PostgreSQL. After first deployment:
+### Meta / Instagram / Messenger
+
+- `FACEBOOK_APP_ID`
+- `FACEBOOK_APP_SECRET`
+- `FACEBOOK_VERIFY_TOKEN`
+- `FACEBOOK_OAUTH_REDIRECT_URI`
+
+### Integraciones opcionales
+
+Define estas sólo si vas a activarlas en el primer deploy:
+
+- `TWILIO_ACCOUNT_SID`
+- `TWILIO_AUTH_TOKEN`
+- `TWILIO_WHATSAPP_NUMBER`
+- `HUBSPOT_ACCESS_TOKEN`
+
+## Configuración recomendada en Coolify
+
+### 1. Crear el proyecto
+
+1. En Coolify, crea un proyecto nuevo.
+2. Elige `Docker Compose`.
+3. Conecta este repositorio.
+4. Usa `docker-compose.prod.yml` como archivo de despliegue.
+
+### 2. Dominios
+
+Los dominios deben coincidir con `.coolify/config.json`:
+
+- API: `api.yourdomain.com`
+- Web: `app.yourdomain.com`
+
+Ejemplo de valores:
+
+- `FRONTEND_URL=https://app.yourdomain.com`
+- `NEXT_PUBLIC_API_URL=https://api.yourdomain.com`
+- `ALLOWED_ORIGINS=https://app.yourdomain.com,https://www.app.yourdomain.com`
+- `FACEBOOK_OAUTH_REDIRECT_URI=https://api.yourdomain.com/integrations/facebook/callback`
+
+### 3. PostgreSQL
+
+Puedes usar:
+
+- la base `postgres` del mismo `docker-compose.prod.yml`, o
+- una base externa tipo Supabase
+
+Si usas la base interna del compose, define:
+
+- `DB_NAME`
+- `DB_USER`
+- `DB_PASSWORD`
+
+Y el servicio `api` construirá:
+
+- `DATABASE_URL=postgresql+asyncpg://DB_USER:DB_PASSWORD@postgres:5432/DB_NAME`
+
+Si usas Supabase externa, deja igualmente definidos `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY` y agrega `SUPABASE_DATABASE_URL`.
+
+## Migraciones reales del repo
+
+Las migraciones actuales en `packages/database/migrations` son:
+
+- `002_create_crm_tables.sql`
+- `003_add_deal_manual_flag.sql`
+- `004_add_subscription_tables.sql`
+- `005_enable_row_level_security.sql`
+- `006_add_messaging_channels.sql`
+
+No hay que usar nombres anteriores o inexistentes.
+
+Ejemplo con `psql`:
 
 ```bash
-# Access API container
-coolify exec api bash
-
-# Run migrations
-cd packages/database/migrations
-# Execute SQL files in order: 001, 002, 003, 004, 005, 006
+psql "$DATABASE_URL" -f packages/database/migrations/002_create_crm_tables.sql
+psql "$DATABASE_URL" -f packages/database/migrations/003_add_deal_manual_flag.sql
+psql "$DATABASE_URL" -f packages/database/migrations/004_add_subscription_tables.sql
+psql "$DATABASE_URL" -f packages/database/migrations/005_enable_row_level_security.sql
+psql "$DATABASE_URL" -f packages/database/migrations/006_add_messaging_channels.sql
 ```
 
-Or use psql directly:
-```bash
-psql $DATABASE_URL -f packages/database/migrations/001_initial_schema.sql
-psql $DATABASE_URL -f packages/database/migrations/002_add_crm_features.sql
-psql $DATABASE_URL -f packages/database/migrations/003_add_subscription_models.sql
-psql $DATABASE_URL -f packages/database/migrations/004_add_multi_tenant_support.sql
-psql $DATABASE_URL -f packages/database/migrations/005_add_messaging_channels.sql
-psql $DATABASE_URL -f packages/database/migrations/006_add_messaging_channels.sql
+Si `DATABASE_URL` usa `postgresql+asyncpg://`, para `psql` conviene convertirla a un DSN postgres estándar o usar los parámetros separados de conexión.
+
+## Comandos oficiales de terminal
+
+### Backend local
+
+```powershell
+cd C:\Users\AVALITH\Desktop\Proyectos\whatsapp_sales_bot\apps\api
+python -m uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 5. Configure Meta Webhooks
+### Frontend local
 
-After deployment, configure Facebook webhooks:
-
-1. Go to Meta Developers Console
-2. Select your app
-3. Configure webhooks:
-   - **Instagram**: `https://api.yourdomain.com/webhook/instagram`
-   - **Messenger**: `https://api.yourdomain.com/webhook/messenger`
-4. Set verify token: Value from `FACEBOOK_VERIFY_TOKEN`
-5. Subscribe to events:
-   - `messages`
-   - `messaging_postbacks`
-   - `messaging_optins`
-
-### 6. Test Deployment
-
-**Health Checks:**
-```bash
-curl https://api.yourdomain.com/health
-curl https://app.yourdomain.com/api/health
+```powershell
+cd C:\Users\AVALITH\Desktop\Proyectos\whatsapp_sales_bot\apps\web
+npm run dev
 ```
 
-**API Documentation:**
-- Swagger: `https://api.yourdomain.com/docs`
-- ReDoc: `https://api.yourdomain.com/redoc`
+### Tests backend API
 
-**Frontend:**
-- Open `https://app.yourdomain.com`
-- Sign up / Log in
-- Navigate to Integrations
-- Connect Facebook/Instagram
-
-## Monitoring
-
-**Logs:**
-```bash
-# API logs
-coolify logs api
-
-# Frontend logs
-coolify logs web
-
-# Database logs
-coolify logs postgres
+```powershell
+cd C:\Users\AVALITH\Desktop\Proyectos\whatsapp_sales_bot\apps\api
+pytest
 ```
 
-**Health Endpoints:**
-- API: `GET /health` → Returns 200 OK with status JSON
-- Web: `GET /api/health` → Returns 200 OK
+### Tests bot-engine
 
-## Scaling
-
-**Horizontal Scaling:**
-```yaml
-# In docker-compose.prod.yml
-services:
-  api:
-    deploy:
-      replicas: 3  # Run 3 API instances
+```powershell
+cd C:\Users\AVALITH\Desktop\Proyectos\whatsapp_sales_bot\apps\bot-engine
+pytest
 ```
 
-**Resource Limits:**
-```yaml
-services:
-  api:
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '1'
-          memory: 1G
+### Checks frontend
+
+```powershell
+cd C:\Users\AVALITH\Desktop\Proyectos\whatsapp_sales_bot\apps\web
+npm run lint
+npm run build
 ```
 
-## Troubleshooting
+### Validación de deploy local
 
-**503 Service Unavailable:**
-- Check health checks are passing
-- Verify environment variables set correctly
-- Check logs for startup errors
-
-**Database Connection Errors:**
-- Verify `DATABASE_URL` format
-- Ensure PostgreSQL service is healthy
-- Check network connectivity between services
-
-**Meta Webhooks Not Working:**
-- Verify webhook URLs are correct
-- Check `FACEBOOK_VERIFY_TOKEN` matches Meta settings
-- Ensure SSL certificate is valid
-- Check API logs for webhook errors
-
-## Backup Strategy
-
-**Database Backups:**
-```bash
-# Automated daily backups (Coolify handles this)
-# Manual backup:
-coolify exec postgres pg_dump -U postgres whatsapp_bot > backup_$(date +%Y%m%d).sql
+```powershell
+cd C:\Users\AVALITH\Desktop\Proyectos\whatsapp_sales_bot
+docker compose -f docker-compose.prod.yml config
+docker compose -f docker-compose.prod.yml build
 ```
 
-**Volume Backups:**
-- `api_uploads` - RAG documents
-- `api_chroma` - Vector embeddings
-- `api_avatars` - User avatars
+## Validación previa a subir
 
-## Security Checklist
+Checklist mínima:
 
-- [ ] All environment variables use strong secrets
-- [ ] JWT_SECRET is randomly generated
-- [ ] Database password is strong
-- [ ] SSL/TLS enabled for all domains
-- [ ] Meta webhook signatures verified
-- [ ] Rate limiting enabled
-- [ ] CORS configured correctly
-- [ ] Supabase RLS policies active
+- `apps/api/tests` en verde
+- `apps/bot-engine` en verde
+- `apps/web` lint en verde
+- `apps/web` build en verde
+- `docker compose -f docker-compose.prod.yml config` válido
+- variables de Coolify completas
+- dominios de API/Web correctos
 
-## Support
+## Webhooks de Meta
 
-For issues or questions:
-- Check logs first: `coolify logs <service>`
-- Review health checks
-- Consult main documentation in `ARCHITECTURE.md`
+Después del deploy:
+
+- Instagram: `https://api.yourdomain.com/webhook/instagram`
+- Messenger: `https://api.yourdomain.com/webhook/messenger`
+
+Usa `FACEBOOK_VERIFY_TOKEN` como verify token y confirma que `FACEBOOK_APP_SECRET` quede cargado para la verificación de firma.
+
+## Troubleshooting rápido
+
+### API no levanta
+
+- revisa `DATABASE_URL` o `SUPABASE_DATABASE_URL`
+- revisa `JWT_SECRET`
+- revisa `SUPABASE_*`
+
+### Frontend no conecta con el backend
+
+- revisa `NEXT_PUBLIC_API_URL`
+- revisa `ALLOWED_ORIGINS`
+- revisa `FRONTEND_URL`
+
+### OAuth de Meta falla
+
+- revisa `FACEBOOK_APP_ID`
+- revisa `FACEBOOK_APP_SECRET`
+- revisa `FACEBOOK_OAUTH_REDIRECT_URI`
+- revisa que el redirect URI en Meta coincida exactamente con el configurado

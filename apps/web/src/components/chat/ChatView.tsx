@@ -101,7 +101,7 @@ export function ChatView({ phone, messages, conversationMode, onMessageSent }: C
                                             isBot ? "text-gray-500" : "text-blue-100"
                                         )}
                                     >
-                                        <span>{formatTime(message.timestamp)}</span>
+                                        <span>{formatTime(message.timestamp || message.created_at)}</span>
                                         {isManual && (
                                             <span className="text-xs">
                                                 • Manual ({message.message_metadata?.agent?.split("@")[0]})
@@ -194,7 +194,7 @@ export function ChatView({ phone, messages, conversationMode, onMessageSent }: C
 
                 {!isManualMode && (
                     <div className="text-xs text-gray-500 mt-2 text-center">
-                        💡 Haz clic en "Tomar Control" para activar el modo manual y enviar mensajes
+                        💡 Haz clic en &quot;Tomar Control&quot; para activar el modo manual y enviar mensajes
                     </div>
                 )}
             </div>

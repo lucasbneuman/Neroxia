@@ -13,27 +13,21 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-    const [theme, setThemeState] = useState<Theme>('light');
-    const [mounted, setMounted] = useState(false);
-
-    // Load theme from localStorage on mount
-    useEffect(() => {
-        setMounted(true);
-        const savedTheme = localStorage.getItem('theme') as Theme | null;
-
-        if (savedTheme) {
-            setThemeState(savedTheme);
-        } else {
-            // Check system preference
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            setThemeState(prefersDark ? 'dark' : 'light');
+    const [theme, setThemeState] = useState<Theme>(() => {
+        if (typeof window === 'undefined') {
+            return 'light';
         }
-    }, []);
+
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light' || savedTheme === 'dark') {
+            return savedTheme;
+        }
+
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    });
 
     // Apply theme to document
     useEffect(() => {
-        if (!mounted) return;
-
         const root = document.documentElement;
 
         if (theme === 'dark') {
@@ -43,7 +37,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         }
 
         localStorage.setItem('theme', theme);
-    }, [theme, mounted]);
+    }, [theme]);
 
     const setTheme = (newTheme: Theme) => {
         setThemeState(newTheme);

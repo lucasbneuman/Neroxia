@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/components/ui/toast';
@@ -10,6 +10,7 @@ import {
     getSubscriptionUsage,
     getBillingHistory,
     cancelSubscription,
+    getErrorMessage,
 } from '@/lib/api';
 import { useUserStore } from '@/stores/user-store';
 import { CreditCard, CheckCircle2, TrendingUp, Calendar, AlertCircle, Crown } from 'lucide-react';
@@ -21,7 +22,7 @@ interface Plan {
     name: string;
     display_name: string;
     price: number;
-    features: any;
+    features: string[] | Record<string, unknown>;
 }
 
 interface Subscription {
@@ -54,7 +55,7 @@ interface BillingRecord {
 
 export default function SubscriptionPage() {
     const { addToast } = useToast();
-    const { subscription: storeSubscription, setSubscription } = useUserStore();
+    const { setSubscription } = useUserStore();
     const [loading, setLoading] = useState(true);
     const [plans, setPlans] = useState<Plan[]>([]);
     const [subscription, setSubscriptionLocal] = useState<Subscription | null>(null);
@@ -62,11 +63,7 @@ export default function SubscriptionPage() {
     const [billingHistory, setBillingHistory] = useState<BillingRecord[]>([]);
     const [canceling, setCanceling] = useState(false);
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         try {
             const [plansData, subData, usageData, billingData] = await Promise.all([
                 getSubscriptionPlans(),
@@ -80,12 +77,16 @@ export default function SubscriptionPage() {
             setSubscription(subData);
             setUsage(usageData);
             setBillingHistory(billingData);
-        } catch (error: any) {
+        } catch {
             addToast('Error al cargar información de suscripción', 'error');
         } finally {
             setLoading(false);
         }
-    };
+    }, [addToast, setSubscription]);
+
+    useEffect(() => {
+        void loadData();
+    }, [loadData]);
 
     const handleCancelSubscription = async () => {
         if (!confirm('¿Estás seguro de que deseas cancelar tu suscripción? Mantendrás acceso hasta el final del período actual.')) {
@@ -96,9 +97,9 @@ export default function SubscriptionPage() {
         try {
             await cancelSubscription(true);
             addToast('Suscripción cancelada. Tendrás acceso hasta el final del período.', 'success');
-            loadData();
-        } catch (error: any) {
-            addToast(error.response?.data?.detail || 'Error al cancelar suscripción', 'error');
+            await loadData();
+        } catch (error) {
+            addToast(getErrorMessage(error, 'Error al cancelar suscripción'), 'error');
         } finally {
             setCanceling(false);
         }

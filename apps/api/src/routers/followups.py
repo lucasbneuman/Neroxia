@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from whatsapp_bot_shared import get_logger
@@ -38,7 +38,7 @@ router = APIRouter(prefix="/followups", tags=["followups"])
 
 class ScheduleFollowUpRequest(BaseModel):
     """Follow-up scheduling request."""
-    message: str
+    message: str = Field(..., min_length=1)
     scheduled_time: datetime
 
 
@@ -103,6 +103,17 @@ async def schedule_followup(
         raise HTTPException(
             status_code=503,
             detail="Scheduler service is not available."
+        )
+
+    now = (
+        datetime.now(request.scheduled_time.tzinfo)
+        if request.scheduled_time.tzinfo
+        else datetime.now()
+    )
+    if request.scheduled_time <= now:
+        raise HTTPException(
+            status_code=400,
+            detail="scheduled_time must be in the future"
         )
     
     formatted_phone = format_phone_number(phone)
@@ -176,10 +187,8 @@ async def cancel_followup(
         scheduler_service = get_scheduler_service()
         
         success = scheduler_service.cancel_follow_up_job(job_id)
-        
-        if success:
-            # Update DB status if we can find the record
-            pass
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Follow-up job not found: {job_id}")
         
         return {
             "status": "success",

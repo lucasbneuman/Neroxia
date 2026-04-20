@@ -2,7 +2,6 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime
 
 from src.services.hubspot_sync import HubSpotService
 
@@ -44,9 +43,9 @@ class TestHubSpotMultiChannelSync:
         assert properties["lastname"] == "Doe"
         assert properties["lead_source"] == "whatsapp"
         assert properties["channel_user_id"] == "+1234567890"
-        assert properties["intent_score"] == "0.8"
+        assert properties["intent_score"] == 0.8
         assert properties["sentiment"] == "positive"
-        assert properties["lifecyclestage"] == "lead"  # qualifying -> lead
+        assert properties["lifecyclestage"] == "marketingqualifiedlead"
 
     def test_prepare_properties_instagram_user_no_phone(self, hubspot_service):
         """Test _prepare_properties with Instagram user (no phone, has PSID)."""
@@ -73,8 +72,8 @@ class TestHubSpotMultiChannelSync:
         assert properties["lastname"] == "Smith"
         assert properties["lead_source"] == "instagram"
         assert properties["channel_user_id"] == "instagram_psid_123456"
-        assert properties["intent_score"] == "0.6"
-        assert properties["lifecyclestage"] == "marketingqualifiedlead"  # nurturing -> MQL
+        assert properties["intent_score"] == 0.6
+        assert properties["lifecyclestage"] == "salesqualifiedlead"
 
     def test_prepare_properties_messenger_user_no_phone(self, hubspot_service):
         """Test _prepare_properties with Messenger user (no phone, has PSID)."""
@@ -96,7 +95,7 @@ class TestHubSpotMultiChannelSync:
         assert properties["email"] == "bob@example.com"
         assert properties["lead_source"] == "messenger"
         assert properties["channel_user_id"] == "messenger_psid_789012"
-        assert properties["lifecyclestage"] == "salesqualifiedlead"  # closing -> SQL
+        assert properties["lifecyclestage"] == "opportunity"
 
     def test_prepare_properties_backwards_compatible(self, hubspot_service):
         """Test _prepare_properties without state (backwards compatibility)."""
@@ -139,24 +138,19 @@ class TestHubSpotMultiChannelSync:
         }
 
         # Mock the API calls
-        with patch('requests.post') as mock_post:
-            # Mock search (not found)
-            mock_post.return_value.status_code = 200
-            mock_post.return_value.json.return_value = {"results": []}
+        with patch.object(hubspot_service, "_request", new_callable=AsyncMock) as mock_request:
+            search_response = MagicMock()
+            search_response.status_code = 200
+            search_response.json.return_value = {"results": []}
 
-            # Mock create
-            def create_side_effect(*args, **kwargs):
-                if 'objects/contacts' in args[0]:
-                    response = MagicMock()
-                    response.status_code = 201
-                    response.json.return_value = {
-                        "id": "12345",
-                        "properties": {"lifecyclestage": "lead"}
-                    }
-                    return response
-                return mock_post.return_value
+            create_response = MagicMock()
+            create_response.status_code = 201
+            create_response.json.return_value = {
+                "id": "12345",
+                "properties": {"lifecyclestage": "lead"},
+            }
 
-            mock_post.side_effect = create_side_effect
+            mock_request.side_effect = [search_response, search_response, create_response]
 
             result = await hubspot_service.sync_contact(user_data, state=state)
 
@@ -166,12 +160,14 @@ class TestHubSpotMultiChannelSync:
 
     async def test_search_contact_by_email_priority(self, hubspot_service):
         """Test _search_contact prioritizes email over phone."""
-        with patch('requests.post') as mock_post:
+        with patch.object(hubspot_service, "_request", new_callable=AsyncMock) as mock_request:
             # Mock successful email search
-            mock_post.return_value.status_code = 200
-            mock_post.return_value.json.return_value = {
+            response = MagicMock()
+            response.status_code = 200
+            response.json.return_value = {
                 "results": [{"id": "email_contact_123", "properties": {}}]
             }
+            mock_request.return_value = response
 
             result = await hubspot_service._search_contact(
                 email="test@example.com",
@@ -182,14 +178,14 @@ class TestHubSpotMultiChannelSync:
             assert result is not None
             assert result["id"] == "email_contact_123"
             # Should only call search once (email found)
-            assert mock_post.call_count == 1
-            # Verify it searched by email
-            call_args = mock_post.call_args
-            assert call_args[1]["json"]["filterGroups"][0]["filters"][0]["propertyName"] == "email"
+            assert mock_request.call_count == 1
+            _, path = mock_request.call_args.args[:2]
+            assert path == "/crm/v3/objects/contacts/search"
+            assert mock_request.call_args.kwargs["json"]["filterGroups"][0]["filters"][0]["propertyName"] == "email"
 
     async def test_search_contact_by_channel_user_id_fallback(self, hubspot_service):
         """Test _search_contact falls back to channel_user_id if email/phone not found."""
-        with patch('requests.post') as mock_post:
+        with patch.object(hubspot_service, "_request", new_callable=AsyncMock) as mock_request:
             # Mock email and phone searches return empty, channel_user_id returns result
             def search_side_effect(*args, **kwargs):
                 response = MagicMock()
@@ -205,7 +201,7 @@ class TestHubSpotMultiChannelSync:
 
                 return response
 
-            mock_post.side_effect = search_side_effect
+            mock_request.side_effect = search_side_effect
 
             result = await hubspot_service._search_contact(
                 email="notfound@example.com",
@@ -216,13 +212,15 @@ class TestHubSpotMultiChannelSync:
             assert result is not None
             assert result["id"] == "psid_contact_456"
             # Should have tried all three searches
-            assert mock_post.call_count == 3
+            assert mock_request.call_count == 3
 
     async def test_search_contact_handles_missing_identifiers(self, hubspot_service):
         """Test _search_contact handles None values gracefully."""
-        with patch('requests.post') as mock_post:
-            mock_post.return_value.status_code = 200
-            mock_post.return_value.json.return_value = {"results": []}
+        with patch.object(hubspot_service, "_request", new_callable=AsyncMock) as mock_request:
+            response = MagicMock()
+            response.status_code = 200
+            response.json.return_value = {"results": []}
+            mock_request.return_value = response
 
             # Only email provided
             result = await hubspot_service._search_contact(
@@ -233,7 +231,7 @@ class TestHubSpotMultiChannelSync:
 
             assert result is None
             # Should only call search once (email)
-            assert mock_post.call_count == 1
+            assert mock_request.call_count == 1
 
 
 class TestHubSpotBackwardsCompatibility:
@@ -258,24 +256,19 @@ class TestHubSpotBackwardsCompatibility:
         db_user = MagicMock()
         db_user.hubspot_contact_id = None
 
-        with patch('requests.post') as mock_post:
-            # Mock search (not found)
-            mock_post.return_value.status_code = 200
-            mock_post.return_value.json.return_value = {"results": []}
+        with patch.object(hubspot_service, "_request", new_callable=AsyncMock) as mock_request:
+            search_response = MagicMock()
+            search_response.status_code = 200
+            search_response.json.return_value = {"results": []}
 
-            # Mock create
-            def create_side_effect(*args, **kwargs):
-                if 'objects/contacts' in args[0]:
-                    response = MagicMock()
-                    response.status_code = 201
-                    response.json.return_value = {
-                        "id": "legacy_123",
-                        "properties": {"lifecyclestage": "lead"}
-                    }
-                    return response
-                return mock_post.return_value
+            create_response = MagicMock()
+            create_response.status_code = 201
+            create_response.json.return_value = {
+                "id": "legacy_123",
+                "properties": {"lifecyclestage": "lead"},
+            }
 
-            mock_post.side_effect = create_side_effect
+            mock_request.side_effect = [search_response, search_response, create_response]
 
             # Call without state parameter (legacy)
             result = await hubspot_service.sync_contact(

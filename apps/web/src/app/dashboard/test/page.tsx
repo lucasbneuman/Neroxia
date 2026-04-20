@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import type { Message, CollectedData } from "@/types"
-import { processTestMessage, clearTestConversation } from "@/lib/api"
+import { processTestMessage } from "@/lib/api"
 import { TestChat } from "@/components/test/TestChat"
 import { CollectedDataPanel } from "@/components/test/CollectedDataPanel"
 

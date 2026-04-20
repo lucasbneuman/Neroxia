@@ -141,7 +141,8 @@ class MetaSenderService:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            client = httpx.AsyncClient(timeout=10.0)
+            try:
                 response = await client.post(
                     self.base_url,
                     params={"access_token": self.page_access_token},
@@ -169,6 +170,8 @@ class MetaSenderService:
                         "message_id": None,
                         "error": f"HTTP {response.status_code}: {error_detail}"
                     }
+            finally:
+                await client.aclose()
 
         except Exception as e:
             logger.error(f"Exception sending typing indicator: {e}")
@@ -202,7 +205,8 @@ class MetaSenderService:
 
         for attempt in range(self.MAX_RETRIES):
             try:
-                async with httpx.AsyncClient(timeout=10.0) as client:
+                client = httpx.AsyncClient(timeout=10.0)
+                try:
                     response = await client.post(
                         self.base_url,
                         params={"access_token": self.page_access_token},
@@ -265,6 +269,8 @@ class MetaSenderService:
                                 f"Failed to send message: {last_error} (error_code={error_code})"
                             )
                             break
+                finally:
+                    await client.aclose()
 
             except httpx.TimeoutException:
                 last_error = "Request timeout"

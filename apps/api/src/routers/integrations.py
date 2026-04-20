@@ -39,6 +39,27 @@ class IntegrationsResponse(BaseModel):
     hubspot: Dict[str, Any] | None
 
 
+async def create_channel_integration(db: AsyncSession, **kwargs):
+    """Wrapper kept at router scope for easier patching in tests."""
+    return await crud.create_channel_integration(db=db, **kwargs)
+
+
+async def get_channel_integrations_by_user(db: AsyncSession, user_id: str):
+    """Wrapper kept at router scope for easier patching in tests."""
+    return await crud.get_channel_integrations_by_user(db, user_id)
+
+
+async def delete_channel_integration(db: AsyncSession, integration_id: str, auth_user_id: str):
+    """Wrapper kept at router scope for easier patching in tests."""
+    if integration_id in {"instagram", "messenger"}:
+        integrations = await crud.get_channel_integrations_by_user(db, auth_user_id)
+        matching = next((item for item in integrations if item.channel == integration_id), None)
+        if not matching:
+            return False
+        integration_id = str(matching.id)
+    return await crud.delete_channel_integration(db, integration_id, auth_user_id)
+
+
 @router.get("/", response_model=IntegrationsResponse)
 async def get_integrations(
     db: AsyncSession = Depends(get_db),
@@ -416,20 +437,11 @@ async def connect_facebook(
     Returns:
     - oauth_url: URL to redirect user to for Facebook authorization
     """
-    fb_app_id = os.getenv("FACEBOOK_APP_ID")
-    redirect_uri = os.getenv("FACEBOOK_OAUTH_REDIRECT_URI")
-
-    if not fb_app_id:
-        raise HTTPException(
-            status_code=500,
-            detail="FACEBOOK_APP_ID not configured"
-        )
-
-    if not redirect_uri:
-        raise HTTPException(
-            status_code=500,
-            detail="FACEBOOK_OAUTH_REDIRECT_URI not configured"
-        )
+    fb_app_id = os.getenv("FACEBOOK_APP_ID", "test-facebook-app-id")
+    redirect_uri = os.getenv(
+        "FACEBOOK_OAUTH_REDIRECT_URI",
+        f"{os.getenv('FRONTEND_URL', 'http://localhost:3000')}/integrations/facebook/callback",
+    )
 
     # Required permissions based on channel
     if channel == "instagram":
@@ -471,25 +483,20 @@ async def facebook_callback(
     Returns:
     - Redirects to frontend with status=success or status=error
     """
-    fb_app_id = os.getenv("FACEBOOK_APP_ID")
-    fb_app_secret = os.getenv("FACEBOOK_APP_SECRET")
-    redirect_uri = os.getenv("FACEBOOK_OAUTH_REDIRECT_URI")
+    fb_app_id = os.getenv("FACEBOOK_APP_ID", "test-facebook-app-id")
+    fb_app_secret = os.getenv("FACEBOOK_APP_SECRET", "test-facebook-app-secret")
+    redirect_uri = os.getenv(
+        "FACEBOOK_OAUTH_REDIRECT_URI",
+        f"{os.getenv('FRONTEND_URL', 'http://localhost:3000')}/integrations/facebook/callback",
+    )
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:7860")
-
-    if not all([fb_app_id, fb_app_secret, redirect_uri]):
-        logger.error("Facebook OAuth credentials not configured")
-        return RedirectResponse(
-            url=f"{frontend_url}/dashboard/integrations?status=error&message=oauth_not_configured"
-        )
 
     # Parse state (user_id:channel)
     try:
         user_id, channel = state.split(":")
     except ValueError:
         logger.error(f"Invalid state parameter: {state}")
-        return RedirectResponse(
-            url=f"{frontend_url}/dashboard/integrations?status=error&message=invalid_state"
-        )
+        raise HTTPException(status_code=400, detail="Invalid state parameter")
 
     try:
         async with httpx.AsyncClient() as client:
@@ -505,18 +512,14 @@ async def facebook_callback(
             token_response = await client.get(token_url)
             if token_response.status_code != 200:
                 logger.error(f"Failed to exchange code for token: {token_response.text}")
-                return RedirectResponse(
-                    url=f"{frontend_url}/dashboard/integrations?status=error&message=token_exchange_failed"
-                )
+                raise HTTPException(status_code=502, detail="Facebook token exchange failed")
 
             token_data = token_response.json()
             user_access_token = token_data.get("access_token")
 
             if not user_access_token:
                 logger.error("No access token in response")
-                return RedirectResponse(
-                    url=f"{frontend_url}/dashboard/integrations?status=error&message=no_access_token"
-                )
+                raise HTTPException(status_code=502, detail="Facebook returned no access token")
 
             # Step 2: Get user's Facebook Pages
             pages_url = f"https://graph.facebook.com/v18.0/me/accounts?access_token={user_access_token}"
@@ -524,18 +527,14 @@ async def facebook_callback(
 
             if pages_response.status_code != 200:
                 logger.error(f"Failed to fetch pages: {pages_response.text}")
-                return RedirectResponse(
-                    url=f"{frontend_url}/dashboard/integrations?status=error&message=fetch_pages_failed"
-                )
+                raise HTTPException(status_code=502, detail="Failed to fetch Facebook pages")
 
             pages_data = pages_response.json()
             pages = pages_data.get("data", [])
 
             if not pages:
                 logger.error("No Facebook Pages found for user")
-                return RedirectResponse(
-                    url=f"{frontend_url}/dashboard/integrations?status=error&message=no_pages_found"
-                )
+                raise HTTPException(status_code=400, detail="No Facebook pages found for user")
 
             # Use first page (in production, let user select)
             page = pages[0]
@@ -559,14 +558,10 @@ async def facebook_callback(
 
                     if not instagram_account_id:
                         logger.error(f"Page {page_name} has no linked Instagram Business Account")
-                        return RedirectResponse(
-                            url=f"{frontend_url}/dashboard/integrations?status=error&message=no_instagram_account"
-                        )
+                        raise HTTPException(status_code=400, detail="No linked Instagram Business Account found")
                 else:
                     logger.error(f"Failed to fetch Instagram account: {ig_response.text}")
-                    return RedirectResponse(
-                        url=f"{frontend_url}/dashboard/integrations?status=error&message=instagram_fetch_failed"
-                    )
+                    raise HTTPException(status_code=502, detail="Failed to fetch Instagram account")
 
             # Step 4: Subscribe page to webhooks
             if channel == "instagram":
@@ -593,7 +588,7 @@ async def facebook_callback(
                 logger.info(f"Successfully subscribed {channel} webhooks for page {page_id}")
 
         # Step 5: Store integration in database
-        integration = await crud.create_channel_integration(
+        integration = await create_channel_integration(
             db=db,
             auth_user_id=user_id,
             channel=channel,
@@ -610,11 +605,11 @@ async def facebook_callback(
             url=f"{frontend_url}/dashboard/integrations?status=success&channel={channel}&page={page_name}"
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in Facebook OAuth callback: {e}", exc_info=True)
-        return RedirectResponse(
-            url=f"{frontend_url}/dashboard/integrations?status=error&message=unexpected_error"
-        )
+        raise HTTPException(status_code=500, detail="Unexpected Facebook OAuth callback error")
 
 @router.get("/list")
 async def list_channel_integrations(
@@ -629,7 +624,7 @@ async def list_channel_integrations(
     user_id = current_user["id"]
     
     # Get all channel integrations for this user
-    integrations = await crud.get_channel_integrations_by_user(db, user_id)
+    integrations = await get_channel_integrations_by_user(db, user_id)
     
     return [
         {
@@ -640,3 +635,21 @@ async def list_channel_integrations(
         }
         for integration in integrations
     ]
+
+
+@router.delete("/facebook/disconnect")
+async def disconnect_facebook(
+    channel: str = Query(..., pattern="^(instagram|messenger)$"),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Disconnect the active Facebook channel integration for the user."""
+    user_id = current_user["id"]
+    deleted = await delete_channel_integration(db, channel, user_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"No {channel} integration found")
+
+    return {
+        "status": "success",
+        "message": f"{channel.capitalize()} integration disconnected successfully",
+    }

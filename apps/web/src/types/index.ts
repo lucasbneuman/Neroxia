@@ -1,5 +1,11 @@
 // Type definitions for the application
 
+export type JsonPrimitive = string | number | boolean | null
+export type JsonValue = JsonPrimitive | JsonObject | JsonValue[]
+export interface JsonObject {
+    [key: string]: JsonValue
+}
+
 export interface User {
     id: number
     phone: string
@@ -38,7 +44,12 @@ export interface Message {
     message_text: string
     sender: "user" | "bot"
     created_at: string
-    metadata?: Record<string, any>
+    timestamp?: string
+    metadata?: JsonObject
+    message_metadata?: {
+        manual?: boolean
+        agent?: string
+    }
 }
 
 export interface Conversation {
@@ -86,13 +97,13 @@ export interface RAGStats {
     total_chunks: number
 }
 
-export interface APIResponse<T = any> {
+export interface APIResponse<T = unknown> {
     success?: boolean  // Legacy field, some endpoints still use this
     status?: string    // New field: "success" | "error"
     data?: T
     error?: string
     message?: string
-    configs?: any      // For config endpoints
+    configs?: Partial<Config>
 }
 
 export interface Tag {

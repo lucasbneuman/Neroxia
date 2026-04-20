@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { RefreshCw } from "lucide-react"
 import {
     DndContext,
-    DragOverlay,
     useSensor,
     useSensors,
     PointerSensor,
@@ -174,7 +173,6 @@ export default function PipelinePage() {
                                     title={stage.label}
                                     stage={stage.key}
                                     deals={getDealsByStage(stage.key)}
-                                    color={stage.color}
                                     onDealClick={handleDealClick}
                                 />
                             ))}

@@ -6,7 +6,6 @@ interface PipelineColumnProps {
     title: string
     stage: string
     deals: Deal[]
-    color: string
     onDealClick?: (deal: Deal) => void
 }
 
@@ -79,7 +78,7 @@ function DraggableDealCard({ deal, stage, onDealClick }: { deal: Deal; stage: st
     )
 }
 
-export function PipelineColumn({ title, stage, deals, color, onDealClick }: PipelineColumnProps) {
+export function PipelineColumn({ title, stage, deals, onDealClick }: PipelineColumnProps) {
     const { setNodeRef, isOver } = useDroppable({
         id: stage,
     })

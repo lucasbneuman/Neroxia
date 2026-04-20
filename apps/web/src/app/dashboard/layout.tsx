@@ -1,10 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useAuthStore } from "@/stores/auth-store"
 import { useUserStore } from "@/stores/user-store"
-import { MessageSquare, Settings, FlaskConical, LogOut, BarChart3, User, CreditCard, Plug, ChevronDown } from "lucide-react"
+import { MessageSquare, Settings, FlaskConical, LogOut, BarChart3, User, CreditCard, Plug } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { cn } from "@/lib/utils"
@@ -19,7 +19,15 @@ export default function DashboardLayout({
     const pathname = usePathname()
     const { logout } = useAuthStore()
     const { profile, setProfile } = useUserStore()
-    const [userMenuOpen, setUserMenuOpen] = useState(false)
+
+    const loadProfile = useCallback(async () => {
+        try {
+            const data = await getUserProfile()
+            setProfile(data)
+        } catch (error) {
+            console.error('Error loading profile:', error)
+        }
+    }, [setProfile])
 
     useEffect(() => {
         // Check if user is authenticated
@@ -32,16 +40,7 @@ export default function DashboardLayout({
                 loadProfile()
             }
         }
-    }, [router])
-
-    const loadProfile = async () => {
-        try {
-            const data = await getUserProfile()
-            setProfile(data)
-        } catch (error) {
-            console.error('Error loading profile:', error)
-        }
-    }
+    }, [loadProfile, router])
 
     const handleLogout = () => {
         logout()

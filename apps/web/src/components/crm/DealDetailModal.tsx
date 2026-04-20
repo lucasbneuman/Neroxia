@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Phone, Mail, Calendar, DollarSign, TrendingUp, Save, Edit2, Plus, Trash2, Tag as TagIcon, StickyNote } from "lucide-react"
+import { X, Phone, Mail, Calendar, DollarSign, TrendingUp, Save, Edit2, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
     updateDeal,

@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import type { Message } from "@/types"
 import { cn } from "@/lib/utils"
 

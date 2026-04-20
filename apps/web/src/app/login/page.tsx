@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/components/ui/toast';
-import { login } from '@/lib/api';
+import { getErrorMessage, login } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 
 export default function LoginPage() {
@@ -31,9 +31,8 @@ export default function LoginPage() {
             }
             addToast('¡Inicio de sesión exitoso!', 'success');
             router.push('/dashboard/chat');
-        } catch (err: any) {
-            const errorMessage = err.response?.data?.detail || 'Error al iniciar sesión. Por favor, intenta de nuevo.';
-            addToast(errorMessage, 'error');
+        } catch (error) {
+            addToast(getErrorMessage(error, 'Error al iniciar sesión. Por favor, intenta de nuevo.'), 'error');
         } finally {
             setLoading(false);
         }

@@ -1,6 +1,7 @@
 'use client'
 
 import { Component, ReactNode } from 'react'
+import type { ErrorInfo } from 'react'
 
 interface Props {
     children: ReactNode
@@ -22,7 +23,7 @@ export class ErrorBoundary extends Component<Props, State> {
         return { hasError: true, error }
     }
 
-    componentDidCatch(error: Error, errorInfo: any) {
+    componentDidCatch(error: Error, errorInfo: ErrorInfo) {
         console.error('Error caught by boundary:', error, errorInfo)
         // TODO: Send to error tracking service (e.g., Sentry) when implemented
     }
@@ -36,7 +37,7 @@ export class ErrorBoundary extends Component<Props, State> {
                             Something went wrong
                         </h1>
                         <p className="text-gray-600 mb-6">
-                            We're sorry for the inconvenience. Please try refreshing the page.
+                            We&apos;re sorry for the inconvenience. Please try refreshing the page.
                         </p>
                         <button
                             onClick={() => window.location.reload()}

@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import type { Config } from "@/types"
+import { useCallback, useEffect, useState } from "react"
 import { getConfig, saveConfig } from "@/lib/api"
 import { useConfigStore } from "@/stores/config-store"
 import { Button } from "@/components/ui/button"
@@ -21,11 +20,7 @@ export default function ConfigPage() {
     // Use Zustand store for config state
     const { config, loading, saving, setConfig, updateConfig, setLoading, setSaving } = useConfigStore()
 
-    useEffect(() => {
-        loadConfig()
-    }, [])
-
-    const loadConfig = async () => {
+    const loadConfig = useCallback(async () => {
         setLoading(true)
         try {
             const data = await getConfig()
@@ -36,7 +31,11 @@ export default function ConfigPage() {
         } finally {
             setLoading(false)
         }
-    }
+    }, [addToast, setConfig, setLoading])
+
+    useEffect(() => {
+        void loadConfig()
+    }, [loadConfig])
 
     const handleSave = async () => {
         setSaving(true)
@@ -233,7 +232,7 @@ export default function ConfigPage() {
                             <div className="mt-6">
                                 <VoiceSelector
                                     value={config.tts_voice || "nova"}
-                                    onChange={(voice) => updateConfig({ tts_voice: voice as any })}
+                                    onChange={(voice) => updateConfig({ tts_voice: voice as NonNullable<typeof config.tts_voice> })}
                                 />
                             </div>
                         </div>

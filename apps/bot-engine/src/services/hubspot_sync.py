@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-import requests
+import httpx
 
 from whatsapp_bot_shared import get_logger
 
@@ -14,567 +14,333 @@ logger = get_logger(__name__)
 class HubSpotService:
     """Service for syncing customer data to HubSpot CRM."""
 
-    # HubSpot Lifecycle Stages
     LIFECYCLE_STAGES = {
         "welcome": "lead",
-        "qualifying": "lead",
-        "nurturing": "marketingqualifiedlead",
-        "closing": "salesqualifiedlead",
+        "qualifying": "marketingqualifiedlead",
+        "nurturing": "salesqualifiedlead",
+        "closing": "opportunity",
         "sold": "customer",
         "follow_up": "opportunity",
     }
 
     def __init__(self, api_key: Optional[str] = None):
-        """
-        Initialize HubSpot service.
-        
-        Credentials can be provided via:
-        1. Direct parameter (highest priority)
-        2. Database configuration (via ConfigManager.get_hubspot_config)
-        3. Environment variables (fallback)
-
-        Args:
-            api_key: HubSpot API key (Private App Access Token)
-        """
         self.api_key = api_key or os.getenv("HUBSPOT_ACCESS_TOKEN")
         if not self.api_key:
             logger.warning("HubSpot API key not found, sync will be disabled")
             self.enabled = False
-        else:
-            self.enabled = True
-            self.base_url = "https://api.hubapi.com"
-            self.headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            }
-            logger.info("HubSpot service initialized")
+            return
+
+        self.enabled = True
+        self.base_url = "https://api.hubapi.com"
+        self.headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        logger.info("HubSpot service initialized")
 
     async def sync_contact(
         self,
         user_data: Dict[str, Any],
         state: Optional[Dict[str, Any]] = None,
-        db_user: Optional[Any] = None
+        db_user: Optional[Any] = None,
     ) -> Optional[Dict[str, Any]]:
-        """
-        Sync contact to HubSpot (create or update).
-
-        Multi-channel support:
-        - WhatsApp: phone is primary identifier
-        - Instagram/Messenger: email is primary identifier, phone optional
-        - Tracks lead source (whatsapp/instagram/messenger)
-        - Stores channel_user_id (phone or PSID)
-
-        Strategy:
-        1. Check if we have hubspot_contact_id in our DB
-        2. If yes: Verify it still exists in HubSpot, then UPDATE
-        3. If no: Search by email/phone/channel_user_id in HubSpot
-        4. If found: UPDATE and save hubspot_contact_id
-        5. If not found: CREATE new contact and save hubspot_contact_id
-
-        Args:
-            user_data: User data dict with fields:
-                - phone: optional (required for WhatsApp, optional for Instagram/Messenger)
-                - email: optional (but recommended for non-WhatsApp channels)
-                - name, intent_score, sentiment, stage: optional
-            state: ConversationState with channel info (channel, user_identifier)
-            db_user: Database User object (to check/update hubspot_contact_id)
-
-        Returns:
-            Dict with:
-                - contact_id: HubSpot contact ID
-                - lifecyclestage: HubSpot lifecycle stage
-                - action: 'created', 'updated', or 'skipped'
-        """
+        """Sync contact to HubSpot (create or update)."""
         if not self.enabled:
             logger.warning("HubSpot sync skipped: API key not configured")
             return None
 
-        # Require at least email OR phone for HubSpot sync
         phone = user_data.get("phone")
         email = user_data.get("email")
-
         if not phone and not email:
             logger.error("Cannot sync to HubSpot: at least email or phone is required")
             return None
 
-        # Log which identifier we're using
         channel = state.get("channel", "whatsapp") if state else "whatsapp"
         user_identifier = state.get("user_identifier") if state else (phone or email)
-        logger.info(f"HubSpot sync for {channel} user: {user_identifier} (phone={phone}, email={email})")
+        logger.info(
+            f"HubSpot sync for {channel} user: {user_identifier} (phone={phone}, email={email})"
+        )
 
         try:
             contact_id = None
             action = "skipped"
             lifecyclestage = None
 
-            # Step 1: Check if we have hubspot_contact_id in DB
-            if db_user and db_user.hubspot_contact_id:
-                logger.info(f"Found hubspot_contact_id in DB: {db_user.hubspot_contact_id}")
-                # Verify contact still exists in HubSpot
+            if db_user and getattr(db_user, "hubspot_contact_id", None):
                 existing_contact = await self._get_contact_by_id(db_user.hubspot_contact_id)
-
                 if existing_contact:
-                    # Update existing contact
-                    logger.info(f"Updating existing HubSpot contact: {db_user.hubspot_contact_id}")
-                    success = await self._update_contact(db_user.hubspot_contact_id, user_data, existing_contact, state)
-                    if success:
+                    if await self._update_contact(
+                        db_user.hubspot_contact_id, user_data, existing_contact, state
+                    ):
                         contact_id = db_user.hubspot_contact_id
                         lifecyclestage = existing_contact.get("properties", {}).get("lifecyclestage")
                         action = "updated"
                 else:
-                    logger.warning(f"HubSpot contact {db_user.hubspot_contact_id} no longer exists, will search/create")
-                    db_user.hubspot_contact_id = None  # Reset since it doesn't exist
+                    db_user.hubspot_contact_id = None
 
-            # Step 2: If no valid contact_id, search by email/phone/channel_user_id
             if not contact_id:
                 channel_user_id = state.get("user_identifier") if state else None
                 existing_contact = await self._search_contact(email, phone, channel_user_id)
-
                 if existing_contact:
-                    # Found in HubSpot, update it
                     contact_id = existing_contact["id"]
-                    logger.info(f"Found HubSpot contact by search: {contact_id}")
                     await self._update_contact(contact_id, user_data, existing_contact, state)
                     lifecyclestage = existing_contact.get("properties", {}).get("lifecyclestage")
                     action = "updated"
                 else:
-                    # Not found, create new contact
-                    identifier_info = f"email: {email}" if email else f"phone: {phone}"
-                    logger.info(f"Creating new HubSpot contact for {identifier_info}")
                     result = await self._create_contact(user_data, state)
                     if result:
                         contact_id = result["id"]
                         lifecyclestage = result.get("lifecyclestage")
                         action = "created"
 
-            if contact_id:
-                logger.info(f"✅ HubSpot sync successful: {action} contact {contact_id}")
-                return {
-                    "contact_id": contact_id,
-                    "lifecyclestage": lifecyclestage,
-                    "action": action,
-                    "synced_at": datetime.utcnow()
-                }
-            else:
+            if not contact_id:
                 logger.error("HubSpot sync failed: no contact_id returned")
                 return None
 
+            return {
+                "contact_id": contact_id,
+                "lifecyclestage": lifecyclestage,
+                "action": action,
+                "synced_at": datetime.utcnow(),
+            }
         except Exception as e:
             logger.error(f"HubSpot sync error: {e}")
-            import traceback
-            traceback.print_exc()
+            return None
+
+    async def _request(
+        self, method: str, path: str, *, json: Optional[Dict[str, Any]] = None
+    ) -> Optional[httpx.Response]:
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                request_method = getattr(client, method.lower())
+                return await request_method(
+                    f"{self.base_url}{path}",
+                    headers=self.headers,
+                    json=json,
+                )
+        except Exception as e:
+            logger.error(f"HubSpot {method} {path} request failed: {e}")
             return None
 
     async def _get_contact_by_id(self, contact_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Get contact by HubSpot contact ID.
-
-        Args:
-            contact_id: HubSpot contact ID
-
-        Returns:
-            Contact data if found, None otherwise
-        """
-        try:
-            response = requests.get(
-                f"{self.base_url}/crm/v3/objects/contacts/{contact_id}",
-                headers=self.headers,
-                timeout=10,
-            )
-
-            if response.status_code == 200:
-                contact = response.json()
-                logger.info(f"Retrieved HubSpot contact: {contact_id}")
-                return contact
-            elif response.status_code == 404:
-                logger.warning(f"HubSpot contact {contact_id} not found (404)")
-                return None
-            else:
-                logger.error(f"Error retrieving HubSpot contact: {response.status_code} - {response.text}")
-                return None
-
-        except Exception as e:
-            logger.error(f"Error getting HubSpot contact by ID: {e}")
+        response = await self._request("GET", f"/crm/v3/objects/contacts/{contact_id}")
+        if response is None:
             return None
+        if response.status_code == 200:
+            return response.json()
+        if response.status_code != 404:
+            logger.error(
+                f"Error retrieving HubSpot contact: {response.status_code} - {response.text}"
+            )
+        return None
 
     async def _search_contact(
         self,
         email: Optional[str] = None,
         phone: Optional[str] = None,
-        channel_user_id: Optional[str] = None
+        channel_user_id: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
-        """
-        Search for existing contact by email, phone, or channel_user_id.
+        filters = []
+        if email:
+            filters.append(("email", email))
+        if phone:
+            filters.append(("phone", phone))
+        if channel_user_id:
+            filters.append(("channel_user_id", channel_user_id))
 
-        Search priority:
-        1. Email (most reliable for multi-channel)
-        2. Phone (WhatsApp users)
-        3. channel_user_id (Instagram/Messenger PSID)
+        for property_name, value in filters:
+            payload = {
+                "filterGroups": [
+                    {
+                        "filters": [
+                            {
+                                "propertyName": property_name,
+                                "operator": "EQ",
+                                "value": value,
+                            }
+                        ]
+                    }
+                ]
+            }
+            response = await self._request(
+                "POST", "/crm/v3/objects/contacts/search", json=payload
+            )
+            if response and response.status_code == 200:
+                results = response.json().get("results", [])
+                if results:
+                    return results[0]
 
-        Args:
-            email: Email address (optional)
-            phone: Phone number (optional)
-            channel_user_id: Channel-specific user ID - phone or PSID (optional)
-
-        Returns:
-            Contact data if found, None otherwise
-        """
-        try:
-            # Search by email first (most reliable identifier)
-            if email:
-                search_payload = {
-                    "filterGroups": [
-                        {
-                            "filters": [
-                                {
-                                    "propertyName": "email",
-                                    "operator": "EQ",
-                                    "value": email,
-                                }
-                            ]
-                        }
-                    ]
-                }
-
-                response = requests.post(
-                    f"{self.base_url}/crm/v3/objects/contacts/search",
-                    headers=self.headers,
-                    json=search_payload,
-                    timeout=10,
-                )
-
-                if response.status_code == 200:
-                    results = response.json().get("results", [])
-                    if results:
-                        contact = results[0]
-                        logger.info(f"Found HubSpot contact by email: {contact['id']}")
-                        return contact
-
-            # Search by phone (WhatsApp users)
-            if phone:
-                search_payload = {
-                    "filterGroups": [
-                        {
-                            "filters": [
-                                {
-                                    "propertyName": "phone",
-                                    "operator": "EQ",
-                                    "value": phone,
-                                }
-                            ]
-                        }
-                    ]
-                }
-
-                response = requests.post(
-                    f"{self.base_url}/crm/v3/objects/contacts/search",
-                    headers=self.headers,
-                    json=search_payload,
-                    timeout=10,
-                )
-
-                if response.status_code == 200:
-                    results = response.json().get("results", [])
-                    if results:
-                        contact = results[0]
-                        logger.info(f"Found HubSpot contact by phone: {contact['id']}")
-                        return contact
-
-            # Search by channel_user_id (Instagram/Messenger PSID)
-            if channel_user_id:
-                search_payload = {
-                    "filterGroups": [
-                        {
-                            "filters": [
-                                {
-                                    "propertyName": "channel_user_id",
-                                    "operator": "EQ",
-                                    "value": channel_user_id,
-                                }
-                            ]
-                        }
-                    ]
-                }
-
-                response = requests.post(
-                    f"{self.base_url}/crm/v3/objects/contacts/search",
-                    headers=self.headers,
-                    json=search_payload,
-                    timeout=10,
-                )
-
-                if response.status_code == 200:
-                    results = response.json().get("results", [])
-                    if results:
-                        contact = results[0]
-                        logger.info(f"Found HubSpot contact by channel_user_id: {contact['id']}")
-                        return contact
-
-            identifiers = []
-            if email:
-                identifiers.append(f"email={email}")
-            if phone:
-                identifiers.append(f"phone={phone}")
-            if channel_user_id:
-                identifiers.append(f"channel_user_id={channel_user_id}")
-            logger.info(f"No existing HubSpot contact found for: {', '.join(identifiers)}")
-            return None
-
-        except Exception as e:
-            logger.error(f"Error searching HubSpot contact: {e}")
-            return None
+        return None
 
     async def _create_contact(
         self,
         user_data: Dict[str, Any],
-        state: Optional[Dict[str, Any]] = None
+        state: Optional[Dict[str, Any]] = None,
     ) -> Optional[Dict[str, Any]]:
-        """
-        Create a new HubSpot contact.
-
-        Args:
-            user_data: User data
-            state: ConversationState with channel info
-
-        Returns:
-            Dict with contact_id and lifecyclestage if successful, None otherwise
-        """
-        try:
-            # Prepare properties with channel info
-            properties = self._prepare_properties(user_data, state)
-
-            payload = {"properties": properties}
-
-            response = requests.post(
-                f"{self.base_url}/crm/v3/objects/contacts",
-                headers=self.headers,
-                json=payload,
-                timeout=10,
-            )
-
-            if response.status_code in [200, 201]:
-                result = response.json()
-                contact_id = result["id"]
-                lifecyclestage = result.get("properties", {}).get("lifecyclestage")
-                logger.info(f"✅ Created HubSpot contact: {contact_id} (stage: {lifecyclestage})")
-                return {
-                    "id": contact_id,
-                    "lifecyclestage": lifecyclestage
-                }
-            elif response.status_code == 400 and "PROPERTY_DOESNT_EXIST" in response.text:
-                # If custom field doesn't exist, retry without it
-                logger.warning(f"Some custom fields don't exist in HubSpot, retrying without them...")
-
-                # Remove problematic fields and retry (keep commonly available fields)
-                standard_properties = {k: v for k, v in properties.items()
-                                     if k in ['phone', 'firstname', 'lastname', 'email', 'lifecyclestage',
-                                             'intent_score', 'sentiment', 'needs', 'pain_points', 'budget',
-                                             'hs_content_membership_notes', 'hs_lead_status']}
-
-                retry_payload = {"properties": standard_properties}
-                retry_response = requests.post(
-                    f"{self.base_url}/crm/v3/objects/contacts",
-                    headers=self.headers,
-                    json=retry_payload,
-                    timeout=10,
-                )
-
-                if retry_response.status_code in [200, 201]:
-                    result = retry_response.json()
-                    contact_id = result["id"]
-                    lifecyclestage = result.get("properties", {}).get("lifecyclestage")
-                    logger.info(f"✅ Created HubSpot contact {contact_id} (without custom fields, stage: {lifecyclestage})")
-                    return {
-                        "id": contact_id,
-                        "lifecyclestage": lifecyclestage
-                    }
-
-                logger.error(f"Failed to create HubSpot contact even without custom fields")
-                return None
-            else:
-                logger.error(f"Failed to create HubSpot contact: {response.status_code} - {response.text}")
-                return None
-
-        except Exception as e:
-            logger.error(f"Error creating HubSpot contact: {e}")
+        properties = self._prepare_properties(user_data, state)
+        response = await self._request(
+            "POST", "/crm/v3/objects/contacts", json={"properties": properties}
+        )
+        if response is None:
             return None
+        if response.status_code in (200, 201):
+            result = response.json()
+            return {
+                "id": result["id"],
+                "lifecyclestage": result.get("properties", {}).get("lifecyclestage"),
+            }
+        if response.status_code == 400 and "PROPERTY_DOESNT_EXIST" in response.text:
+            standard_properties = {
+                key: value
+                for key, value in properties.items()
+                if key
+                in {
+                    "phone",
+                    "firstname",
+                    "lastname",
+                    "email",
+                    "lifecyclestage",
+                    "intent_score",
+                    "sentiment",
+                    "needs",
+                    "pain_points",
+                    "budget",
+                    "hs_content_membership_notes",
+                    "hs_lead_status",
+                }
+            }
+            retry_response = await self._request(
+                "POST",
+                "/crm/v3/objects/contacts",
+                json={"properties": standard_properties},
+            )
+            if retry_response and retry_response.status_code in (200, 201):
+                result = retry_response.json()
+                return {
+                    "id": result["id"],
+                    "lifecyclestage": result.get("properties", {}).get("lifecyclestage"),
+                }
+        logger.error(f"Failed to create HubSpot contact: {response.status_code} - {response.text}")
+        return None
 
     async def _update_contact(
         self,
         contact_id: str,
         user_data: Dict[str, Any],
         existing_contact: Dict[str, Any],
-        state: Optional[Dict[str, Any]] = None
+        state: Optional[Dict[str, Any]] = None,
     ) -> bool:
-        """
-        Update existing HubSpot contact (only update new/changed fields).
+        new_properties = self._prepare_properties(user_data, state)
+        existing_properties = existing_contact.get("properties", {})
+        update_properties = {}
+        for key, value in new_properties.items():
+            existing_value = existing_properties.get(key)
+            if (
+                not existing_value
+                or str(existing_value).lower() in {"none", "null", ""}
+                or existing_value != str(value)
+            ):
+                update_properties[key] = value
 
-        Args:
-            contact_id: HubSpot contact ID
-            user_data: New user data
-            existing_contact: Existing contact data from HubSpot
-            state: ConversationState with channel info
+        if not update_properties:
+            return True
 
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            # Prepare properties with channel info, but only include new/changed ones
-            new_properties = self._prepare_properties(user_data, state)
-            existing_properties = existing_contact.get("properties", {})
-
-            # Filter to only update new or changed fields
-            update_properties = {}
-            for key, value in new_properties.items():
-                existing_value = existing_properties.get(key)
-                # Only update if: field doesn't exist OR value is different OR existing is empty/null
-                if not existing_value or str(existing_value).lower() in ['none', 'null', ''] or existing_value != str(value):
-                    update_properties[key] = value
-
-            if not update_properties:
-                logger.info(f"No new data to update for contact {contact_id}")
-                return True
-
-            payload = {"properties": update_properties}
-
-            response = requests.patch(
-                f"{self.base_url}/crm/v3/objects/contacts/{contact_id}",
-                headers=self.headers,
-                json=payload,
-                timeout=10,
-            )
-
-            if response.status_code == 200:
-                logger.info(f"✅ Updated HubSpot contact {contact_id}: {list(update_properties.keys())}")
-                return True
-            elif response.status_code == 400 and "PROPERTY_DOESNT_EXIST" in response.text:
-                # If custom field doesn't exist, retry without it
-                logger.warning(f"Some custom fields don't exist in HubSpot, retrying without them...")
-
-                # Remove problematic fields and retry (keep commonly available fields)
-                standard_properties = {k: v for k, v in update_properties.items()
-                                     if k in ['phone', 'firstname', 'lastname', 'email', 'lifecyclestage',
-                                             'intent_score', 'sentiment', 'needs', 'pain_points', 'budget',
-                                             'hs_content_membership_notes', 'hs_lead_status']}
-
-                if standard_properties:
-                    retry_payload = {"properties": standard_properties}
-                    retry_response = requests.patch(
-                        f"{self.base_url}/crm/v3/objects/contacts/{contact_id}",
-                        headers=self.headers,
-                        json=retry_payload,
-                        timeout=10,
-                    )
-
-                    if retry_response.status_code == 200:
-                        logger.info(f"✅ Updated HubSpot contact {contact_id} (without custom fields): {list(standard_properties.keys())}")
-                        return True
-
-                logger.error(f"Failed to update HubSpot contact even without custom fields")
-                return False
-            else:
-                logger.error(f"Failed to update HubSpot contact: {response.status_code} - {response.text}")
-                return False
-
-        except Exception as e:
-            logger.error(f"Error updating HubSpot contact: {e}")
+        response = await self._request(
+            "PATCH",
+            f"/crm/v3/objects/contacts/{contact_id}",
+            json={"properties": update_properties},
+        )
+        if response is None:
             return False
+        if response.status_code == 200:
+            return True
+        if response.status_code == 400 and "PROPERTY_DOESNT_EXIST" in response.text:
+            standard_properties = {
+                key: value
+                for key, value in update_properties.items()
+                if key
+                in {
+                    "phone",
+                    "firstname",
+                    "lastname",
+                    "email",
+                    "lifecyclestage",
+                    "intent_score",
+                    "sentiment",
+                    "needs",
+                    "pain_points",
+                    "budget",
+                    "hs_content_membership_notes",
+                    "hs_lead_status",
+                }
+            }
+            if not standard_properties:
+                return False
+            retry_response = await self._request(
+                "PATCH",
+                f"/crm/v3/objects/contacts/{contact_id}",
+                json={"properties": standard_properties},
+            )
+            return bool(retry_response and retry_response.status_code == 200)
+
+        logger.error(f"Failed to update HubSpot contact: {response.status_code} - {response.text}")
+        return False
 
     def _prepare_properties(
         self,
         user_data: Dict[str, Any],
-        state: Optional[Dict[str, Any]] = None
+        state: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """
-        Prepare HubSpot properties from user data.
+        properties: Dict[str, Any] = {}
 
-        Multi-channel support:
-        - Adds lead_source (whatsapp/instagram/messenger)
-        - Adds channel_user_id (phone or PSID)
-        - Makes phone optional (only required for WhatsApp)
-
-        Maps our internal fields to HubSpot standard and custom properties.
-
-        Args:
-            user_data: User data
-            state: ConversationState with channel info (optional)
-
-        Returns:
-            Dict of HubSpot properties
-        """
-        properties = {}
-
-        # Phone (OPTIONAL - only for WhatsApp or if collected)
         if user_data.get("phone"):
             properties["phone"] = user_data["phone"]
-
-        # Email (primary identifier for non-WhatsApp channels)
         if user_data.get("email"):
             properties["email"] = user_data["email"]
 
-        # Name: Prioritize WhatsApp profile name from Twilio, fallback to extracted name
         name_to_use = user_data.get("whatsapp_profile_name") or user_data.get("name")
         if name_to_use:
             name_parts = name_to_use.strip().split(maxsplit=1)
             properties["firstname"] = name_parts[0]
-            if len(name_parts) > 1:
-                properties["lastname"] = name_parts[1]
-            else:
-                properties["lastname"] = ""  # HubSpot likes having both
+            properties["lastname"] = name_parts[1] if len(name_parts) > 1 else ""
 
-        # Lead source tracking (NEW - Phase 5)
         channel = state.get("channel", "whatsapp") if state else "whatsapp"
         properties["lead_source"] = channel
-
-        # Channel-specific identifier (NEW - Phase 5)
-        # Stores phone for WhatsApp, PSID for Instagram/Messenger
         if state and state.get("user_identifier"):
             properties["channel_user_id"] = state["user_identifier"]
 
-        # Lifecycle Stage: Map our internal stage to HubSpot lifecycle
-        if user_data.get("stage"):
-            internal_stage = user_data["stage"]
-            hubspot_stage = self.LIFECYCLE_STAGES.get(internal_stage, "lead")
-            properties["lifecyclestage"] = hubspot_stage
+        internal_stage = user_data.get("stage") or (state.get("stage") if state else None)
+        if internal_stage:
+            properties["lifecyclestage"] = self.LIFECYCLE_STAGES.get(internal_stage, "lead")
 
-        # Intent Score (0-1 scale) - Custom field
-        if user_data.get("intent_score") is not None:
-            properties["intent_score"] = str(round(user_data["intent_score"], 2))
+        intent_score = user_data.get("intent_score")
+        if intent_score is None and state:
+            intent_score = state.get("intent_score")
+        if intent_score is not None:
+            properties["intent_score"] = round(intent_score, 2)
 
-        # Sentiment - Custom field
-        if user_data.get("sentiment"):
-            properties["sentiment"] = user_data["sentiment"]
-
-        # Customer Needs - Custom field
+        sentiment = user_data.get("sentiment")
+        if not sentiment and state:
+            sentiment = state.get("sentiment")
+        if sentiment:
+            properties["sentiment"] = sentiment
         if user_data.get("needs"):
             properties["needs"] = user_data["needs"]
-
-        # Pain Points - Custom field
         if user_data.get("pain_points"):
             properties["pain_points"] = user_data["pain_points"]
-
-        # Budget Range - Custom field
         if user_data.get("budget"):
             properties["budget"] = user_data["budget"]
-
-        # Conversation Summary (Notes) - Use HubSpot's standard Notes field
         if user_data.get("conversation_summary"):
             properties["hs_content_membership_notes"] = user_data["conversation_summary"]
-
-        # Twilio-specific data - Custom fields
         if user_data.get("whatsapp_profile_name"):
             properties["whatsapp_profile_name"] = user_data["whatsapp_profile_name"]
-        
         if user_data.get("country_code"):
             properties["country_code"] = user_data["country_code"]
 
-        # Lead Source
-        properties["hs_lead_status"] = "NEW"  # or "OPEN", "IN_PROGRESS", etc.
-
+        properties["hs_lead_status"] = "NEW"
         return properties
 
 
-# Global instance (will be initialized in app.py)
 hubspot_service: Optional[HubSpotService] = None
 
 
@@ -584,3 +350,26 @@ def get_hubspot_service() -> HubSpotService:
     if hubspot_service is None:
         hubspot_service = HubSpotService()
     return hubspot_service
+
+
+async def sync_user_to_hubspot(
+    user_data: Dict[str, Any],
+    state: Optional[Dict[str, Any]] = None,
+    db_user: Optional[Any] = None,
+) -> bool:
+    """Compatibility helper used by existing tests and workflow code."""
+    result = await get_hubspot_service().sync_contact(user_data, state=state, db_user=db_user)
+    return result is not None
+
+
+async def search_contact_by_email(email: str) -> Optional[Dict[str, Any]]:
+    """Compatibility helper for direct contact lookup by email."""
+    return await get_hubspot_service()._search_contact(email=email)
+
+
+async def search_contact_by_channel_id(channel_user_id: str) -> Optional[Dict[str, Any]]:
+    """Compatibility helper for direct contact lookup by channel identifier."""
+    return await get_hubspot_service()._search_contact(channel_user_id=channel_user_id)
+
+
+HubSpotSync = HubSpotService

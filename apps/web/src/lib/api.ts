@@ -1,5 +1,43 @@
 import axios from 'axios';
-import type { Config, Conversation, Message, User, CollectedData, RAGStats, APIResponse, Deal } from '@/types';
+import type { AxiosError } from 'axios';
+import type { Config, Conversation, Message, User, RAGStats, APIResponse, Deal, JsonObject } from '@/types';
+
+interface ApiErrorPayload {
+  detail?: string;
+  message?: string;
+}
+
+interface ConversationListItem {
+  id?: number;
+  phone: string;
+  name?: string;
+  email?: string;
+  mode?: User['conversation_mode'];
+  total_messages?: number;
+  timestamp?: string;
+  sentiment?: string;
+  stage?: string;
+  conversation_summary?: string;
+  channel?: User['channel'];
+  channel_user_id?: string;
+  lastMessage?: string;
+  unread?: boolean;
+}
+
+interface TestMessageResponse {
+  response: string;
+  user_phone?: string;
+  user_name?: string | null;
+  intent_score?: number;
+  sentiment?: string;
+  stage?: string;
+  conversation_mode?: string;
+}
+
+export function getErrorMessage(error: unknown, fallback: string): string {
+  const apiError = error as AxiosError<ApiErrorPayload>;
+  return apiError.response?.data?.detail || apiError.response?.data?.message || fallback;
+}
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -153,9 +191,9 @@ export const previewVoice = async (voice: string): Promise<Blob> => {
 
 // Conversations API
 export const getConversations = async (): Promise<Conversation[]> => {
-  const response = await api.get('/conversations/');
+  const response = await api.get<ConversationListItem[]>('/conversations/');
   // API returns flat objects, transform to match Conversation type
-  return response.data.map((item: any) => ({
+  return response.data.map((item) => ({
     user: {
       id: item.id || 0,
       phone: item.phone,
@@ -214,7 +252,7 @@ export const processTestMessage = async (
   phone: string,
   message: string,
   history: Message[]
-): Promise<any> => {
+): Promise<TestMessageResponse> => {
   // Transform frontend Message[] to backend HistoryMessage[] format
   // Frontend has 'message_text', backend expects 'text'
   const transformedHistory = history.map(msg => ({
@@ -345,7 +383,7 @@ export const getUserSettings = async () => {
   return response.data;
 };
 
-export const updateUserSettings = async (preferences: Record<string, any>) => {
+export const updateUserSettings = async (preferences: JsonObject) => {
   const response = await api.put('/users/settings', { preferences });
   return response.data;
 };

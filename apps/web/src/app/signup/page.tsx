@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/components/ui/toast';
-import { signup } from '@/lib/api';
+import { getErrorMessage, signup } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 
 export default function SignupPage() {
@@ -60,9 +60,8 @@ export default function SignupPage() {
 
             // Redirect to onboarding
             router.push('/onboarding');
-        } catch (err: any) {
-            const errorMessage = err.response?.data?.detail || 'Error al crear la cuenta. Por favor, intenta de nuevo.';
-            addToast(errorMessage, 'error');
+        } catch (error) {
+            addToast(getErrorMessage(error, 'Error al crear la cuenta. Por favor, intenta de nuevo.'), 'error');
         } finally {
             setLoading(false);
         }

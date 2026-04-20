@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import type { User, Message } from "@/types"
 import { getMessages, getUserByPhone } from "@/lib/api"
 import { ConversationList } from "@/components/chat/ConversationList"
@@ -14,11 +14,9 @@ export default function ChatsPage() {
     const [selectedPhone, setSelectedPhone] = useState<string | null>(null)
     const [selectedUser, setSelectedUser] = useState<User | null>(null)
     const [messages, setMessages] = useState<Message[]>([])
-    const [loading, setLoading] = useState(false)
     const [channelFilter, setChannelFilter] = useState<string>("all")
 
     const loadConversation = async (phone: string) => {
-        setLoading(true)
         try {
             const [user, msgs] = await Promise.all([
                 getUserByPhone(phone),
@@ -29,8 +27,6 @@ export default function ChatsPage() {
             setSelectedPhone(phone)
         } catch (error) {
             console.error("Error loading conversation:", error)
-        } finally {
-            setLoading(false)
         }
     }
 

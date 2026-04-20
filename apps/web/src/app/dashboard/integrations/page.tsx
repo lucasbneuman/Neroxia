@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/components/ui/toast';
@@ -21,12 +21,28 @@ export default function IntegrationsPage() {
     const [twilioConnected, setTwilioConnected] = useState(false);
     const [channelIntegrations, setChannelIntegrations] = useState<ChannelIntegration[]>([]);
 
-    useEffect(() => {
-        loadStatus();
-        checkOAuthCallback();
+    const loadStatus = useCallback(async () => {
+        setLoading(true);
+        try {
+            const [hubspot, twilio, channels] = await Promise.all([
+                getHubSpotStatus().catch(() => ({ status: 'disconnected' })),
+                getTwilioStatus().catch(() => ({ status: 'disconnected' })),
+                fetch('/api/integrations/list', {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                }).then(res => res.json()).catch(() => [] as ChannelIntegration[])
+            ]);
+
+            setHubspotConnected(hubspot.status === 'active');
+            setTwilioConnected(twilio.status === 'active');
+            setChannelIntegrations(channels);
+        } catch (error) {
+            console.error('Error loading integration status:', error);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
-    const checkOAuthCallback = () => {
+    const checkOAuthCallback = useCallback(() => {
         const params = new URLSearchParams(window.location.search);
         const status = params.get('status');
 
@@ -38,28 +54,12 @@ export default function IntegrationsPage() {
             addToast('Error al conectar la cuenta', 'error');
             window.history.replaceState({}, '', '/dashboard/integrations');
         }
-    };
+    }, [addToast, loadStatus]);
 
-    const loadStatus = async () => {
-        setLoading(true);
-        try {
-            const [hubspot, twilio, channels] = await Promise.all([
-                getHubSpotStatus().catch(() => ({ status: 'disconnected' })),
-                getTwilioStatus().catch(() => ({ status: 'disconnected' })),
-                fetch('/api/integrations/list', {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                }).then(res => res.json()).catch(() => [])
-            ]);
-
-            setHubspotConnected(hubspot.status === 'active');
-            setTwilioConnected(twilio.status === 'active');
-            setChannelIntegrations(channels);
-        } catch (error) {
-            console.error('Error loading integration status:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+    useEffect(() => {
+        void loadStatus();
+        checkOAuthCallback();
+    }, [checkOAuthCallback, loadStatus]);
 
     const connectChannel = async (channel: 'instagram' | 'messenger') => {
         try {
@@ -76,7 +76,7 @@ export default function IntegrationsPage() {
 
             const data = await response.json();
             window.location.href = data.oauth_url;
-        } catch (error) {
+        } catch {
             addToast('Error al iniciar la conexión', 'error');
         }
     };
@@ -223,7 +223,7 @@ export default function IntegrationsPage() {
                         <div>
                             <h3 className="font-bold text-purple-900 mb-2">Cómo conectar Instagram/Messenger</h3>
                             <ol className="space-y-2 text-sm text-purple-800">
-                                <li>1. Haz clic en "Conectar Instagram" o "Conectar Messenger"</li>
+                                <li>1. Haz clic en &quot;Conectar Instagram&quot; o &quot;Conectar Messenger&quot;</li>
                                 <li>2. Inicia sesión en Facebook</li>
                                 <li>3. Selecciona la página que deseas conectar</li>
                                 <li>4. Acepta los permisos solicitados</li>
@@ -322,16 +322,17 @@ export default function IntegrationsPage() {
                         </div>
 
                         <div className="flex gap-2">
-                            <Button variant="outline" asChild>
-                                <a
-                                    href="https://www.twilio.com/docs/whatsapp/quickstart"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
+                            <a
+                                href="https://www.twilio.com/docs/whatsapp/quickstart"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex"
+                            >
+                                <Button variant="outline">
                                     <ExternalLink className="w-4 h-4 mr-2" />
                                     Ver documentación de Twilio
-                                </a>
-                            </Button>
+                                </Button>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -430,16 +431,17 @@ export default function IntegrationsPage() {
                         </div>
 
                         <div className="flex gap-2">
-                            <Button variant="outline" asChild>
-                                <a
-                                    href="https://developers.hubspot.com/docs/api/private-apps"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
+                            <a
+                                href="https://developers.hubspot.com/docs/api/private-apps"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex"
+                            >
+                                <Button variant="outline">
                                     <ExternalLink className="w-4 h-4 mr-2" />
                                     Ver documentación de HubSpot
-                                </a>
-                            </Button>
+                                </Button>
+                            </a>
                         </div>
                     </div>
                 </div>

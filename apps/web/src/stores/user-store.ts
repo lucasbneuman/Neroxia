@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { JsonObject } from '@/types';
 
 interface UserProfile {
   id: number;
@@ -10,7 +11,7 @@ interface UserProfile {
   avatar_url: string | null;
   role: string;
   onboarding_completed: boolean;
-  preferences: Record<string, any>;
+  preferences: JsonObject;
 }
 
 interface Subscription {
