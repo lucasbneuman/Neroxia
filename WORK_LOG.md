@@ -164,6 +164,11 @@
   - Status: Fixed .env loading, database URL driver, created diagnostic tools and setup guide
   - Notes: API now loads correctly, ready for user to add real Supabase keys
 
+- ✅ **[Backend Agent]** Make Twilio and HubSpot Configuration Dynamic - 2025-11-22
+  - Files: `apps/api/src/routers/integrations.py`, `apps/api/src/main.py`, `apps/bot-engine/src/services/config_manager.py`, `apps/bot-engine/src/services/twilio_service.py`, `apps/bot-engine/src/services/hubspot_sync.py`
+  - Status: Completed - Integrations can now be configured from frontend
+  - Notes: Created `/integrations` API endpoints (GET/PUT/DELETE) for Twilio and HubSpot. Added ConfigManager helper methods with database-first approach and environment variable fallback. Maintains backward compatibility.
+
 ---
 
 ## ⏸️ Blocked / Pending
