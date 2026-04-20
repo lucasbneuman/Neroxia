@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { AxiosError } from 'axios';
-import type { Config, Conversation, Message, User, RAGStats, APIResponse, Deal, JsonObject } from '@/types';
+import type { Config, Conversation, Message, User, RAGStats, APIResponse, Deal, JsonObject, WebWidgetConfig } from '@/types';
 
 interface ApiErrorPayload {
   detail?: string;
@@ -9,7 +9,7 @@ interface ApiErrorPayload {
 
 interface ConversationListItem {
   id?: number;
-  phone: string;
+  phone: string | null;
   name?: string;
   email?: string;
   mode?: User['conversation_mode'];
@@ -20,6 +20,8 @@ interface ConversationListItem {
   conversation_summary?: string;
   channel?: User['channel'];
   channel_user_id?: string;
+  displayIdentifier?: string;
+  originHost?: string;
   lastMessage?: string;
   unread?: boolean;
 }
@@ -207,7 +209,9 @@ export const getConversations = async (): Promise<Conversation[]> => {
       conversation_summary: item.conversation_summary,
       // Multi-channel support
       channel: item.channel || 'whatsapp',
-      channel_user_id: item.channel_user_id
+      channel_user_id: item.channel_user_id,
+      display_identifier: item.displayIdentifier,
+      origin_host: item.originHost,
     },
     last_message: item.lastMessage || '',
     unread: item.unread || false
@@ -216,6 +220,16 @@ export const getConversations = async (): Promise<Conversation[]> => {
 
 export const getMessages = async (phone: string): Promise<Message[]> => {
   const response = await api.get(`/conversations/${phone}/messages`);
+  return response.data;
+};
+
+export const getConversationById = async (userId: number): Promise<User> => {
+  const response = await api.get(`/conversations/id/${userId}`);
+  return response.data;
+};
+
+export const getMessagesByUserId = async (userId: number): Promise<Message[]> => {
+  const response = await api.get(`/conversations/id/${userId}/messages`);
   return response.data;
 };
 
@@ -236,14 +250,29 @@ export const takeControl = async (phone: string): Promise<APIResponse> => {
   return response.data;
 };
 
+export const takeControlByUserId = async (userId: number): Promise<APIResponse> => {
+  const response = await api.post(`/handoff/id/${userId}/take`, {});
+  return response.data;
+};
+
 
 export const returnToBot = async (phone: string): Promise<APIResponse> => {
   const response = await api.post(`/handoff/${phone}/return`);
   return response.data;
 };
 
+export const returnToBotByUserId = async (userId: number): Promise<APIResponse> => {
+  const response = await api.post(`/handoff/id/${userId}/return`);
+  return response.data;
+};
+
 export const sendManualMessage = async (phone: string, message: string): Promise<APIResponse> => {
   const response = await api.post(`/handoff/${phone}/send`, { message });
+  return response.data;
+};
+
+export const sendManualMessageByUserId = async (userId: number, message: string): Promise<APIResponse> => {
+  const response = await api.post(`/handoff/id/${userId}/send`, { message });
   return response.data;
 };
 
@@ -351,6 +380,13 @@ export async function deleteConversation(phone: string, deleteFromCRM: boolean =
   return response.data;
 }
 
+export async function deleteConversationByUserId(userId: number, deleteFromCRM: boolean = false): Promise<{ status: string; message: string; messages_deleted: number; deals_deleted: number; crm_deleted: boolean }> {
+  const response = await api.delete(`/conversations/id/${userId}`, {
+    params: { delete_from_crm: deleteFromCRM }
+  });
+  return response.data;
+}
+
 // User Profile API
 export const getUserProfile = async () => {
   const response = await api.get('/users/profile');
@@ -447,6 +483,25 @@ export const getHubSpotStatus = async () => {
 
 export const getTwilioStatus = async () => {
   const response = await api.get('/integrations/twilio/status');
+  return response.data;
+};
+
+export const getWebWidgetConfig = async (): Promise<WebWidgetConfig> => {
+  const response = await api.get('/integrations/web-widget');
+  return response.data;
+};
+
+export const updateWebWidgetConfig = async (payload: {
+  enabled: boolean;
+  allowed_origins: string[];
+  default_primary_color: string;
+}): Promise<WebWidgetConfig> => {
+  const response = await api.put('/integrations/web-widget', payload);
+  return response.data;
+};
+
+export const regenerateWebWidgetCredentials = async (): Promise<WebWidgetConfig> => {
+  const response = await api.post('/integrations/web-widget/regenerate');
   return response.data;
 };
 

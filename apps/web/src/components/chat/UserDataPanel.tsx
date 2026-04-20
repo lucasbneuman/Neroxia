@@ -3,7 +3,7 @@
 import { useState } from "react"
 import type { User } from "@/types"
 import { Trash2 } from "lucide-react"
-import { deleteConversation } from "@/lib/api"
+import { deleteConversationByUserId } from "@/lib/api"
 
 interface UserDataPanelProps {
     user: User | null
@@ -20,7 +20,7 @@ export function UserDataPanel({ user, onConversationDeleted }: UserDataPanelProp
 
         setIsDeleting(true)
         try {
-            const result = await deleteConversation(user.phone, deleteFromCRM)
+            const result = await deleteConversationByUserId(user.id, deleteFromCRM)
             console.log("Conversation deleted:", result)
 
             setShowDeleteDialog(false)
@@ -87,7 +87,7 @@ export function UserDataPanel({ user, onConversationDeleted }: UserDataPanelProp
                         </svg>
                         {user.name || "Sin nombre"}
                     </h3>
-                    <p className="text-purple-100 text-xs mt-1">{user.phone}</p>
+                    <p className="text-purple-100 text-xs mt-1">{user.display_identifier || user.phone || user.channel_user_id || `Usuario ${user.id}`}</p>
                 </div>
 
                 {/* Content */}
@@ -295,7 +295,7 @@ export function UserDataPanel({ user, onConversationDeleted }: UserDataPanelProp
 
                         <div className="mb-6">
                             <p className="text-gray-700 dark:text-gray-300 mb-4">
-                                ¿Estás seguro de que deseas eliminar la conversación con <span className="font-bold">{user.name || user.phone}</span>?
+                                ¿Estás seguro de que deseas eliminar la conversación con <span className="font-bold">{user.name || user.display_identifier || user.phone || user.channel_user_id}</span>?
                             </p>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                                 Se eliminarán todos los mensajes y datos del usuario.

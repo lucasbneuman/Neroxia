@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import type { User, Message } from "@/types"
-import { getMessages, getUserByPhone } from "@/lib/api"
+import { getConversationById, getMessagesByUserId } from "@/lib/api"
 import { ConversationList } from "@/components/chat/ConversationList"
 import { ChatView } from "@/components/chat/ChatView"
 import { UserDataPanel } from "@/components/chat/UserDataPanel"
@@ -11,46 +11,46 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Filter } from "lucide-react"
 
 export default function ChatsPage() {
-    const [selectedPhone, setSelectedPhone] = useState<string | null>(null)
+    const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
     const [selectedUser, setSelectedUser] = useState<User | null>(null)
     const [messages, setMessages] = useState<Message[]>([])
     const [channelFilter, setChannelFilter] = useState<string>("all")
 
-    const loadConversation = async (phone: string) => {
+    const loadConversation = async (userId: number) => {
         try {
             const [user, msgs] = await Promise.all([
-                getUserByPhone(phone),
-                getMessages(phone)
+                getConversationById(userId),
+                getMessagesByUserId(userId)
             ])
             setSelectedUser(user)
             setMessages(msgs)
-            setSelectedPhone(phone)
+            setSelectedUserId(userId)
         } catch (error) {
             console.error("Error loading conversation:", error)
         }
     }
 
-    const handleSelectConversation = (phone: string) => {
-        loadConversation(phone)
+    const handleSelectConversation = (userId: number) => {
+        loadConversation(userId)
     }
 
     const handleModeChange = () => {
         // Reload user data after mode change
-        if (selectedPhone) {
-            loadConversation(selectedPhone)
+        if (selectedUserId) {
+            loadConversation(selectedUserId)
         }
     }
 
     const handleMessageSent = () => {
         // Reload messages after sending
-        if (selectedPhone) {
-            loadConversation(selectedPhone)
+        if (selectedUserId) {
+            loadConversation(selectedUserId)
         }
     }
 
     const handleConversationDeleted = () => {
         // Clear selection and refresh conversation list
-        setSelectedPhone(null)
+        setSelectedUserId(null)
         setSelectedUser(null)
         setMessages([])
         // The ConversationList will auto-refresh due to autoRefresh prop
@@ -78,6 +78,7 @@ export default function ChatsPage() {
                             <SelectItem value="whatsapp">WhatsApp</SelectItem>
                             <SelectItem value="instagram">Instagram</SelectItem>
                             <SelectItem value="messenger">Messenger</SelectItem>
+                            <SelectItem value="web">Web</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -88,17 +89,17 @@ export default function ChatsPage() {
                 <div className="col-span-3 border border-gray-300 dark:border-gray-700 rounded overflow-hidden bg-white dark:bg-gray-800">
                     <ConversationList
                         onSelectConversation={handleSelectConversation}
-                        selectedPhone={selectedPhone}
+                        selectedUserId={selectedUserId}
                         autoRefresh={true}
-                        channelFilter={channelFilter === "all" ? undefined : channelFilter as "whatsapp" | "instagram" | "messenger"}
+                        channelFilter={channelFilter === "all" ? undefined : channelFilter as "whatsapp" | "instagram" | "messenger" | "web"}
                     />
                 </div>
 
                 {/* Middle Column: Chat View with Input */}
                 <div className="col-span-6 border border-gray-300 dark:border-gray-700 rounded overflow-hidden">
-                    {selectedPhone && selectedUser ? (
+                    {selectedUserId && selectedUser ? (
                         <ChatView
-                            phone={selectedPhone}
+                            userId={selectedUserId}
                             messages={messages}
                             conversationMode={selectedUser.conversation_mode}
                             onMessageSent={handleMessageSent}

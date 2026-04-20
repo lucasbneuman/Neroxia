@@ -12,7 +12,7 @@ Base = declarative_base()
 
 
 class User(Base):
-    """User/Customer model representing contacts from WhatsApp, Instagram, and Messenger."""
+    """User/Customer model representing contacts from WhatsApp, Instagram, Messenger, and Web."""
 
     __tablename__ = "users"
 
@@ -25,7 +25,7 @@ class User(Base):
     auth_user_id = Column(UUID(as_uuid=False), nullable=True, index=True)  # UUID from auth.users
 
     # Multi-channel support
-    channel = Column(String(20), default="whatsapp", nullable=False, index=True)  # whatsapp, instagram, messenger
+    channel = Column(String(20), default="whatsapp", nullable=False, index=True)  # whatsapp, instagram, messenger, web
     channel_user_id = Column(String(100), nullable=True, index=True)  # PSID for Instagram/Messenger
     channel_username = Column(String(100), nullable=True)  # @username for Instagram
     channel_profile_pic_url = Column(Text, nullable=True)
@@ -88,7 +88,7 @@ class Message(Base):
     message_metadata = Column(JSON, nullable=True)  # Store intent, sentiment at that moment
 
     # Multi-channel support
-    channel = Column(String(20), default="whatsapp", nullable=False, index=True)  # whatsapp, instagram, messenger
+    channel = Column(String(20), default="whatsapp", nullable=False, index=True)  # whatsapp, instagram, messenger, web
     channel_message_id = Column(String(100), nullable=True)  # Meta message ID for Instagram/Messenger
 
     # Relationships

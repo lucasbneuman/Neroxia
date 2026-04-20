@@ -123,6 +123,8 @@ def mock_dependencies(monkeypatch):
             self.user_metadata = {}
             self.phone = phone
             self.name = "Test User"
+            self.channel = "whatsapp"
+            self.channel_user_id = None
             self.created_at = "2024-01-01T00:00:00Z"
             self.stage = "initial_contact"
             self.intent_score = 0.5
@@ -231,16 +233,18 @@ def mock_dependencies(monkeypatch):
     def _now():
         return datetime.now(timezone.utc)
 
-    def _ensure_user(phone: str, **overrides):
-        if phone not in mock_db_state["users"]:
+    def _ensure_user(identifier: str, channel="whatsapp", **overrides):
+        if identifier not in mock_db_state["users"]:
             user_id = mock_db_state["counters"]["user"]
             mock_db_state["counters"]["user"] += 1
-            mock_db_state["users"][phone] = SimpleNamespace(
+            mock_db_state["users"][identifier] = SimpleNamespace(
                 id=user_id,
                 auth_user_id=mock_current_user.id,
-                phone=phone,
+                phone=overrides.get("phone", identifier if channel == "whatsapp" else None),
                 name=overrides.get("name", "Test User"),
                 email=overrides.get("email"),
+                channel=channel,
+                channel_user_id=overrides.get("channel_user_id", identifier if channel != "whatsapp" else None),
                 stage=overrides.get("stage", "initial_contact"),
                 sentiment=overrides.get("sentiment", "neutral"),
                 intent_score=overrides.get("intent_score", 0.5),
@@ -254,7 +258,7 @@ def mock_dependencies(monkeypatch):
                 twilio_profile_name=None,
             )
             mock_db_state["messages"][user_id] = []
-        return mock_db_state["users"][phone]
+        return mock_db_state["users"][identifier]
 
     def _deal_to_dict(deal):
         return {
@@ -282,22 +286,33 @@ def mock_dependencies(monkeypatch):
         }
 
     async def mock_get_user_by_phone(db, phone, auth_user_id=None):
-        return mock_db_state["users"].get(phone)
+        for user in mock_db_state["users"].values():
+            if user.phone == phone and (not auth_user_id or user.auth_user_id == auth_user_id):
+                return user
+        return None
+
+    async def mock_get_user_by_id(db, user_id, auth_user_id=None):
+        for user in mock_db_state["users"].values():
+            if user.id == user_id and (not auth_user_id or user.auth_user_id == auth_user_id):
+                return user
+        return None
 
     async def mock_create_user(db, phone, auth_user_id=None, **kwargs):
-        return _ensure_user(phone, **kwargs)
+        channel = kwargs.get("channel", "whatsapp")
+        identifier = phone if channel == "whatsapp" else kwargs.get("channel_user_id", phone)
+        return _ensure_user(identifier, channel=channel, **kwargs)
 
     async def mock_get_or_create_user(db, identifier, channel="whatsapp", auth_user_id=None, defaults=None):
         user = mock_db_state["users"].get(identifier)
         if user:
             return user, False
         defaults = defaults or {}
-        return _ensure_user(identifier, **defaults), True
+        return _ensure_user(identifier, channel=channel, **defaults), True
 
     async def mock_get_user_messages(db, user_id, limit=20):
         return list(mock_db_state["messages"].get(user_id, []))[-limit:]
 
-    async def mock_create_message(db, user_id, message_text, sender, metadata=None):
+    async def mock_create_message(db, user_id, message_text, sender, metadata=None, channel="whatsapp", channel_message_id=None):
         message_id = mock_db_state["counters"]["message"]
         mock_db_state["counters"]["message"] += 1
         message = SimpleNamespace(
@@ -307,6 +322,8 @@ def mock_dependencies(monkeypatch):
             sender=sender,
             timestamp=_now(),
             message_metadata=metadata or {},
+            channel=channel,
+            channel_message_id=channel_message_id,
         )
         mock_db_state["messages"].setdefault(user_id, []).append(message)
         for user in mock_db_state["users"].values():
@@ -327,8 +344,13 @@ def mock_dependencies(monkeypatch):
                 return user
         return None
 
-    async def mock_get_all_active_users(db, limit=100, auth_user_id=None):
-        return list(mock_db_state["users"].values())[:limit]
+    async def mock_get_all_active_users(db, limit=100, auth_user_id=None, channel=None, offset=0):
+        users = list(mock_db_state["users"].values())
+        if auth_user_id:
+            users = [user for user in users if user.auth_user_id == auth_user_id]
+        if channel:
+            users = [user for user in users if user.channel == channel]
+        return users[offset:offset + limit]
 
     async def mock_get_recent_messages(db, user_id, count=1):
         return list(mock_db_state["messages"].get(user_id, []))[-count:]
@@ -565,6 +587,7 @@ def mock_dependencies(monkeypatch):
     
     # Patch CRUD operations
     monkeypatch.setattr(crud, "get_user_by_phone", mock_get_user_by_phone)
+    monkeypatch.setattr(crud, "get_user_by_id", mock_get_user_by_id)
     monkeypatch.setattr(crud, "create_user", mock_create_user)
     monkeypatch.setattr(crud, "get_or_create_user", mock_get_or_create_user)
     monkeypatch.setattr(crud, "get_user_messages", mock_get_user_messages)

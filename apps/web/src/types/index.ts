@@ -8,7 +8,7 @@ export interface JsonObject {
 
 export interface User {
     id: number
-    phone: string
+    phone: string | null
     name?: string
     email?: string
     conversation_mode: "AUTO" | "MANUAL" | "NEEDS_ATTENTION"
@@ -19,8 +19,10 @@ export interface User {
     conversation_summary?: string
 
     // Multi-channel support
-    channel: "whatsapp" | "instagram" | "messenger"
+    channel: "whatsapp" | "instagram" | "messenger" | "web"
     channel_user_id?: string
+    display_identifier?: string
+    origin_host?: string
 
     // Analysis data
     intent_score?: number
@@ -49,13 +51,27 @@ export interface Message {
     message_metadata?: {
         manual?: boolean
         agent?: string
+        widget_id?: string
+        session_id?: string
+        origin?: string
+        page_url?: string
+        user_agent?: string
     }
+    channel?: User["channel"]
 }
 
 export interface Conversation {
     user: User
     last_message: string
     unread: boolean
+}
+
+export interface WebWidgetConfig {
+    enabled: boolean
+    widget_id: string
+    allowed_origins: string[]
+    default_primary_color: string
+    snippet: string
 }
 
 export interface Config {

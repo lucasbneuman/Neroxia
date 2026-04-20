@@ -4,18 +4,18 @@ import { useEffect, useState, useRef } from "react"
 import type { Message } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { sendManualMessage } from "@/lib/api"
+import { sendManualMessageByUserId } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { Send, Paperclip, Mic, Smile } from "lucide-react"
 
 interface ChatViewProps {
-    phone: string
+    userId: number
     messages: Message[]
     conversationMode: string
     onMessageSent?: () => void
 }
 
-export function ChatView({ phone, messages, conversationMode, onMessageSent }: ChatViewProps) {
+export function ChatView({ userId, messages, conversationMode, onMessageSent }: ChatViewProps) {
     const [messageText, setMessageText] = useState("")
     const [sending, setSending] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -38,7 +38,7 @@ export function ChatView({ phone, messages, conversationMode, onMessageSent }: C
             setSending(true)
             setError(null)
 
-            await sendManualMessage(phone, messageText)
+            await sendManualMessageByUserId(userId, messageText)
 
             setMessageText("")
             onMessageSent?.()

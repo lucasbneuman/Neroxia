@@ -8,15 +8,15 @@ import { ChannelBadge } from "@/components/ui/channel-badge"
 import { cn } from "@/lib/utils"
 
 interface ConversationListProps {
-    onSelectConversation: (phone: string) => void
-    selectedPhone: string | null
+    onSelectConversation: (userId: number) => void
+    selectedUserId: number | null
     autoRefresh?: boolean
-    channelFilter?: "whatsapp" | "instagram" | "messenger"
+    channelFilter?: "whatsapp" | "instagram" | "messenger" | "web"
 }
 
 export function ConversationList({
     onSelectConversation,
-    selectedPhone,
+    selectedUserId,
     autoRefresh = true,
     channelFilter
 }: ConversationListProps) {
@@ -122,8 +122,8 @@ export function ConversationList({
                 }
 
                 // Safe access with optional chaining and fallbacks
-                const displayName = conversation.user?.name || conversation.user?.phone || 'Unknown'
-                const isSelected = conversation.user?.phone === selectedPhone
+                const displayName = conversation.user?.name || conversation.user?.display_identifier || conversation.user?.phone || 'Unknown'
+                const isSelected = conversation.user?.id === selectedUserId
                 const lastMessagePreview = conversation.last_message?.length > 50
                     ? conversation.last_message.substring(0, 50) + "..."
                     : conversation.last_message || ''
@@ -131,7 +131,7 @@ export function ConversationList({
                 return (
                     <div
                         key={conversation.user.id}
-                        onClick={() => conversation.user?.phone && onSelectConversation(conversation.user.phone)}
+                        onClick={() => onSelectConversation(conversation.user.id)}
                         className={cn(
                             "p-3 border-b border-gray-200 cursor-pointer transition-colors hover:bg-gray-100",
                             isSelected && "bg-gray-100",
@@ -158,6 +158,11 @@ export function ConversationList({
                         <div className="text-xs text-gray-600">
                             {lastMessagePreview}
                         </div>
+                        {conversation.user.origin_host && (
+                            <div className="text-[11px] text-gray-500 mt-1 truncate">
+                                {conversation.user.origin_host}
+                            </div>
+                        )}
                     </div>
                 )
             })}
