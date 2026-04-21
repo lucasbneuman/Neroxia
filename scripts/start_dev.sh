@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# WhatsApp Sales Bot SaaS - Development Startup Script
+# Neroxia SaaS - Development Startup Script
 # For Linux/Mac
 
 echo "================================================="
-echo " WhatsApp Sales Bot SaaS - Development Mode"
+echo " Neroxia SaaS - Development Mode"
 echo "================================================="
 echo ""
 

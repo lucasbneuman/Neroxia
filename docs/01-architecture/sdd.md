@@ -56,7 +56,7 @@ docker-compose up --build
 ## Convenciones y patrones vigentes
 
 - La `api` importa el `bot-engine` como libreria.
-- La persistencia compartida debe consumirse desde `whatsapp_bot_database`.
+- La persistencia compartida debe consumirse desde `neroxia_database`.
 - El estado LangGraph se trata con patron inmutable: los nodos devuelven estado actualizado.
 - Las integraciones opcionales deben degradar sin romper el baseline del producto.
 - El repo usa documentacion canonica en `docs/`; los markdown del root quedan como apoyo o legado durante la transicion.

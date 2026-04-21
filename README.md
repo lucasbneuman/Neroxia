@@ -1,4 +1,4 @@
-# WhatsApp Sales Bot SaaS Platform
+# Neroxia SaaS Platform
 
 Plataforma SaaS multi-tenant de ventas conversacionales para WhatsApp con arquitectura de microservicios. El repo contiene frontend web, API backend, motor conversacional con LangGraph y paquetes compartidos.
 

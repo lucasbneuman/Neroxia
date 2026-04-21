@@ -1,4 +1,4 @@
-"""Initialize database tables for the sales bot."""
+"""Initialize database tables for Neroxia."""
 
 import asyncio
 import sys
@@ -8,8 +8,8 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root / "packages" / "database"))
 
-from whatsapp_bot_database.connection import engine
-from whatsapp_bot_database.models import Base
+from neroxia_database.connection import engine
+from neroxia_database.models import Base
 
 
 async def init_db():
@@ -42,7 +42,7 @@ async def init_db():
 
 if __name__ == "__main__":
     print("=" * 50)
-    print("Sales Bot - Database Initialization")
+    print("Neroxia - Database Initialization")
     print("=" * 50)
     print()
     

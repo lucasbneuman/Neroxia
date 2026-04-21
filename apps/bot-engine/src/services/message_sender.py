@@ -2,7 +2,7 @@
 
 from typing import Dict, Any, Optional
 
-from whatsapp_bot_shared import get_logger
+from neroxia_shared import get_logger
 
 from .meta_sender import MetaSenderService
 from .twilio_service import get_twilio_service

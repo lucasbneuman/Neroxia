@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 
 import requests
 
-from whatsapp_bot_shared import get_logger
+from neroxia_shared import get_logger
 
 logger = get_logger(__name__)
 

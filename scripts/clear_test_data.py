@@ -16,8 +16,8 @@ sys.path.insert(0, str(project_root / "packages" / "shared" / "src"))
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from whatsapp_bot_database.models import User, Message
-from whatsapp_bot_shared import get_logger
+from neroxia_database.models import User, Message
+from neroxia_shared import get_logger
 import os
 from dotenv import load_dotenv
 

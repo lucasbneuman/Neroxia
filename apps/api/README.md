@@ -1,6 +1,6 @@
-# WhatsApp Sales Bot - API Backend
+# Neroxia - API Backend
 
-FastAPI backend for the WhatsApp Sales Bot SaaS platform.
+FastAPI backend for the Neroxia SaaS platform.
 
 ## Tech Stack
 
@@ -36,4 +36,4 @@ FastAPI backend for the WhatsApp Sales Bot SaaS platform.
 - `POST /conversations/{phone}/send` - Send manual message
 
 ## Database
-Connects to the root `sales_bot.db` SQLite database using models from `packages/database`.
+Connects to the root `neroxia.db` SQLite database using models from `packages/database`.

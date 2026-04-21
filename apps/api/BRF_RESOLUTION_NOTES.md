@@ -12,7 +12,7 @@
 **Solution**:
 1. Created `setup_admin_user.py` script to create users with admin API
 2. Users created with `email_confirm: True` flag
-3. Created dev user: `admin@salesbot.dev` / `admin123`
+3. Created dev user: `admin@neroxia.dev` / `admin123`
 4. Created `DEV_CREDENTIALS.md` with login instructions
 
 **Verification**:
@@ -20,7 +20,7 @@
 # Test successful
 curl -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@salesbot.dev","password":"admin123"}'
+  -d '{"email":"admin@neroxia.dev","password":"admin123"}'
 
 # Returns valid JWT token and user data
 ```

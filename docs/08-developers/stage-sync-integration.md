@@ -17,7 +17,7 @@ Si agregas lógica para cambiar `user.stage` en algún nodo:
 ```python
 # En apps/bot-engine/src/graph/nodes.py
 
-from whatsapp_bot_database import crud
+from neroxia_database import crud
 
 async def qualifying_node(state: ConversationState):
     \"\"\"Node that qualifies the lead.\"\"\"

@@ -9,9 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from whatsapp_bot_shared import get_logger
-from whatsapp_bot_database import crud
-from whatsapp_bot_shared.helpers import format_phone_number
+from neroxia_shared import get_logger
+from neroxia_database import crud
+from neroxia_shared.helpers import format_phone_number
 from ..database import get_db
 
 # Add bot-engine to Python path

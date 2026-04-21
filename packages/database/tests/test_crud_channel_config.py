@@ -4,8 +4,8 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from whatsapp_bot_database.crud import get_channel_config_for_user
-from whatsapp_bot_database.models import User, ChannelIntegration
+from neroxia_database.crud import get_channel_config_for_user
+from neroxia_database.models import User, ChannelIntegration
 
 
 @pytest.mark.anyio

@@ -9,7 +9,7 @@ from sqlalchemy import text
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from packages.database.whatsapp_bot_database import AsyncSessionLocal
+from packages.database.neroxia_database import AsyncSessionLocal
 
 async def apply_migration():
     """Apply the subscription tables migration."""

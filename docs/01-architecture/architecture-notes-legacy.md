@@ -1,6 +1,6 @@
 # 🏗️ Architecture Documentation
 
-> **Purpose**: Central documentation for coordinating multiple agents working on the WhatsApp Sales Bot SaaS platform.
+> **Purpose**: Central documentation for coordinating multiple agents working on the Neroxia SaaS platform.
 
 **Last Updated**: 2025-12-09
 **Architecture Version**: 2.0.0 - Microservices
@@ -223,7 +223,7 @@ pip install -e packages/shared
 ## 📁 Project Structure
 
 ```
-whatsapp_sales_bot/
+neroxia/
 ├── apps/                           # Microservices
 │   ├── api/                        # FastAPI Backend
 │   │   ├── src/
@@ -284,7 +284,7 @@ whatsapp_sales_bot/
 ├── packages/                       # Shared Packages
 │   ├── database/                  # Database models & CRUD
 │   │   ├── src/
-│   │   │   └── whatsapp_bot_database/
+│   │   │   └── neroxia_database/
 │   │   │       ├── __init__.py
 │   │   │       ├── models.py      # SQLAlchemy models
 │   │   │       └── crud.py        # Database operations
@@ -292,7 +292,7 @@ whatsapp_sales_bot/
 │   │
 │   └── shared/                    # Shared utilities
 │       ├── src/
-│       │   └── whatsapp_bot_shared/
+│       │   └── neroxia_shared/
 │       │       ├── __init__.py
 │       │       ├── logging_config.py
 │       │       └── helpers.py
@@ -313,7 +313,7 @@ whatsapp_sales_bot/
 │
 ├── chroma_db/                      # ChromaDB vector store ⚠️ DO NOT MOVE
 ├── data/                           # Data files
-│   └── sales_bot.db               # SQLite (legacy) ⚠️ DO NOT MOVE
+│   └── neroxia.db               # SQLite (legacy) ⚠️ DO NOT MOVE
 │
 ├── .env                            # Environment variables
 ├── .env.example                    # Environment template
@@ -573,8 +573,8 @@ pip install -e packages/database
 
 **Import**:
 ```python
-from whatsapp_bot_database.models import Conversation, Message
-from whatsapp_bot_database.crud import get_conversation, create_message
+from neroxia_database.models import Conversation, Message
+from neroxia_database.crud import get_conversation, create_message
 ```
 
 ### 5. **packages/shared** - Shared Utilities Package
@@ -592,8 +592,8 @@ pip install -e packages/shared
 
 **Import**:
 ```python
-from whatsapp_bot_shared.logging_config import setup_logging
-from whatsapp_bot_shared.helpers import format_phone_number, validate_email
+from neroxia_shared.logging_config import setup_logging
+from neroxia_shared.helpers import format_phone_number, validate_email
 ```
 
 ---
@@ -645,8 +645,8 @@ async def handle_message(message: MessageInput):
 
 **All services** access database via `packages/database`:
 ```python
-from whatsapp_bot_database.models import Conversation
-from whatsapp_bot_database.crud import get_conversation
+from neroxia_database.models import Conversation
+from neroxia_database.crud import get_conversation
 
 # In any service
 conversation = await get_conversation(db, conversation_id)
@@ -716,7 +716,7 @@ conversation = await get_conversation(db, conversation_id)
 ### 6. **Shared Package Names**
 
 **DO NOT**:
-- Rename `whatsapp_bot_database` or `whatsapp_bot_shared`
+- Rename `neroxia_database` or `neroxia_shared`
 - Change package structure
 
 **Reason**: All imports will break
@@ -759,8 +759,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Local
-from whatsapp_bot_database.models import Conversation
-from whatsapp_bot_shared.logging_config import setup_logging
+from neroxia_database.models import Conversation
+from neroxia_shared.logging_config import setup_logging
 ```
 
 **Logging**:
@@ -823,7 +823,7 @@ const conversations = await api.get<Conversation[]>('/conversations');
 **Tool**: Alembic (for SQLAlchemy)
 
 **Process**:
-1. Modify models in `packages/database/src/whatsapp_bot_database/models.py`
+1. Modify models in `packages/database/src/neroxia_database/models.py`
 2. Create migration: `alembic revision --autogenerate -m "description"`
 3. Review migration file
 4. Apply migration: `alembic upgrade head`
@@ -862,8 +862,8 @@ docs(architecture): update communication patterns
 
 1. **Clone repository**:
    ```bash
-   git clone https://github.com/lucasbneuman/whatsapp_sales_bot.git
-   cd whatsapp_sales_bot
+   git clone https://github.com/lucasbneuman/neroxia.git
+   cd neroxia
    ```
 
 2. **Install shared packages**:

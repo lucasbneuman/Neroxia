@@ -1,5 +1,5 @@
 # Script para ejecutar tests de API
-# Ejecutar desde: C:\Users\avali\Desktop\Proyectos\whatsapp_sales_bot
+# Ejecutar desde: C:\Users\avali\Desktop\Proyectos\neroxia
 
 Write-Host "=== Ejecutando Tests de API ===" -ForegroundColor Green
 Write-Host ""

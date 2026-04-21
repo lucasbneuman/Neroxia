@@ -49,20 +49,20 @@ This document outlines the strategy for migrating from Supabase PostgreSQL to se
 #### 1.2 Database User Setup
 ```sql
 -- Create application user with limited privileges
-CREATE USER salesbot_app WITH PASSWORD 'secure_random_password_here';
+CREATE USER neroxia_app WITH PASSWORD 'secure_random_password_here';
 
 -- Create database
-CREATE DATABASE sales_bot_production OWNER salesbot_app;
+CREATE DATABASE neroxia_production OWNER neroxia_app;
 
 -- Grant privileges
-GRANT CONNECT ON DATABASE sales_bot_production TO salesbot_app;
-GRANT USAGE ON SCHEMA public TO salesbot_app;
-GRANT CREATE ON SCHEMA public TO salesbot_app;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO salesbot_app;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO salesbot_app;
+GRANT CONNECT ON DATABASE neroxia_production TO neroxia_app;
+GRANT USAGE ON SCHEMA public TO neroxia_app;
+GRANT CREATE ON SCHEMA public TO neroxia_app;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO neroxia_app;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO neroxia_app;
 
 -- Enable extensions
-\c sales_bot_production
+\c neroxia_production
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
 ```
@@ -90,11 +90,11 @@ psql "postgresql://..." -c "\COPY messages TO 'messages_backup.csv' CSV HEADER"
 #### 2.1 Apply Schema to Coolify PostgreSQL
 ```bash
 # Option 1: Use consolidated migration script (recommended)
-psql "postgresql://salesbot_app:PASSWORD@coolify-postgres-host:5432/sales_bot_production" \
+psql "postgresql://neroxia_app:PASSWORD@coolify-postgres-host:5432/neroxia_production" \
   -f <one-time migration SQL script>
 
 # Option 2: Restore from dump (includes data)
-pg_restore --dbname="postgresql://salesbot_app:PASSWORD@coolify-postgres-host:5432/sales_bot_production" \
+pg_restore --dbname="postgresql://neroxia_app:PASSWORD@coolify-postgres-host:5432/neroxia_production" \
   --verbose \
   supabase_backup.dump
 ```
@@ -102,7 +102,7 @@ pg_restore --dbname="postgresql://salesbot_app:PASSWORD@coolify-postgres-host:54
 #### 2.2 Verify Schema Migration
 ```bash
 # Run verification script
-psql "postgresql://salesbot_app:PASSWORD@coolify-postgres-host:5432/sales_bot_production" \
+psql "postgresql://neroxia_app:PASSWORD@coolify-postgres-host:5432/neroxia_production" \
   -f <one-time verification SQL script>
 ```
 
@@ -145,7 +145,7 @@ done
 ```bash
 # Import data to Coolify PostgreSQL
 for table in "${tables[@]}"; do
-  psql "postgresql://salesbot_app:PASSWORD@coolify-host:5432/sales_bot_production" \
+  psql "postgresql://neroxia_app:PASSWORD@coolify-host:5432/neroxia_production" \
     -c "\COPY $table FROM '${table}_data.csv' CSV HEADER"
 done
 
@@ -186,7 +186,7 @@ SUPABASE_ANON_KEY=eyJhbGci...
 SUPABASE_SERVICE_KEY=eyJhbGci...
 
 # After Migration (Coolify + Supabase Auth)
-DATABASE_URL=postgresql+asyncpg://salesbot_app:PASSWORD@coolify-postgres-host:5432/sales_bot_production
+DATABASE_URL=postgresql+asyncpg://neroxia_app:PASSWORD@coolify-postgres-host:5432/neroxia_production
 SUPABASE_URL=https://oveixhmndwrtymuymdxm.supabase.co  # Keep for auth
 SUPABASE_ANON_KEY=eyJhbGci...  # Keep for auth
 SUPABASE_SERVICE_KEY=eyJhbGci...  # Keep for auth
@@ -279,7 +279,7 @@ If migration fails or issues detected within 24 hours:
 DATABASE_URL=postgresql+asyncpg://postgres.oveixhmndwrtymuymdxm:5vNAztJpXzbt3@aws-0-us-west-2.pooler.supabase.com:5432/postgres
 
 # 2. Restart application
-systemctl restart whatsapp-sales-bot-api
+systemctl restart neroxia-bot-api
 
 # 3. Verify health
 curl http://localhost:8000/health/db
@@ -374,7 +374,7 @@ iptables -A INPUT -p tcp --dport 5432 -s API_SERVER_IP -j ACCEPT
 iptables -A INPUT -p tcp --dport 5432 -j DROP
 
 # Or use PostgreSQL pg_hba.conf
-# host    sales_bot_production    salesbot_app    API_SERVER_IP/32    scram-sha-256
+# host    neroxia_production    neroxia_app    API_SERVER_IP/32    scram-sha-256
 ```
 
 ### 2. Connection Security
@@ -386,7 +386,7 @@ ssl_cert_file = '/path/to/server.crt'
 ssl_key_file = '/path/to/server.key'
 
 # Update connection string:
-DATABASE_URL=postgresql+asyncpg://salesbot_app:PASSWORD@coolify-host:5432/sales_bot_production?ssl=require
+DATABASE_URL=postgresql+asyncpg://neroxia_app:PASSWORD@coolify-host:5432/neroxia_production?ssl=require
 ```
 
 ### 3. Backup Encryption
@@ -421,7 +421,7 @@ gpg --decrypt backup_encrypted.gpg | pg_restore --dbname="postgresql://..."
 - **Migration Script:** create an explicit one-time SQL script for the cutover window
 - **Verification Script:** create an explicit one-time verification SQL script for the cutover window
 - **Backup Location:** keep external backups outside the active repository
-- **Database Models:** `packages/database/whatsapp_bot_database/models.py`
+- **Database Models:** `packages/database/neroxia_database/models.py`
 - **Coolify Deployment:** `deployment-coolify.md`
 
 ---

@@ -25,10 +25,10 @@ export function MainNav() {
                     {/* Logo */}
                     <Link href="/" className="flex items-center space-x-2 group">
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8B5CF6] to-[#7C3AED] flex items-center justify-center shadow-accent transition-transform group-hover:scale-105">
-                            <span className="text-white font-black text-xl">SO</span>
+                            <span className="text-white font-black text-xl">N</span>
                         </div>
                         <span className="text-xl font-black bg-gradient-to-r from-[#8B5CF6] to-[#7C3AED] bg-clip-text text-transparent">
-                            Sales Oracle
+                            Neroxia
                         </span>
                     </Link>
 

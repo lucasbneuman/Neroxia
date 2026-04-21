@@ -1,4 +1,4 @@
-# Test execution script for WhatsApp Sales Bot API (Windows PowerShell)
+# Test execution script for Neroxia API (Windows PowerShell)
 # Usage: .\run_tests.ps1 [options]
 
 param(
@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "=== WhatsApp Sales Bot API Test Suite ===" -ForegroundColor Green
+Write-Host "=== Neroxia API Test Suite ===" -ForegroundColor Green
 Write-Host ""
 
 # Check if pytest is installed

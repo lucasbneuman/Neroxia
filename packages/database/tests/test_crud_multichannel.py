@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from whatsapp_bot_database.models import Base, User, Deal, ChannelIntegration
-from whatsapp_bot_database import crud
+from neroxia_database.models import Base, User, Deal, ChannelIntegration
+from neroxia_database import crud
 
 
 # Mark all tests as anyio

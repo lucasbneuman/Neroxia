@@ -1,5 +1,5 @@
 #!/bin/bash
-# Test execution script for WhatsApp Sales Bot API
+# Test execution script for Neroxia API
 # Usage: ./run_tests.sh [options]
 
 set -e  # Exit on error
@@ -10,7 +10,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}=== WhatsApp Sales Bot API Test Suite ===${NC}\n"
+echo -e "${GREEN}=== Neroxia API Test Suite ===${NC}\n"
 
 # Check if pytest is installed
 if ! command -v pytest &> /dev/null; then

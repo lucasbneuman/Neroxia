@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 # Load environment variables (for DB URL)
 load_dotenv()
 
-from whatsapp_bot_database.connection import get_db
+from neroxia_database.connection import get_db
 from sqlalchemy import text
 
 async def clean_data():

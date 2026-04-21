@@ -9,7 +9,7 @@ from pydantic import BaseModel, EmailStr
 from ..core.supabase import supabase
 from ..routers.auth import get_current_user
 from ..database import get_db as get_db_session, AsyncSessionLocal
-from whatsapp_bot_database.subscription_crud import (
+from neroxia_database.subscription_crud import (
     create_user_profile,
     delete_user_profile,
     get_user_profile,

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from whatsapp_bot_shared import get_logger
+from neroxia_shared import get_logger
 
 # Add bot-engine to Python path
 bot_engine_path = Path(__file__).parent.parent.parent.parent / "bot-engine" / "src"

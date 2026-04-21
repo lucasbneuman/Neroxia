@@ -181,7 +181,7 @@ export default function PlatformPage() {
                             Listo para Probar la Plataforma?
                         </h2>
                         <p className="text-xl text-white/90 mb-8 font-bold">
-                            Comienza gratis y descubre todo lo que Oracle Sales puede hacer por tu negocio
+                            Comienza gratis y descubre todo lo que Neroxia puede hacer por tu negocio
                         </p>
                         <Link
                             href="/login"

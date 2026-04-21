@@ -1,1 +1,1 @@
-"""LangGraph components for conversational sales bot."""
+"""LangGraph components for Neroxia conversational engine."""

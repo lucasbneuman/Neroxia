@@ -4,7 +4,7 @@
 
 Use these credentials to login to the application:
 
-**Email:** `admin@salesbot.dev`
+**Email:** `admin@neroxia.dev`
 **Password:** `admin123`
 
 > **Note:** This user was created with email auto-confirmed for development.

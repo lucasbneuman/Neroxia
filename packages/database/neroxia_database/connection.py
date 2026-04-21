@@ -17,21 +17,28 @@ else:
 
 # Read database URL from environment
 # For Supabase: postgresql+asyncpg://user:pass@host:port/database
-# For local dev: postgresql+asyncpg://localhost:5432/sales_bot
+# For local dev: postgresql+asyncpg://localhost:5432/neroxia
 DATABASE_URL = os.getenv(
     "SUPABASE_DATABASE_URL",
-    os.getenv("DATABASE_URL", "postgresql+asyncpg://localhost:5432/sales_bot")
+    os.getenv("DATABASE_URL", "postgresql+asyncpg://localhost:5432/neroxia")
 )
 
-# Create async engine with connection pooling
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=False,
-    pool_size=10,
-    max_overflow=20,
-    pool_pre_ping=True,  # Verify connections before using
-    pool_recycle=3600,   # Recycle connections after 1 hour
-)
+# Create async engine with connection pooling where the driver supports it.
+engine_kwargs = {
+    "echo": False,
+    "pool_pre_ping": True,  # Verify connections before using
+}
+
+if not DATABASE_URL.startswith("sqlite"):
+    engine_kwargs.update(
+        {
+            "pool_size": 10,
+            "max_overflow": 20,
+            "pool_recycle": 3600,  # Recycle connections after 1 hour
+        }
+    )
+
+engine = create_async_engine(DATABASE_URL, **engine_kwargs)
 
 # Create async session factory
 AsyncSessionLocal = sessionmaker(

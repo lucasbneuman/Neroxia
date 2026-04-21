@@ -292,7 +292,7 @@ ORDER BY idx_scan ASC;
 ### Steps:
 1. **Stop API server**
    ```bash
-   systemctl stop whatsapp-sales-bot-api
+   systemctl stop neroxia-bot-api
    ```
 
 2. **Review backup**
@@ -317,7 +317,7 @@ run an equivalent schema verification query against the target database
 
 5. **Restart API**
    ```bash
-   systemctl start whatsapp-sales-bot-api
+   systemctl start neroxia-bot-api
    ```
 
 **Rollback Risk:** LOW - Migrations are additive (no data deleted)

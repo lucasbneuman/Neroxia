@@ -155,8 +155,8 @@ class TestMessengerMultiTenant:
 class TestMessengerErrorHandling:
     """Test error handling for Messenger webhooks."""
 
-    @patch('whatsapp_bot_database.crud.get_user_by_identifier')
-    @patch('whatsapp_bot_database.crud.get_channel_config_for_user')
+    @patch('neroxia_database.crud.get_user_by_identifier')
+    @patch('neroxia_database.crud.get_channel_config_for_user')
     def test_messenger_without_channel_config_logs_error(
         self,
         mock_get_config,
@@ -217,9 +217,9 @@ class TestMessengerBackgroundProcessing:
     """Test background task processing for Messenger."""
 
     @patch('graph.workflow.process_message')
-    @patch('whatsapp_bot_database.crud.get_user_by_identifier')
-    @patch('whatsapp_bot_database.crud.create_user')
-    @patch('whatsapp_bot_database.crud.get_channel_config_for_user')
+    @patch('neroxia_database.crud.get_user_by_identifier')
+    @patch('neroxia_database.crud.create_user')
+    @patch('neroxia_database.crud.get_channel_config_for_user')
     def test_webhook_returns_quickly_with_background_task(
         self,
         mock_get_config,

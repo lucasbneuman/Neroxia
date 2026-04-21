@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
-from whatsapp_bot_shared import get_logger
+from neroxia_shared import get_logger
 
 logger = get_logger(__name__)
 

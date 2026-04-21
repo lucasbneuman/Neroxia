@@ -1,6 +1,6 @@
 # Scripts Directory
 
-Utility scripts for the WhatsApp Sales Bot project.
+Utility scripts for the Neroxia project.
 
 ## 📁 Organization
 

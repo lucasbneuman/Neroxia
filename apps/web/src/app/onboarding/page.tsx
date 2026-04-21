@@ -93,7 +93,7 @@ export default function OnboardingPage() {
                 {/* Header */}
                 <div className="text-center mb-8">
                     <h1 className="text-4xl font-black text-black tracking-tight mb-2">
-                        Bienvenido a Sales Oracle
+                        Bienvenido a Neroxia
                     </h1>
                     <p className="text-gray-600">Configuremos tu cuenta en 4 pasos simples</p>
                 </div>

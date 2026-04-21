@@ -36,8 +36,8 @@ load_dotenv()
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
 app = FastAPI(
-    title="WhatsApp Sales Bot API",
-    description="Backend API for WhatsApp Sales Bot SaaS",
+    title="Neroxia API",
+    description="Backend API for Neroxia SaaS",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -96,7 +96,7 @@ app.mount("/avatars", StaticFiles(directory=str(avatars_dir)), name="avatars")
 
 @app.get("/")
 async def root():
-    return {"message": "WhatsApp Sales Bot API is running"}
+    return {"message": "Neroxia API is running"}
 
 
 @app.get("/health")

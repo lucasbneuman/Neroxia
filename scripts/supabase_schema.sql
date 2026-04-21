@@ -1,5 +1,5 @@
 -- ============================================================================
--- WhatsApp Sales Bot - Database Schema for Supabase
+-- Neroxia - Database Schema for Supabase
 -- ============================================================================
 -- Run this script in Supabase SQL Editor to create all required tables
 -- Dashboard > SQL Editor > New Query > Paste this script > Run

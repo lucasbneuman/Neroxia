@@ -1,6 +1,6 @@
-# WhatsApp Sales Bot API - Endpoints Documentation
+# Neroxia API - Endpoints Documentation
 
-Complete API reference for the WhatsApp Sales Bot backend.
+Complete API reference for the Neroxia backend.
 
 **Base URL**: `http://localhost:8000`
 
@@ -587,7 +587,7 @@ curl -X GET http://localhost:8000/
 **Response**:
 ```json
 {
-  "message": "WhatsApp Sales Bot API is running"
+  "message": "Neroxia API is running"
 }
 ```
 

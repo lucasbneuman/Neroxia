@@ -1,23 +1,24 @@
 version: '3.8'
+name: neroxia
 
 services:
   # PostgreSQL Database for local development
   postgres:
     image: postgres:15-alpine
-    container_name: whatsapp-sales-postgres
+    container_name: neroxia-postgres
     environment:
-      POSTGRES_USER: salesbot
-      POSTGRES_PASSWORD: salesbot_dev_password
-      POSTGRES_DB: sales_bot
+      POSTGRES_USER: neroxia
+      POSTGRES_PASSWORD: neroxia_dev_password
+      POSTGRES_DB: neroxia
     ports:
       - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/supabase_schema.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
-      - whatsapp-network
+      - neroxia-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U salesbot"]
+      test: ["CMD-SHELL", "pg_isready -U neroxia"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,12 +28,12 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    container_name: whatsapp-sales-api
+    container_name: neroxia-api
     ports:
       - '8000:8000'
     environment:
-      - DATABASE_URL=postgresql+asyncpg://salesbot:salesbot_dev_password@postgres:5432/sales_bot
-      - SUPABASE_DATABASE_URL=postgresql+asyncpg://salesbot:salesbot_dev_password@postgres:5432/sales_bot
+      - DATABASE_URL=postgresql+asyncpg://neroxia:neroxia_dev_password@postgres:5432/neroxia
+      - SUPABASE_DATABASE_URL=postgresql+asyncpg://neroxia:neroxia_dev_password@postgres:5432/neroxia
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - HUBSPOT_ACCESS_TOKEN=${HUBSPOT_ACCESS_TOKEN}
       - HUBSPOT_CLIENT_SECRET=${HUBSPOT_CLIENT_SECRET}
@@ -51,7 +52,7 @@ services:
       - ./apps/bot-engine:/app/apps/bot-engine
       - ./chroma_db:/app/chroma_db
     networks:
-      - whatsapp-network
+      - neroxia-network
     depends_on:
       postgres:
         condition: service_healthy
@@ -71,7 +72,7 @@ services:
         - NEXT_PUBLIC_API_URL=http://localhost:8000
         - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL:-http://localhost:8000}
         - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-dummy-key-for-local}
-    container_name: whatsapp-sales-web
+    container_name: neroxia-web
     ports:
       - '3000:3000'
     environment:
@@ -86,7 +87,7 @@ services:
       api:
         condition: service_healthy
     networks:
-      - whatsapp-network
+      - neroxia-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1"]
@@ -98,20 +99,20 @@ services:
   # pgAdmin for database management (optional)
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: whatsapp-sales-pgadmin
+    container_name: neroxia-pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@salesbot.local
+      PGADMIN_DEFAULT_EMAIL: admin@neroxia.local
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - '5050:80'
     networks:
-      - whatsapp-network
+      - neroxia-network
     depends_on:
       - postgres
     restart: unless-stopped
 
 networks:
-  whatsapp-network:
+  neroxia-network:
     driver: bridge
 
 volumes:

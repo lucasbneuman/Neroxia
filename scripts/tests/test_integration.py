@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Integration test for WhatsApp Sales Bot SaaS Platform.
+Integration test for Neroxia SaaS Platform.
 
 Tests that all packages work together:
 - Shared utilities
@@ -29,7 +29,7 @@ async def test_shared_package():
     print("=" * 60)
 
     try:
-        from whatsapp_bot_shared import get_logger, format_phone_number
+        from neroxia_shared import get_logger, format_phone_number
 
         # Test logger
         logger = get_logger("test")
@@ -55,7 +55,7 @@ async def test_database_package():
     print("=" * 60)
 
     try:
-        from whatsapp_bot_database import Base, User, Message, Config, crud
+        from neroxia_database import Base, User, Message, Config, crud
         from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
         from sqlalchemy.orm import sessionmaker
 
@@ -114,7 +114,7 @@ async def test_bot_engine():
     try:
         # Import from bot-engine (added to sys.path above)
         from graph.workflow import process_message, get_sales_graph
-        from whatsapp_bot_database import Base, crud
+        from neroxia_database import Base, crud
         from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
         from sqlalchemy.orm import sessionmaker
 
@@ -175,7 +175,7 @@ async def test_bot_engine():
 async def main():
     """Run all integration tests."""
     print("\n" + "=" * 60)
-    print("WhatsApp Sales Bot - Integration Test Suite")
+    print("Neroxia - Integration Test Suite")
     print("=" * 60)
 
     results = []

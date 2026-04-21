@@ -6,7 +6,7 @@ from typing import Optional
 
 from openai import AsyncOpenAI
 
-from whatsapp_bot_shared import get_logger
+from neroxia_shared import get_logger
 
 logger = get_logger(__name__)
 

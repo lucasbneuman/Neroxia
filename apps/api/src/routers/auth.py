@@ -153,7 +153,7 @@ async def signup(credentials: SignupRequest):
         
         # Import database dependencies
         from ..database import get_db
-        from whatsapp_bot_database.subscription_crud import (
+        from neroxia_database.subscription_crud import (
             create_user_profile,
             create_user_subscription,
             get_subscription_plan_by_name,

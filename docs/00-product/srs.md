@@ -2,7 +2,7 @@
 
 ## Objetivo funcional
 
-`whatsapp_sales_bot` resuelve ventas conversacionales para empresas que atienden prospectos por WhatsApp y otros canales compatibles. El sistema debe ayudar a captar leads, calificar interes, sostener conversaciones comerciales, registrar contexto y sincronizar informacion relevante con CRM y configuraciones por tenant.
+`neroxia` resuelve ventas conversacionales para empresas que atienden prospectos por WhatsApp y otros canales compatibles. El sistema debe ayudar a captar leads, calificar interes, sostener conversaciones comerciales, registrar contexto y sincronizar informacion relevante con CRM y configuraciones por tenant.
 
 ## Alcance
 

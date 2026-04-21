@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from ..routers.auth import get_current_user
 from ..database import get_db as get_db_session, AsyncSessionLocal
-from whatsapp_bot_database.subscription_crud import (
+from neroxia_database.subscription_crud import (
     get_all_subscription_plans,
     get_current_usage,
     get_user_billing_history,
@@ -148,7 +148,7 @@ async def get_current_subscription(
 
     # Lazy creation: create free_trial subscription if none exists
     if not subscription:
-        from whatsapp_bot_database.subscription_crud import (
+        from neroxia_database.subscription_crud import (
             create_user_subscription,
             get_subscription_plan_by_name,
         )
@@ -215,7 +215,7 @@ async def get_usage_metrics(
 
     # Lazy creation: create free_trial subscription if none exists
     if not subscription:
-        from whatsapp_bot_database.subscription_crud import (
+        from neroxia_database.subscription_crud import (
             create_user_subscription,
             get_subscription_plan_by_name,
         )

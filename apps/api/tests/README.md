@@ -1,6 +1,6 @@
 # API Test Suite
 
-Comprehensive pytest test suite for the WhatsApp Sales Bot API.
+Comprehensive pytest test suite for the Neroxia API.
 
 ## 📁 Organization
 

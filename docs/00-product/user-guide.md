@@ -1,4 +1,4 @@
-# Guía de Usuario - Sales Oracle
+# Guía de Usuario - Neroxia
 
 ## 📋 Índice
 

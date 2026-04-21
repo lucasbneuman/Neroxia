@@ -13,7 +13,7 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "Sales Oracle - AI Sales Assistant",
+  title: "Neroxia - AI Sales Assistant",
   description: "Intelligent WhatsApp sales automation powered by AI",
 };
 

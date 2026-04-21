@@ -9,8 +9,8 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from twilio.request_validator import RequestValidator
 
-from whatsapp_bot_database import crud
-from whatsapp_bot_shared import get_logger
+from neroxia_database import crud
+from neroxia_shared import get_logger
 
 from ..database import get_db
 from .bot import process_bot_message, MessageRequest

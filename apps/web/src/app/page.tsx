@@ -13,7 +13,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto text-center">
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black mb-6 leading-tight">
             <span className="bg-gradient-to-r from-[#8B5CF6] to-[#7C3AED] bg-clip-text text-transparent">
-              Oracle Sales
+              Neroxia
             </span>
             <br />
             <span className="text-gray-900 dark:text-white">
@@ -48,7 +48,7 @@ export default function Home() {
             Potencia tus Ventas con IA
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-400 text-center mb-16 font-bold">
-            Oracle Sales revoluciona tu proceso de ventas en WhatsApp
+            Neroxia revoluciona tu proceso de ventas en WhatsApp
           </p>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -108,7 +108,7 @@ export default function Home() {
                 Disponibilidad 24/7
               </h3>
               <p className="text-gray-600 dark:text-gray-400 font-bold leading-relaxed">
-                Nunca pierdas una venta. Oracle Sales atiende a tus clientes en cualquier momento, día y noche.
+                Nunca pierdas una venta. Neroxia atiende a tus clientes en cualquier momento, día y noche.
               </p>
             </div>
 
@@ -138,7 +138,7 @@ export default function Home() {
                 Multi-idioma
               </h3>
               <p className="text-gray-600 dark:text-gray-400 font-bold leading-relaxed">
-                Atiende clientes en su idioma preferido. Oracle Sales se adapta automáticamente a cada conversación.
+                Atiende clientes en su idioma preferido. Neroxia se adapta automáticamente a cada conversación.
               </p>
             </div>
           </div>
@@ -188,7 +188,7 @@ export default function Home() {
                 Vende Automáticamente
               </h3>
               <p className="text-gray-600 dark:text-gray-400 font-bold">
-                Oracle Sales empieza a atender clientes, calificar leads y cerrar ventas por ti.
+                Neroxia empieza a atender clientes, calificar leads y cerrar ventas por ti.
               </p>
             </div>
           </div>
@@ -202,7 +202,7 @@ export default function Home() {
             Listo para Transformar tus Ventas?
           </h2>
           <p className="text-xl text-white/90 mb-10 font-bold">
-            Únete a cientos de empresas que ya están vendiendo más con Oracle Sales
+            Únete a cientos de empresas que ya están vendiendo más con Neroxia
           </p>
           <Link
             href="/login"
@@ -218,14 +218,14 @@ export default function Home() {
         <div className="max-w-7xl mx-auto text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8B5CF6] to-[#7C3AED] flex items-center justify-center shadow-accent">
-              <span className="text-white font-black text-xl">SO</span>
+              <span className="text-white font-black text-xl">N</span>
             </div>
             <span className="text-xl font-black bg-gradient-to-r from-[#8B5CF6] to-[#7C3AED] bg-clip-text text-transparent">
-              Sales Oracle
+              Neroxia
             </span>
           </div>
           <p className="text-gray-600 dark:text-gray-400 font-bold">
-            © 2025 Sales Oracle. Todos los derechos reservados.
+            © 2025 Neroxia. Todos los derechos reservados.
           </p>
         </div>
       </footer>

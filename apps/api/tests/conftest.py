@@ -94,7 +94,7 @@ def mock_dependencies(monkeypatch):
     from src.routers.auth import get_current_user
     from src.database import get_db
     from unittest.mock import AsyncMock, MagicMock, patch
-    from whatsapp_bot_database import crud
+    from neroxia_database import crud
     from fastapi import Header
     
     # Create a mock user object with proper attributes

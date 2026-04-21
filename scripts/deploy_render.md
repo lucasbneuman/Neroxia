@@ -21,7 +21,7 @@ This guide walks you through deploying the WhatsApp Sales SaaS application to Re
    - Click "New Project"
    - Choose your organization
    - Enter project details:
-     - **Name**: `whatsapp-sales-bot` (or your preferred name)
+     - **Name**: `neroxia-bot` (or your preferred name)
      - **Database Password**: Generate a strong password (save it!)
      - **Region**: Choose closest to your users
    - Click "Create new project"
@@ -109,7 +109,7 @@ This guide walks you through deploying the WhatsApp Sales SaaS application to Re
    - Select "Blueprint"
    - Click "Connect a repository"
    - Authorize Render to access your GitHub
-   - Select your `whatsapp_sales_bot` repository
+   - Select your `neroxia` repository
 
 3. **Select Branch**
    - Choose `saas-migration` branch
@@ -120,12 +120,12 @@ This guide walks you through deploying the WhatsApp Sales SaaS application to Re
 ## Step 5: Configure Environment Variables
 
 Render will create two services from `render.yaml`:
-- `whatsapp-saas-api` (Backend)
-- `whatsapp-saas-web` (Frontend)
+- `neroxia-api` (Backend)
+- `neroxia-web` (Frontend)
 
 ### Configure API Service Environment Variables
 
-1. Go to **whatsapp-saas-api** service
+1. Go to **neroxia-api** service
 2. Click **Environment** tab
 3. Add these variables:
 
@@ -144,7 +144,7 @@ Render will create two services from `render.yaml`:
 
 ### Configure Web Service Environment Variables
 
-1. Go to **whatsapp-saas-web** service
+1. Go to **neroxia-web** service
 2. Click **Environment** tab
 3. Add these variables:
 
@@ -179,18 +179,18 @@ Render will create two services from `render.yaml`:
 ### Test API Service
 
 1. **Get API URL**
-   - Go to **whatsapp-saas-api** service
-   - Copy the service URL (e.g., `https://whatsapp-saas-api.onrender.com`)
+   - Go to **neroxia-api** service
+   - Copy the service URL (e.g., `https://neroxia-api.onrender.com`)
 
 2. **Test Health Endpoint**
    ```bash
-   curl https://whatsapp-saas-api.onrender.com/health
+   curl https://neroxia-api.onrender.com/health
    ```
    Expected response: `{"status":"healthy"}`
 
 3. **Test Auth Endpoint**
    ```bash
-   curl -X POST https://whatsapp-saas-api.onrender.com/auth/signup \
+   curl -X POST https://neroxia-api.onrender.com/auth/signup \
      -H "Content-Type: application/json" \
      -d '{"email":"test@example.com","password":"testpass123"}'
    ```
@@ -199,8 +199,8 @@ Render will create two services from `render.yaml`:
 ### Test Web Service
 
 1. **Get Web URL**
-   - Go to **whatsapp-saas-web** service
-   - Copy the service URL (e.g., `https://whatsapp-saas-web.onrender.com`)
+   - Go to **neroxia-web** service
+   - Copy the service URL (e.g., `https://neroxia-web.onrender.com`)
 
 2. **Open in Browser**
    - Visit the web URL
@@ -221,7 +221,7 @@ Render will create two services from `render.yaml`:
 1. **Update Twilio Webhook URL**
    - Go to Twilio Console
    - Navigate to your WhatsApp Sandbox or Phone Number
-   - Set webhook URL to: `https://whatsapp-saas-api.onrender.com/bot/webhook`
+   - Set webhook URL to: `https://neroxia-api.onrender.com/bot/webhook`
    - Save changes
 
 2. **Test WhatsApp Integration**
@@ -268,11 +268,11 @@ Render will create two services from `render.yaml`:
 ### View Logs
 
 **API Logs**:
-- Go to **whatsapp-saas-api** → **Logs** tab
+- Go to **neroxia-api** → **Logs** tab
 - Monitor for errors and requests
 
 **Web Logs**:
-- Go to **whatsapp-saas-web** → **Logs** tab
+- Go to **neroxia-web** → **Logs** tab
 - Check for build and runtime errors
 
 ### Database Monitoring

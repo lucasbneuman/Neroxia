@@ -44,7 +44,7 @@ export default function LoginPage() {
             <div className="max-w-md w-full space-y-8 p-10 bg-white dark:bg-gray-800 rounded-3xl shadow-large border-2 border-gray-200 dark:border-gray-700">
                 <div>
                     <h1 className="text-center text-4xl font-black text-black dark:text-white tracking-tight">
-                        Sales Oracle
+                        Neroxia
                     </h1>
                     <div className="mt-2 flex items-center justify-center">
                         <div className="h-1 w-16 bg-gradient-to-r from-purple-600 to-purple-500 rounded-full"></div>
@@ -116,7 +116,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className="text-center text-xs text-gray-500 font-bold">
-                    © 2025 Sales Oracle. All rights reserved.
+                    © 2025 Neroxia. All rights reserved.
                 </div>
             </div>
         </div>

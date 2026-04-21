@@ -101,7 +101,7 @@ export function ChatView({ phone, messages, conversationMode, onMessageSent }: C
                                             isBot ? "text-gray-500" : "text-blue-100"
                                         )}
                                     >
-                                        <span>{formatTime(message.timestamp)}</span>
+                                        <span>{formatTime(message.timestamp ?? message.created_at)}</span>
                                         {isManual && (
                                             <span className="text-xs">
                                                 • Manual ({message.message_metadata?.agent?.split("@")[0]})

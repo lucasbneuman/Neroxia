@@ -38,7 +38,13 @@ export interface Message {
     message_text: string
     sender: "user" | "bot"
     created_at: string
+    timestamp?: string
     metadata?: Record<string, any>
+    message_metadata?: {
+        manual?: boolean
+        agent?: string
+        [key: string]: any
+    }
 }
 
 export interface Conversation {

@@ -5,7 +5,7 @@ from typing import Optional
 
 from twilio.rest import Client
 
-from whatsapp_bot_shared import get_logger
+from neroxia_shared import get_logger
 
 logger = get_logger(__name__)
 

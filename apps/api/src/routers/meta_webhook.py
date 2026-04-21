@@ -14,8 +14,8 @@ from typing import Dict, Any
 import logging
 
 from ..database import get_db
-from whatsapp_bot_database import crud
-from whatsapp_bot_database.models import ChannelIntegration
+from neroxia_database import crud
+from neroxia_database.models import ChannelIntegration
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhook", tags=["webhooks"])

@@ -103,7 +103,7 @@ async def test_generate_response_with_rag_context(llm_service):
     llm_service.gpt4o = mock_llm
 
     messages = [HumanMessage(content="What is your product?")]
-    rag_context = "Our product is a sales bot."
+    rag_context = "Our product is Neroxia."
 
     response = await llm_service.generate_response(
         messages=messages,

@@ -1,4 +1,4 @@
-"""SQLAlchemy models for sales bot database."""
+"""SQLAlchemy models for the Neroxia database."""
 
 from datetime import datetime
 from typing import Optional

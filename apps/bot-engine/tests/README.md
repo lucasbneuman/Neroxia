@@ -1,6 +1,6 @@
 # Tests
 
-Este directorio contiene los tests unitarios para el proyecto WhatsApp Sales Bot.
+Este directorio contiene los tests unitarios para el proyecto Neroxia.
 
 ## Estructura
 

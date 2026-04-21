@@ -268,9 +268,9 @@ class TestInstagramWebhookProcessing:
         signature = compute_signature(body_str, facebook_app_secret)
 
         with patch.dict('os.environ', {'FACEBOOK_APP_SECRET': facebook_app_secret}), \
-             patch('whatsapp_bot_database.crud.get_channel_integration_by_page') as mock_get_integration, \
-             patch('whatsapp_bot_database.crud.get_user_by_identifier') as mock_get_user, \
-             patch('whatsapp_bot_database.crud.create_message') as mock_create_msg:
+             patch('neroxia_database.crud.get_channel_integration_by_page') as mock_get_integration, \
+             patch('neroxia_database.crud.get_user_by_identifier') as mock_get_user, \
+             patch('neroxia_database.crud.create_message') as mock_create_msg:
 
             # Configure async mocks
             mock_get_integration.return_value = mock_integration
@@ -337,10 +337,10 @@ class TestInstagramWebhookProcessing:
         signature = compute_signature(body_str, facebook_app_secret)
 
         with patch.dict('os.environ', {'FACEBOOK_APP_SECRET': facebook_app_secret}), \
-             patch('whatsapp_bot_database.crud.get_channel_integration_by_page') as mock_get_integration, \
-             patch('whatsapp_bot_database.crud.get_user_by_identifier') as mock_get_user, \
-             patch('whatsapp_bot_database.crud.create_user') as mock_create, \
-             patch('whatsapp_bot_database.crud.create_message') as mock_create_msg:
+             patch('neroxia_database.crud.get_channel_integration_by_page') as mock_get_integration, \
+             patch('neroxia_database.crud.get_user_by_identifier') as mock_get_user, \
+             patch('neroxia_database.crud.create_user') as mock_create, \
+             patch('neroxia_database.crud.create_message') as mock_create_msg:
 
             mock_get_integration.return_value = mock_integration
             mock_get_user.return_value = None  # User doesn't exist
@@ -368,7 +368,7 @@ class TestInstagramWebhookProcessing:
         signature = compute_signature(body_str, facebook_app_secret)
 
         with patch.dict('os.environ', {'FACEBOOK_APP_SECRET': facebook_app_secret}), \
-             patch('whatsapp_bot_database.crud.get_channel_integration_by_page') as mock_get_integration:
+             patch('neroxia_database.crud.get_channel_integration_by_page') as mock_get_integration:
 
             mock_get_integration.return_value = None
 
@@ -444,9 +444,9 @@ class TestMessengerWebhookProcessing:
         signature = compute_signature(body_str, facebook_app_secret)
 
         with patch.dict('os.environ', {'FACEBOOK_APP_SECRET': facebook_app_secret}), \
-             patch('whatsapp_bot_database.crud.get_channel_integration_by_page') as mock_get_integration, \
-             patch('whatsapp_bot_database.crud.get_user_by_identifier') as mock_get_user, \
-             patch('whatsapp_bot_database.crud.create_message') as mock_create_msg:
+             patch('neroxia_database.crud.get_channel_integration_by_page') as mock_get_integration, \
+             patch('neroxia_database.crud.get_user_by_identifier') as mock_get_user, \
+             patch('neroxia_database.crud.create_message') as mock_create_msg:
 
             mock_get_integration.return_value = mock_integration
             mock_get_user.return_value = mock_user
@@ -494,10 +494,10 @@ class TestMessengerWebhookProcessing:
         signature = compute_signature(body_str, facebook_app_secret)
 
         with patch.dict('os.environ', {'FACEBOOK_APP_SECRET': facebook_app_secret}), \
-             patch('whatsapp_bot_database.crud.get_channel_integration_by_page') as mock_get_integration, \
-             patch('whatsapp_bot_database.crud.get_user_by_identifier') as mock_get_user, \
-             patch('whatsapp_bot_database.crud.create_user') as mock_create, \
-             patch('whatsapp_bot_database.crud.create_message') as mock_create_msg:
+             patch('neroxia_database.crud.get_channel_integration_by_page') as mock_get_integration, \
+             patch('neroxia_database.crud.get_user_by_identifier') as mock_get_user, \
+             patch('neroxia_database.crud.create_user') as mock_create, \
+             patch('neroxia_database.crud.create_message') as mock_create_msg:
 
             mock_get_integration.return_value = mock_integration
             mock_get_user.return_value = None
@@ -546,10 +546,10 @@ class TestMultiTenantIsolation:
         signature = compute_signature(body_str, facebook_app_secret)
 
         with patch.dict('os.environ', {'FACEBOOK_APP_SECRET': facebook_app_secret}), \
-             patch('whatsapp_bot_database.crud.get_channel_integration_by_page') as mock_get_integration, \
-             patch('whatsapp_bot_database.crud.get_user_by_identifier') as mock_get_user, \
-             patch('whatsapp_bot_database.crud.create_user') as mock_create, \
-             patch('whatsapp_bot_database.crud.create_message') as mock_create_msg:
+             patch('neroxia_database.crud.get_channel_integration_by_page') as mock_get_integration, \
+             patch('neroxia_database.crud.get_user_by_identifier') as mock_get_user, \
+             patch('neroxia_database.crud.create_user') as mock_create, \
+             patch('neroxia_database.crud.create_message') as mock_create_msg:
 
             mock_get_integration.return_value = mock_integration_1
             mock_get_user.return_value = None
@@ -589,9 +589,9 @@ class TestSignatureVerification:
         assert signature.startswith("sha256=")
 
         with patch.dict('os.environ', {'FACEBOOK_APP_SECRET': facebook_app_secret}), \
-             patch('whatsapp_bot_database.crud.get_channel_integration_by_page') as mock_get_integration, \
-             patch('whatsapp_bot_database.crud.get_user_by_identifier') as mock_get_user, \
-             patch('whatsapp_bot_database.crud.create_message') as mock_create_msg:
+             patch('neroxia_database.crud.get_channel_integration_by_page') as mock_get_integration, \
+             patch('neroxia_database.crud.get_user_by_identifier') as mock_get_user, \
+             patch('neroxia_database.crud.create_message') as mock_create_msg:
 
             mock_get_integration.return_value = mock_integration
             mock_get_user.return_value = MagicMock(id=1)

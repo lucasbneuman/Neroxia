@@ -95,7 +95,7 @@ Options:
 
 1. **Ir a Settings** → **Integrations** → **Private Apps**
 2. **Create a private app**
-3. **Nombre**: WhatsApp Sales Bot
+3. **Nombre**: Neroxia
 4. **Scopes necesarios**:
    - `crm.objects.contacts.read`
    - `crm.objects.contacts.write`

@@ -103,7 +103,7 @@ export default function DashboardLayout({
                 <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
                     <div>
                         <h1 className="text-xl font-black text-black dark:text-white tracking-tight">
-                            Sales Oracle
+                            Neroxia
                         </h1>
                         <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 font-bold">Panel de Control</p>
                     </div>

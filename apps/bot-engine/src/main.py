@@ -19,9 +19,9 @@ import gradio as gr
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from whatsapp_bot_database import Base
+from neroxia_database import Base
 from whatsapp_webhook import handle_whatsapp_webhook
-from whatsapp_bot_shared import setup_logging, get_logger
+from neroxia_shared import setup_logging, get_logger
 
 # Load environment
 load_dotenv()
@@ -31,7 +31,7 @@ setup_logging(level=os.getenv("LOG_LEVEL", "INFO"))
 logger = get_logger(__name__)
 
 # Database
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./sales_bot.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./neroxia.db")
 engine = create_async_engine(DATABASE_URL, echo=False)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -56,8 +56,8 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI app
 app = FastAPI(
-    title="WhatsApp Sales Bot",
-    description="Webhook + UI for WhatsApp AI Sales Bot",
+    title="Neroxia",
+    description="Webhook + UI for Neroxia WhatsApp automation",
     version="1.1.0",
     lifespan=lifespan,
 )
@@ -66,7 +66,7 @@ app = FastAPI(
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring."""
-    return {"status": "healthy", "service": "whatsapp-sales-bot"}
+    return {"status": "healthy", "service": "neroxia-bot"}
 
 
 @app.post("/webhook/whatsapp")
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", "7860"))
 
     logger.info("="*60)
-    logger.info("Starting WhatsApp Sales Bot (FastAPI + Gradio)")
+    logger.info("Starting Neroxia (FastAPI + Gradio)")
     logger.info("="*60)
     logger.info(f"Host: {host}")
     logger.info(f"Port: {port}")

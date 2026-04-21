@@ -1,4 +1,4 @@
-"""WhatsApp Bot Database Package."""
+"""Neroxia Database Package."""
 
 from .connection import AsyncSessionLocal, engine, get_db
 from .crud import (

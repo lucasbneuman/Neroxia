@@ -1,7 +1,7 @@
 services:
   # API Backend Service (includes bot-engine)
   - type: web
-    name: whatsapp-saas-api
+    name: neroxia-api
     runtime: python
     region: oregon
     plan: starter
@@ -49,7 +49,7 @@ services:
 
   # Frontend Web Service
   - type: web
-    name: whatsapp-saas-web
+    name: neroxia-web
     runtime: node
     region: oregon
     plan: starter
@@ -62,7 +62,7 @@ services:
       - key: NEXT_PUBLIC_API_URL
         fromService:
           type: web
-          name: whatsapp-saas-api
+          name: neroxia-api
           property: url
       # Supabase Client
       - key: NEXT_PUBLIC_SUPABASE_URL

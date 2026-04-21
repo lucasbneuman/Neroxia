@@ -2,7 +2,7 @@
 
 ## Objetivo del repositorio
 
-`whatsapp_sales_bot` es una plataforma SaaS multi-tenant para ventas conversacionales por WhatsApp con arquitectura de microservicios. El repo contiene frontend web, API backend, motor conversacional con LangGraph y paquetes compartidos.
+`neroxia` es una plataforma SaaS multi-tenant para ventas conversacionales por WhatsApp con arquitectura de microservicios. El repo contiene frontend web, API backend, motor conversacional con LangGraph y paquetes compartidos.
 
 ## Fuentes de verdad por prioridad
 

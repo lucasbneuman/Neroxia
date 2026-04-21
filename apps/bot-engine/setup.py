@@ -1,13 +1,13 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='whatsapp_bot_engine',
+    name='neroxia_engine',
     version='0.1.0',
     package_dir={'': 'src'},
     packages=find_packages(where='src'),
     install_requires=[
-        'whatsapp_bot_shared',
-        'whatsapp_bot_database',
+        'neroxia_shared',
+        'neroxia_database',
         'langchain>=0.1.0',
         'langchain-openai>=0.0.5',
         'langchain-core>=0.1.0',

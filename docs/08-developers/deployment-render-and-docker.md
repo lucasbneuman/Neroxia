@@ -1,4 +1,4 @@
-# 🚀 Deployment Guide - WhatsApp Sales Bot SaaS
+# 🚀 Deployment Guide - Neroxia SaaS
 
 **Version**: 1.0
 **Last Updated**: 2025-11-23
@@ -106,8 +106,8 @@ cp .env.example .env
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/lucasbneuman/whatsapp_sales_bot.git
-cd whatsapp_sales_bot
+git clone https://github.com/lucasbneuman/neroxia.git
+cd neroxia
 ```
 
 2. **Create `.env` file**
@@ -187,7 +187,7 @@ curl http://localhost:3000/
 - **API Docs**: http://localhost:8000/docs
 - **API Health**: http://localhost:8000/health
 - **pgAdmin**: http://localhost:5050
-  - Email: `admin@salesbot.local`
+  - Email: `admin@neroxia.local`
   - Password: `admin`
 
 ---
@@ -214,18 +214,18 @@ git push origin saas-migration
 #### 3. Deploy Using Blueprint (Recommended)
 
 1. In Render Dashboard, click **"New +"** → **"Blueprint"**
-2. Connect your GitHub repository: `lucasbneuman/whatsapp_sales_bot`
+2. Connect your GitHub repository: `lucasbneuman/neroxia`
 3. Select branch: `saas-migration`
 4. Render will detect `render.yaml` automatically
 5. Click **"Apply"**
 
 Render will create:
-- **whatsapp-saas-api** (Web Service)
-- **whatsapp-saas-web** (Web Service)
+- **neroxia-api** (Web Service)
+- **neroxia-web** (Web Service)
 
 #### 4. Configure Environment Variables
 
-For **whatsapp-saas-api**:
+For **neroxia-api**:
 
 1. Go to service → **Environment** → **Environment Variables**
 2. Add the following (click **"Add Environment Variable"** for each):
@@ -245,7 +245,7 @@ LOG_LEVEL = INFO
 DEBUG = false
 ```
 
-For **whatsapp-saas-web**:
+For **neroxia-web**:
 
 ```
 NEXT_PUBLIC_SUPABASE_URL = https://xxx.supabase.co
@@ -266,8 +266,8 @@ Once deployed, verify services:
 
 ```bash
 # Get your Render URLs from dashboard
-API_URL="https://whatsapp-saas-api.onrender.com"
-WEB_URL="https://whatsapp-saas-web.onrender.com"
+API_URL="https://neroxia-api.onrender.com"
+WEB_URL="https://neroxia-web.onrender.com"
 
 # Check API health
 curl $API_URL/health
@@ -309,7 +309,7 @@ cd apps/web && npm start
 ```
 5. **Health Check Path**: `/`
 6. Add environment variables (see above)
-7. **Link API service**: In `NEXT_PUBLIC_API_URL`, select "From service" → whatsapp-saas-api
+7. **Link API service**: In `NEXT_PUBLIC_API_URL`, select "From service" → neroxia-api
 
 ---
 

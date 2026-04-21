@@ -1,5 +1,5 @@
 {
-  "name": "whatsapp-sales-bot",
+  "name": "neroxia-bot",
   "type": "docker-compose",
   "dockerComposeFile": "docker-compose.prod.yml",
   "environmentFile": ".env.prod",

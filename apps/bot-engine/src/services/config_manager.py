@@ -4,8 +4,8 @@ from typing import Any, Dict, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from whatsapp_bot_database import crud
-from whatsapp_bot_shared import get_logger
+from neroxia_database import crud
+from neroxia_shared import get_logger
 
 logger = get_logger(__name__)
 
@@ -133,7 +133,7 @@ class ConfigManager:
             user_id: User ID (UUID from auth.users) - required for multi-tenant
         """
         from sqlalchemy.future import select
-        from whatsapp_bot_database.models import Config
+        from neroxia_database.models import Config
         from datetime import datetime
 
         # Batch operation: prepare all upserts then commit once

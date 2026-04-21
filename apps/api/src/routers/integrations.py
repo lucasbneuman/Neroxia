@@ -9,8 +9,8 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 import httpx
 
-from whatsapp_bot_database import crud
-from whatsapp_bot_shared import get_logger
+from neroxia_database import crud
+from neroxia_shared import get_logger
 
 from ..database import get_db
 from .auth import get_current_user

@@ -1,6 +1,6 @@
 # Deployment Guide - Coolify
 
-This guide covers deploying the WhatsApp Sales Bot to Coolify (self-hosted PaaS).
+This guide covers deploying the Neroxia to Coolify (self-hosted PaaS).
 
 ## Prerequisites
 

@@ -55,7 +55,7 @@ pytest tests/unit/ -v  # Run only unit tests
 **A. Wrong Directory**:
 ```bash
 # ❌ Wrong
-cd whatsapp_sales_bot
+cd neroxia
 pytest tests/
 
 # ✅ Correct

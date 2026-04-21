@@ -6,7 +6,7 @@ from typing import Optional
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 
-from whatsapp_bot_shared import get_logger
+from neroxia_shared import get_logger
 
 logger = get_logger(__name__)
 
@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 class SchedulerService:
     """Service for scheduling follow-up messages."""
 
-    def __init__(self, database_url: str = "sqlite:///./sales_bot.db"):
+    def __init__(self, database_url: str = "sqlite:///./neroxia.db"):
         """
         Initialize scheduler service.
 

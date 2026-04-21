@@ -1,8 +1,8 @@
-# WhatsApp Sales Bot SaaS - Development Startup Script
+# Neroxia SaaS - Development Startup Script
 # For Windows PowerShell
 
 Write-Host "=================================================" -ForegroundColor Cyan
-Write-Host " WhatsApp Sales Bot SaaS - Development Mode" -ForegroundColor Cyan
+Write-Host " Neroxia SaaS - Development Mode" -ForegroundColor Cyan
 Write-Host "=================================================" -ForegroundColor Cyan
 Write-Host ""
 

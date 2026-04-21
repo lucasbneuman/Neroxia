@@ -162,8 +162,8 @@ class TestInstagramSignatureVerification:
 class TestInstagramErrorHandling:
     """Test error handling in Instagram message processing."""
 
-    @patch('whatsapp_bot_database.crud.get_user_by_identifier')
-    @patch('whatsapp_bot_database.crud.get_channel_config_for_user')
+    @patch('neroxia_database.crud.get_user_by_identifier')
+    @patch('neroxia_database.crud.get_channel_config_for_user')
     def test_instagram_without_channel_config_logs_error(
         self,
         mock_get_config,
@@ -195,9 +195,9 @@ class TestInstagramErrorHandling:
 
 
     @patch('graph.workflow.process_message')
-    @patch('whatsapp_bot_database.crud.get_user_by_identifier')
-    @patch('whatsapp_bot_database.crud.create_user')
-    @patch('whatsapp_bot_database.crud.get_channel_config_for_user')
+    @patch('neroxia_database.crud.get_user_by_identifier')
+    @patch('neroxia_database.crud.create_user')
+    @patch('neroxia_database.crud.get_channel_config_for_user')
     def test_instagram_bot_error_doesnt_crash_webhook(
         self,
         mock_get_config,

@@ -18,9 +18,9 @@ async def main():
 
     # Try multiple email formats
     test_emails = [
-        ("admin@salesbot.dev", "admin123"),
+        ("admin@neroxia.dev", "admin123"),
         ("admin.bot@gmail.com", "admin123"),
-        ("salesbot.admin@gmail.com", "admin123"),
+        ("admin.neroxia@gmail.com", "admin123"),
     ]
 
     for email, password in test_emails:
@@ -46,7 +46,7 @@ async def main():
     print("\n" + "=" * 60)
     print("All attempts failed. Users may already exist.")
     print("Try logging in with:")
-    print("  Email: admin.salesbot@gmail.com")
+    print("  Email: admin.neroxia@gmail.com")
     print("  Password: admin123")
     print("=" * 60)
 

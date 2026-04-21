@@ -2,9 +2,9 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from whatsapp_bot_database import crud
-from whatsapp_bot_database.models import Message, User
-from whatsapp_bot_shared.helpers import format_phone_number
+from neroxia_database import crud
+from neroxia_database.models import Message, User
+from neroxia_shared.helpers import format_phone_number
 
 from ..database import get_db
 from .auth import get_current_user
@@ -234,7 +234,7 @@ async def clear_conversation_history(
     # Delete all messages for this user
     # Note: This requires a new CRUD function
     from sqlalchemy import delete
-    from whatsapp_bot_database.models import Message
+    from neroxia_database.models import Message
     
     stmt = delete(Message).where(Message.user_id == user.id)
     await db.execute(stmt)
@@ -283,14 +283,14 @@ async def delete_conversation(
     
     # Delete all messages
     from sqlalchemy import delete
-    from whatsapp_bot_database.models import Message
+    from neroxia_database.models import Message
     
     stmt = delete(Message).where(Message.user_id == user_id)
     result = await db.execute(stmt)
     messages_deleted = result.rowcount
     
     # Delete user
-    from whatsapp_bot_database.models import User
+    from neroxia_database.models import User
     stmt = delete(User).where(User.id == user_id)
     await db.execute(stmt)
     await db.commit()

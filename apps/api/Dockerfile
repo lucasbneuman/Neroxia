@@ -1,4 +1,4 @@
-# Multi-stage build for WhatsApp Sales Bot API (FastAPI)
+# Multi-stage build for Neroxia API (FastAPI)
 # Production-optimized with security and performance in mind
 
 # ============================================

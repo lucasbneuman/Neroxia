@@ -1,11 +1,12 @@
 version: '3.8'
+name: neroxia
 
 services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: ${DB_NAME:-whatsapp_bot}
+      POSTGRES_DB: ${DB_NAME:-neroxia}
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:

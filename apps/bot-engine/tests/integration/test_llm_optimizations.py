@@ -208,7 +208,7 @@ async def test_rag_context_includes_instructions(llm_service):
     llm_service.gpt4o = mock_llm
 
     messages = [HumanMessage(content="What is the product?")]
-    rag_context = "Product info: Our product is a sales bot with AI capabilities."
+    rag_context = "Product info: Our product is Neroxia with AI capabilities."
 
     response = await llm_service.generate_response(
         messages=messages,
@@ -224,7 +224,7 @@ async def test_rag_context_includes_instructions(llm_service):
     assert "DOCUMENTACIÓN OFICIAL" in system_message.content
     assert "PRIORIDAD ABSOLUTA" in system_message.content
     assert "CITACIÓN NATURAL" in system_message.content
-    assert "Product info: Our product is a sales bot" in system_message.content
+    assert "Product info: Our product is Neroxia" in system_message.content
 
 
 @pytest.mark.asyncio
