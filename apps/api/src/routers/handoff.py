@@ -27,20 +27,6 @@ class HandoffSendRequest(BaseModel):
     message: str
 
 
-async def _load_user_by_phone_or_404(db: AsyncSession, phone: str, auth_user_id: str):
-    user = await crud.get_user_by_phone(db, phone, auth_user_id=auth_user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail=f"User not found: {phone}")
-    return user
-
-
-async def _load_user_by_id_or_404(db: AsyncSession, user_id: int, auth_user_id: str):
-    user = await crud.get_user_by_id(db, user_id, auth_user_id=auth_user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
-
 @router.post("/{phone}/take")
 async def take_conversation(
     phone: str,
@@ -56,7 +42,12 @@ async def take_conversation(
     """
     try:
         # Get user by phone
-        user = await _load_user_by_phone_or_404(db, phone, current_user["id"])
+        user = await crud.get_user_by_phone(db, phone)
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail=f"User not found: {phone}"
+            )
         
         # Update conversation mode to MANUAL
         await crud.update_user(
@@ -99,7 +90,12 @@ async def return_conversation(
     """
     try:
         # Get user by phone
-        user = await _load_user_by_phone_or_404(db, phone, current_user["id"])
+        user = await crud.get_user_by_phone(db, phone)
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail=f"User not found: {phone}"
+            )
         
         # Update conversation mode to AUTO
         await crud.update_user(
@@ -145,7 +141,12 @@ async def send_manual_message(
     """
     try:
         # Get user by phone
-        user = await _load_user_by_phone_or_404(db, phone, current_user["id"])
+        user = await crud.get_user_by_phone(db, phone)
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail=f"User not found: {phone}"
+            )
         
         # Check if conversation is in MANUAL mode
         if user.conversation_mode != "MANUAL":
@@ -159,8 +160,7 @@ async def send_manual_message(
             user_id=user.id,
             message_text=request.message,
             sender="bot",  # Manual messages are saved as bot messages
-            metadata={"manual": True, "agent": current_user.get("email")},
-            channel=user.channel,
+            metadata={"manual": True, "agent": current_user.get("email")}
         )
         
         logger.info(f"Manual message sent to {phone} by {current_user.get('email')}")
@@ -197,7 +197,12 @@ async def get_handoff_status(
     """
     try:
         # Get user by phone
-        user = await _load_user_by_phone_or_404(db, phone, current_user["id"])
+        user = await crud.get_user_by_phone(db, phone)
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail=f"User not found: {phone}"
+            )
         
         return {
             "phone": phone,
@@ -218,85 +223,3 @@ async def get_handoff_status(
             status_code=500,
             detail=f"Failed to get handoff status: {str(e)}"
         )
-
-
-@router.post("/id/{user_id}/take")
-async def take_conversation_by_user_id(
-    user_id: int,
-    request: HandoffTakeRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """Take over a conversation using canonical user id."""
-    user = await _load_user_by_id_or_404(db, user_id, current_user["id"])
-    await crud.update_user(db=db, user_id=user.id, conversation_mode="MANUAL")
-    agent_name = request.agent_name or current_user.get("email", "Agent")
-    return {
-        "status": "success",
-        "message": f"Conversation taken over by {agent_name}",
-        "user_id": user.id,
-        "conversation_mode": "MANUAL",
-        "agent": agent_name,
-    }
-
-
-@router.post("/id/{user_id}/return")
-async def return_conversation_by_user_id(
-    user_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """Return a conversation to the bot using canonical user id."""
-    user = await _load_user_by_id_or_404(db, user_id, current_user["id"])
-    await crud.update_user(db=db, user_id=user.id, conversation_mode="AUTO")
-    return {
-        "status": "success",
-        "message": "Conversation returned to bot",
-        "user_id": user.id,
-        "conversation_mode": "AUTO",
-    }
-
-
-@router.post("/id/{user_id}/send")
-async def send_manual_message_by_user_id(
-    user_id: int,
-    request: HandoffSendRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """Send a manual message using canonical user id."""
-    user = await _load_user_by_id_or_404(db, user_id, current_user["id"])
-    await crud.create_message(
-        db=db,
-        user_id=user.id,
-        message_text=request.message,
-        sender="bot",
-        metadata={"manual": True, "agent": current_user.get("email")},
-        channel=user.channel,
-    )
-    return {
-        "status": "success",
-        "message": "Message saved to conversation history",
-        "user_id": user.id,
-        "sent_message": request.message,
-    }
-
-
-@router.get("/id/{user_id}/status")
-async def get_handoff_status_by_user_id(
-    user_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """Get handoff status using canonical user id."""
-    user = await _load_user_by_id_or_404(db, user_id, current_user["id"])
-    return {
-        "user_id": user.id,
-        "conversation_mode": user.conversation_mode,
-        "stage": user.stage,
-        "sentiment": user.sentiment,
-        "intent_score": user.intent_score,
-        "is_bot_active": user.conversation_mode == "AUTO",
-        "needs_attention": user.conversation_mode == "NEEDS_ATTENTION",
-        "is_manual": user.conversation_mode == "MANUAL",
-    }

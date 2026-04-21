@@ -7,10 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
-from slowapi import _rate_limit_exceeded_handler
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
-from .core.rate_limit import limiter
 from .routers import (
     auth,
     bot,
@@ -25,13 +25,15 @@ from .routers import (
     subscriptions,
     twilio_webhook,
     users,
-    widget,
 )
 
 
 
 # Load environment variables
 load_dotenv()
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
 app = FastAPI(
     title="WhatsApp Sales Bot API",
@@ -66,7 +68,6 @@ if allowed_origins_env:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=r"https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -86,7 +87,6 @@ app.include_router(handoff.router)
 app.include_router(twilio_webhook.router)  # Twilio webhook for incoming messages
 app.include_router(meta_webhook.router)  # Instagram + Messenger webhooks
 app.include_router(crm.router)  # CRM module endpoints
-app.include_router(widget.router)  # Public web widget endpoints
 
 # Mount static files for avatars
 avatars_dir = Path("avatars")

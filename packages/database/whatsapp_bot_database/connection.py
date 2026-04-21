@@ -2,10 +2,9 @@
 
 import os
 from pathlib import Path
-
-from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from dotenv import load_dotenv
 
 # Load environment variables from .env file
 # Look for .env in project root (4 levels up from this file)
@@ -16,39 +15,23 @@ else:
     # Fallback: try loading from current directory
     load_dotenv()
 
-def _normalize_async_database_url(database_url: str) -> str:
-    """Ensure SQLAlchemy gets an async-compatible URL."""
-    if database_url.startswith("postgresql://"):
-        return database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    if database_url.startswith("postgres://"):
-        return database_url.replace("postgres://", "postgresql+asyncpg://", 1)
-    return database_url
-
-
-def _load_database_url() -> str:
-    """Load database URL with safe test/dev defaults."""
-    raw_url = os.getenv(
-        "SUPABASE_DATABASE_URL",
-        os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./data/sales_bot.db"),
-    )
-    return _normalize_async_database_url(raw_url)
-
-
-DATABASE_URL = _load_database_url()
-
-engine_kwargs = {"echo": False}
-if DATABASE_URL.startswith("postgresql+asyncpg://"):
-    engine_kwargs.update(
-        {
-            "pool_size": 10,
-            "max_overflow": 20,
-            "pool_pre_ping": True,
-            "pool_recycle": 3600,
-        }
-    )
+# Read database URL from environment
+# For Supabase: postgresql+asyncpg://user:pass@host:port/database
+# For local dev: postgresql+asyncpg://localhost:5432/sales_bot
+DATABASE_URL = os.getenv(
+    "SUPABASE_DATABASE_URL",
+    os.getenv("DATABASE_URL", "postgresql+asyncpg://localhost:5432/sales_bot")
+)
 
 # Create async engine with connection pooling
-engine = create_async_engine(DATABASE_URL, **engine_kwargs)
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=False,
+    pool_size=10,
+    max_overflow=20,
+    pool_pre_ping=True,  # Verify connections before using
+    pool_recycle=3600,   # Recycle connections after 1 hour
+)
 
 # Create async session factory
 AsyncSessionLocal = sessionmaker(

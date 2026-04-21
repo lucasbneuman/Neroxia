@@ -20,12 +20,6 @@ def mock_env_vars():
 
 
 @pytest.fixture
-def anyio_backend():
-    """Run async tests on asyncio only."""
-    return "asyncio"
-
-
-@pytest.fixture
 def mock_db_session():
     """Create a mock database session."""
     session = AsyncMock()

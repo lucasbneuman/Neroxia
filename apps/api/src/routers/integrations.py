@@ -1,11 +1,11 @@
-"""Integration configuration router (Twilio, HubSpot, Facebook, Web Widget)."""
+"""Integration configuration router (Twilio, HubSpot, Facebook)."""
 
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 import httpx
 
@@ -13,13 +13,6 @@ from whatsapp_bot_database import crud
 from whatsapp_bot_shared import get_logger
 
 from ..database import get_db
-from ..core.widget_security import (
-    WIDGET_CONFIG_KEY,
-    build_widget_config,
-    generate_widget_secret,
-    hash_widget_secret,
-    sanitize_color,
-)
 from .auth import get_current_user
 
 logger = get_logger(__name__)
@@ -44,67 +37,6 @@ class IntegrationsResponse(BaseModel):
     """Integrations configuration response."""
     twilio: Dict[str, Any] | None
     hubspot: Dict[str, Any] | None
-    web_widget: Dict[str, Any] | None = None
-
-
-class WebWidgetConfigUpdate(BaseModel):
-    """Web widget configuration update payload."""
-    enabled: bool = False
-    allowed_origins: list[str] = Field(default_factory=list)
-    default_primary_color: str = "#7C3AED"
-
-
-class WebWidgetConfigResponse(BaseModel):
-    """Publicly safe web widget configuration response."""
-    enabled: bool
-    widget_id: str
-    allowed_origins: list[str]
-    default_primary_color: str
-    snippet: str
-
-
-async def ensure_web_widget_config(db: AsyncSession, auth_user_id: str) -> dict[str, Any]:
-    """Ensure a tenant has a persisted widget config."""
-    existing = await crud.get_config(db, WIDGET_CONFIG_KEY, user_id=auth_user_id)
-    config, fresh_secret = build_widget_config(auth_user_id, existing)
-    if existing != config or fresh_secret is not None:
-        await crud.set_config(db, WIDGET_CONFIG_KEY, config, user_id=auth_user_id)
-    return config
-
-
-def build_web_widget_snippet(widget_id: str, primary_color: str) -> str:
-    """Return the copy/paste snippet shown in the dashboard."""
-    api_url = os.getenv("PUBLIC_API_URL") or os.getenv("API_URL") or os.getenv("BACKEND_URL") or "http://localhost:8000"
-    return (
-        "<script>\n"
-        "  window.WhatsAppSalesBotConfig = {\n"
-        f"    widgetId: \"{widget_id}\",\n"
-        f"    primaryColor: \"{primary_color}\"\n"
-        "  };\n"
-        "</script>\n"
-        f"<script async src=\"{api_url.rstrip('/')}/widget.js\"></script>"
-    )
-
-
-async def create_channel_integration(db: AsyncSession, **kwargs):
-    """Wrapper kept at router scope for easier patching in tests."""
-    return await crud.create_channel_integration(db=db, **kwargs)
-
-
-async def get_channel_integrations_by_user(db: AsyncSession, user_id: str):
-    """Wrapper kept at router scope for easier patching in tests."""
-    return await crud.get_channel_integrations_by_user(db, user_id)
-
-
-async def delete_channel_integration(db: AsyncSession, integration_id: str, auth_user_id: str):
-    """Wrapper kept at router scope for easier patching in tests."""
-    if integration_id in {"instagram", "messenger"}:
-        integrations = await crud.get_channel_integrations_by_user(db, auth_user_id)
-        matching = next((item for item in integrations if item.channel == integration_id), None)
-        if not matching:
-            return False
-        integration_id = str(matching.id)
-    return await crud.delete_channel_integration(db, integration_id, auth_user_id)
 
 
 @router.get("/", response_model=IntegrationsResponse)
@@ -118,8 +50,8 @@ async def get_integrations(
     Returns Twilio and HubSpot configurations (without sensitive tokens).
     """
     try:
-        twilio_config = await crud.get_config(db, "twilio", user_id=current_user["id"])
-        hubspot_config = await crud.get_config(db, "hubspot", user_id=current_user["id"])
+        twilio_config = await crud.get_config(db, "twilio")
+        hubspot_config = await crud.get_config(db, "hubspot")
         
         # Mask sensitive data
         twilio_safe = None
@@ -136,23 +68,10 @@ async def get_integrations(
                 "enabled": hubspot_config.get("enabled", False),
                 "configured": bool(hubspot_config.get("access_token"))
             }
-
-        web_widget_config = await ensure_web_widget_config(db, current_user["id"])
-        web_widget_safe = {
-            "enabled": web_widget_config.get("enabled", False),
-            "widget_id": web_widget_config["widget_id"],
-            "allowed_origins": web_widget_config.get("allowed_origins", []),
-            "default_primary_color": web_widget_config.get("default_primary_color", "#7C3AED"),
-            "snippet": build_web_widget_snippet(
-                web_widget_config["widget_id"],
-                web_widget_config.get("default_primary_color", "#7C3AED"),
-            ),
-        }
-
+        
         return IntegrationsResponse(
             twilio=twilio_safe,
-            hubspot=hubspot_safe,
-            web_widget=web_widget_safe,
+            hubspot=hubspot_safe
         )
     
     except Exception as e:
@@ -174,7 +93,7 @@ async def get_hubspot_status(
     Returns whether HubSpot is configured and enabled.
     """
     try:
-        hubspot_config = await crud.get_config(db, "hubspot", user_id=current_user["id"])
+        hubspot_config = await crud.get_config(db, "hubspot")
 
         if not hubspot_config:
             return {
@@ -211,7 +130,7 @@ async def get_twilio_status(
     Returns whether Twilio is configured.
     """
     try:
-        twilio_config = await crud.get_config(db, "twilio", user_id=current_user["id"])
+        twilio_config = await crud.get_config(db, "twilio")
 
         if not twilio_config:
             return {
@@ -257,7 +176,7 @@ async def update_twilio_config(
             "whatsapp_number": config.whatsapp_number
         }
         
-        await crud.set_config(db, "twilio", twilio_data, user_id=current_user["id"])
+        await crud.set_config(db, "twilio", twilio_data)
         
         logger.info("Twilio configuration updated")
         
@@ -292,7 +211,7 @@ async def update_hubspot_config(
             "enabled": config.enabled
         }
         
-        await crud.set_config(db, "hubspot", hubspot_data, user_id=current_user["id"])
+        await crud.set_config(db, "hubspot", hubspot_data)
         
         logger.info(f"HubSpot configuration updated (enabled: {config.enabled})")
         
@@ -321,7 +240,7 @@ async def delete_twilio_config(
     Removes Twilio credentials from database.
     """
     try:
-        await crud.set_config(db, "twilio", {}, user_id=current_user["id"])
+        await crud.set_config(db, "twilio", {})
         
         logger.info("Twilio configuration deleted")
         
@@ -349,7 +268,7 @@ async def delete_hubspot_config(
     Removes HubSpot credentials from database.
     """
     try:
-        await crud.set_config(db, "hubspot", {}, user_id=current_user["id"])
+        await crud.set_config(db, "hubspot", {})
         
         logger.info("HubSpot configuration deleted")
         
@@ -377,7 +296,7 @@ async def test_twilio_connection(
     Verifies that Twilio credentials are valid.
     """
     try:
-        twilio_config = await crud.get_config(db, "twilio", user_id=current_user["id"])
+        twilio_config = await crud.get_config(db, "twilio")
         
         if not twilio_config or not twilio_config.get("account_sid") or not twilio_config.get("auth_token"):
             raise HTTPException(
@@ -434,7 +353,7 @@ async def test_hubspot_connection(
     Verifies that HubSpot credentials are valid.
     """
     try:
-        hubspot_config = await crud.get_config(db, "hubspot", user_id=current_user["id"])
+        hubspot_config = await crud.get_config(db, "hubspot")
         
         if not hubspot_config or not hubspot_config.get("access_token"):
             raise HTTPException(
@@ -497,11 +416,20 @@ async def connect_facebook(
     Returns:
     - oauth_url: URL to redirect user to for Facebook authorization
     """
-    fb_app_id = os.getenv("FACEBOOK_APP_ID", "test-facebook-app-id")
-    redirect_uri = os.getenv(
-        "FACEBOOK_OAUTH_REDIRECT_URI",
-        f"{os.getenv('FRONTEND_URL', 'http://localhost:3000')}/integrations/facebook/callback",
-    )
+    fb_app_id = os.getenv("FACEBOOK_APP_ID")
+    redirect_uri = os.getenv("FACEBOOK_OAUTH_REDIRECT_URI")
+
+    if not fb_app_id:
+        raise HTTPException(
+            status_code=500,
+            detail="FACEBOOK_APP_ID not configured"
+        )
+
+    if not redirect_uri:
+        raise HTTPException(
+            status_code=500,
+            detail="FACEBOOK_OAUTH_REDIRECT_URI not configured"
+        )
 
     # Required permissions based on channel
     if channel == "instagram":
@@ -543,20 +471,25 @@ async def facebook_callback(
     Returns:
     - Redirects to frontend with status=success or status=error
     """
-    fb_app_id = os.getenv("FACEBOOK_APP_ID", "test-facebook-app-id")
-    fb_app_secret = os.getenv("FACEBOOK_APP_SECRET", "test-facebook-app-secret")
-    redirect_uri = os.getenv(
-        "FACEBOOK_OAUTH_REDIRECT_URI",
-        f"{os.getenv('FRONTEND_URL', 'http://localhost:3000')}/integrations/facebook/callback",
-    )
+    fb_app_id = os.getenv("FACEBOOK_APP_ID")
+    fb_app_secret = os.getenv("FACEBOOK_APP_SECRET")
+    redirect_uri = os.getenv("FACEBOOK_OAUTH_REDIRECT_URI")
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:7860")
+
+    if not all([fb_app_id, fb_app_secret, redirect_uri]):
+        logger.error("Facebook OAuth credentials not configured")
+        return RedirectResponse(
+            url=f"{frontend_url}/dashboard/integrations?status=error&message=oauth_not_configured"
+        )
 
     # Parse state (user_id:channel)
     try:
         user_id, channel = state.split(":")
     except ValueError:
         logger.error(f"Invalid state parameter: {state}")
-        raise HTTPException(status_code=400, detail="Invalid state parameter")
+        return RedirectResponse(
+            url=f"{frontend_url}/dashboard/integrations?status=error&message=invalid_state"
+        )
 
     try:
         async with httpx.AsyncClient() as client:
@@ -572,14 +505,18 @@ async def facebook_callback(
             token_response = await client.get(token_url)
             if token_response.status_code != 200:
                 logger.error(f"Failed to exchange code for token: {token_response.text}")
-                raise HTTPException(status_code=502, detail="Facebook token exchange failed")
+                return RedirectResponse(
+                    url=f"{frontend_url}/dashboard/integrations?status=error&message=token_exchange_failed"
+                )
 
             token_data = token_response.json()
             user_access_token = token_data.get("access_token")
 
             if not user_access_token:
                 logger.error("No access token in response")
-                raise HTTPException(status_code=502, detail="Facebook returned no access token")
+                return RedirectResponse(
+                    url=f"{frontend_url}/dashboard/integrations?status=error&message=no_access_token"
+                )
 
             # Step 2: Get user's Facebook Pages
             pages_url = f"https://graph.facebook.com/v18.0/me/accounts?access_token={user_access_token}"
@@ -587,14 +524,18 @@ async def facebook_callback(
 
             if pages_response.status_code != 200:
                 logger.error(f"Failed to fetch pages: {pages_response.text}")
-                raise HTTPException(status_code=502, detail="Failed to fetch Facebook pages")
+                return RedirectResponse(
+                    url=f"{frontend_url}/dashboard/integrations?status=error&message=fetch_pages_failed"
+                )
 
             pages_data = pages_response.json()
             pages = pages_data.get("data", [])
 
             if not pages:
                 logger.error("No Facebook Pages found for user")
-                raise HTTPException(status_code=400, detail="No Facebook pages found for user")
+                return RedirectResponse(
+                    url=f"{frontend_url}/dashboard/integrations?status=error&message=no_pages_found"
+                )
 
             # Use first page (in production, let user select)
             page = pages[0]
@@ -618,10 +559,14 @@ async def facebook_callback(
 
                     if not instagram_account_id:
                         logger.error(f"Page {page_name} has no linked Instagram Business Account")
-                        raise HTTPException(status_code=400, detail="No linked Instagram Business Account found")
+                        return RedirectResponse(
+                            url=f"{frontend_url}/dashboard/integrations?status=error&message=no_instagram_account"
+                        )
                 else:
                     logger.error(f"Failed to fetch Instagram account: {ig_response.text}")
-                    raise HTTPException(status_code=502, detail="Failed to fetch Instagram account")
+                    return RedirectResponse(
+                        url=f"{frontend_url}/dashboard/integrations?status=error&message=instagram_fetch_failed"
+                    )
 
             # Step 4: Subscribe page to webhooks
             if channel == "instagram":
@@ -648,7 +593,7 @@ async def facebook_callback(
                 logger.info(f"Successfully subscribed {channel} webhooks for page {page_id}")
 
         # Step 5: Store integration in database
-        integration = await create_channel_integration(
+        integration = await crud.create_channel_integration(
             db=db,
             auth_user_id=user_id,
             channel=channel,
@@ -665,11 +610,11 @@ async def facebook_callback(
             url=f"{frontend_url}/dashboard/integrations?status=success&channel={channel}&page={page_name}"
         )
 
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Error in Facebook OAuth callback: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Unexpected Facebook OAuth callback error")
+        return RedirectResponse(
+            url=f"{frontend_url}/dashboard/integrations?status=error&message=unexpected_error"
+        )
 
 @router.get("/list")
 async def list_channel_integrations(
@@ -684,7 +629,7 @@ async def list_channel_integrations(
     user_id = current_user["id"]
     
     # Get all channel integrations for this user
-    integrations = await get_channel_integrations_by_user(db, user_id)
+    integrations = await crud.get_channel_integrations_by_user(db, user_id)
     
     return [
         {
@@ -695,79 +640,3 @@ async def list_channel_integrations(
         }
         for integration in integrations
     ]
-
-
-@router.delete("/facebook/disconnect")
-async def disconnect_facebook(
-    channel: str = Query(..., pattern="^(instagram|messenger)$"),
-    current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Disconnect the active Facebook channel integration for the user."""
-    user_id = current_user["id"]
-    deleted = await delete_channel_integration(db, channel, user_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail=f"No {channel} integration found")
-
-    return {
-        "status": "success",
-        "message": f"{channel.capitalize()} integration disconnected successfully",
-    }
-
-
-@router.get("/web-widget", response_model=WebWidgetConfigResponse)
-async def get_web_widget_config(
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    """Get or initialize the current tenant web widget configuration."""
-    config = await ensure_web_widget_config(db, current_user["id"])
-    primary_color = config.get("default_primary_color", "#7C3AED")
-    return WebWidgetConfigResponse(
-        enabled=config.get("enabled", False),
-        widget_id=config["widget_id"],
-        allowed_origins=config.get("allowed_origins", []),
-        default_primary_color=primary_color,
-        snippet=build_web_widget_snippet(config["widget_id"], primary_color),
-    )
-
-
-@router.put("/web-widget", response_model=WebWidgetConfigResponse)
-async def update_web_widget_config(
-    payload: WebWidgetConfigUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    """Update the tenant widget configuration."""
-    config = await ensure_web_widget_config(db, current_user["id"])
-    config["enabled"] = payload.enabled
-    config["allowed_origins"] = payload.allowed_origins
-    config["default_primary_color"] = sanitize_color(payload.default_primary_color)
-    config, _ = build_widget_config(current_user["id"], config)
-    await crud.set_config(db, WIDGET_CONFIG_KEY, config, user_id=current_user["id"])
-    return WebWidgetConfigResponse(
-        enabled=config["enabled"],
-        widget_id=config["widget_id"],
-        allowed_origins=config["allowed_origins"],
-        default_primary_color=config["default_primary_color"],
-        snippet=build_web_widget_snippet(config["widget_id"], config["default_primary_color"]),
-    )
-
-
-@router.post("/web-widget/regenerate", response_model=WebWidgetConfigResponse)
-async def regenerate_web_widget_credentials(
-    db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
-):
-    """Rotate widget credentials, invalidating active public tokens."""
-    config = await ensure_web_widget_config(db, current_user["id"])
-    new_secret = generate_widget_secret()
-    config["widget_secret_hash"] = hash_widget_secret(new_secret)
-    await crud.set_config(db, WIDGET_CONFIG_KEY, config, user_id=current_user["id"])
-    return WebWidgetConfigResponse(
-        enabled=config["enabled"],
-        widget_id=config["widget_id"],
-        allowed_origins=config["allowed_origins"],
-        default_primary_color=config["default_primary_color"],
-        snippet=build_web_widget_snippet(config["widget_id"], config["default_primary_color"]),
-    )

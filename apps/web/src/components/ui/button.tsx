@@ -5,10 +5,11 @@ export interface ButtonProps
     extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     variant?: "default" | "primary" | "secondary" | "danger" | "outline" | "ghost"
     size?: "default" | "sm" | "lg" | "icon"
+    asChild?: boolean
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-    ({ className, variant = "default", size = "default", ...props }, ref) => {
+    ({ className, variant = "default", size = "default", asChild = false, ...props }, ref) => {
         const buttonClasses = cn(
             "inline-flex items-center justify-center whitespace-nowrap font-bold transition-smooth focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
             {
@@ -25,6 +26,15 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             },
             className
         );
+
+        if (asChild) {
+            // When asChild is true, render the child element with button classes
+            const child = React.Children.only(props.children as React.ReactElement);
+            return React.cloneElement(child, {
+                className: cn(buttonClasses, child.props.className),
+                ref,
+            });
+        }
 
         return (
             <button

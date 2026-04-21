@@ -13,8 +13,6 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
 
-pytestmark = pytest.mark.anyio
-
 
 @pytest.fixture
 def hubspot_contact_response():

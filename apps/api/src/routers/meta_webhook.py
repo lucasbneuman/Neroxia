@@ -220,23 +220,16 @@ async def _process_instagram_message(event: Dict[str, Any], db: AsyncSession):
         logger.warning(f"No integration found for Instagram page: {recipient_page_id}")
         return
 
-    user = await crud.get_user_by_identifier(
-        db,
-        sender_psid,
-        "instagram",
-        integration.auth_user_id,
+    # Get or create user (atomic operation)
+    user, created = await crud.get_or_create_user(
+        db=db,
+        identifier=sender_psid,
+        channel="instagram",
+        auth_user_id=integration.auth_user_id,
+        defaults={
+            "name": sender_psid,  # Use PSID as placeholder name
+        }
     )
-    created = False
-    if not user:
-        user = await crud.create_user(
-            db,
-            name=sender_psid,
-            identifier=sender_psid,
-            phone=sender_psid,
-            channel="instagram",
-            auth_user_id=integration.auth_user_id,
-        )
-        created = True
 
     if created:
         logger.info(f"Created new Instagram user: {user.id}")
@@ -321,23 +314,16 @@ async def _process_messenger_message(event: Dict[str, Any], db: AsyncSession):
         logger.warning(f"No integration found for Messenger page: {recipient_page_id}")
         return
 
-    user = await crud.get_user_by_identifier(
-        db,
-        sender_psid,
-        "messenger",
-        integration.auth_user_id,
+    # Get or create user (atomic operation)
+    user, created = await crud.get_or_create_user(
+        db=db,
+        identifier=sender_psid,
+        channel="messenger",
+        auth_user_id=integration.auth_user_id,
+        defaults={
+            "name": sender_psid,  # Use PSID as placeholder name
+        }
     )
-    created = False
-    if not user:
-        user = await crud.create_user(
-            db,
-            name=sender_psid,
-            identifier=sender_psid,
-            phone=sender_psid,
-            channel="messenger",
-            auth_user_id=integration.auth_user_id,
-        )
-        created = True
 
     if created:
         logger.info(f"Created new Messenger user: {user.id}")

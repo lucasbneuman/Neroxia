@@ -1,14 +1,8 @@
 // Type definitions for the application
 
-export type JsonPrimitive = string | number | boolean | null
-export type JsonValue = JsonPrimitive | JsonObject | JsonValue[]
-export interface JsonObject {
-    [key: string]: JsonValue
-}
-
 export interface User {
     id: number
-    phone: string | null
+    phone: string
     name?: string
     email?: string
     conversation_mode: "AUTO" | "MANUAL" | "NEEDS_ATTENTION"
@@ -19,10 +13,8 @@ export interface User {
     conversation_summary?: string
 
     // Multi-channel support
-    channel: "whatsapp" | "instagram" | "messenger" | "web"
+    channel: "whatsapp" | "instagram" | "messenger"
     channel_user_id?: string
-    display_identifier?: string
-    origin_host?: string
 
     // Analysis data
     intent_score?: number
@@ -46,32 +38,13 @@ export interface Message {
     message_text: string
     sender: "user" | "bot"
     created_at: string
-    timestamp?: string
-    metadata?: JsonObject
-    message_metadata?: {
-        manual?: boolean
-        agent?: string
-        widget_id?: string
-        session_id?: string
-        origin?: string
-        page_url?: string
-        user_agent?: string
-    }
-    channel?: User["channel"]
+    metadata?: Record<string, any>
 }
 
 export interface Conversation {
     user: User
     last_message: string
     unread: boolean
-}
-
-export interface WebWidgetConfig {
-    enabled: boolean
-    widget_id: string
-    allowed_origins: string[]
-    default_primary_color: string
-    snippet: string
 }
 
 export interface Config {
@@ -113,13 +86,13 @@ export interface RAGStats {
     total_chunks: number
 }
 
-export interface APIResponse<T = unknown> {
+export interface APIResponse<T = any> {
     success?: boolean  // Legacy field, some endpoints still use this
     status?: string    // New field: "success" | "error"
     data?: T
     error?: string
     message?: string
-    configs?: Partial<Config>
+    configs?: any      // For config endpoints
 }
 
 export interface Tag {

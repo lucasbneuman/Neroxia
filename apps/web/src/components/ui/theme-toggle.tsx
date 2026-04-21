@@ -1,10 +1,49 @@
 "use client"
 
 import { Moon, Sun } from "lucide-react"
-import { useTheme } from "@/components/providers/theme-provider"
+import { useEffect, useState } from "react"
 
 export function ThemeToggle() {
-    const { theme, toggleTheme } = useTheme()
+    const [theme, setTheme] = useState<"light" | "dark">("light")
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+        // Get theme from localStorage or default to light
+        const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null
+        const initialTheme = savedTheme || "light"
+        setTheme(initialTheme)
+
+        // Apply dark class to html element for Tailwind
+        if (initialTheme === "dark") {
+            document.documentElement.classList.add("dark")
+        } else {
+            document.documentElement.classList.remove("dark")
+        }
+    }, [])
+
+    const toggleTheme = () => {
+        const newTheme = theme === "light" ? "dark" : "light"
+        setTheme(newTheme)
+
+        // Toggle dark class on html element for Tailwind
+        if (newTheme === "dark") {
+            document.documentElement.classList.add("dark")
+        } else {
+            document.documentElement.classList.remove("dark")
+        }
+
+        localStorage.setItem("theme", newTheme)
+    }
+
+    // Prevent hydration mismatch
+    if (!mounted) {
+        return (
+            <button className="p-2 rounded-xl bg-gray-100 text-gray-400 w-10 h-10" disabled>
+                <Sun size={20} />
+            </button>
+        )
+    }
 
     return (
         <button

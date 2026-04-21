@@ -14,8 +14,8 @@ WORKDIR /app
 # Copy package files
 COPY apps/web/package*.json ./
 
-# Install full dependency set for the build stage
-RUN npm ci && \
+# Install dependencies with clean npm cache
+RUN npm ci --only=production && \
     npm cache clean --force
 
 # ============================================
@@ -62,17 +62,14 @@ RUN addgroup --system --gid 1001 nodejs && \
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1
 
-# Copy package files and production-ready node_modules
+# Copy package files and install production dependencies only
 COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=deps /app/node_modules ./node_modules
 
 # Copy built application from builder
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder /app/next.config.ts ./
-
-# Remove development-only dependencies before runtime
-RUN npm prune --omit=dev
 
 # Switch to non-root user
 USER nextjs

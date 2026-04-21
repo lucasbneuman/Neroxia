@@ -91,21 +91,6 @@ async def get_user_by_identifier(
         return result.scalar_one_or_none()
 
 
-async def get_user_by_channel_user_id(
-    db: AsyncSession,
-    channel_user_id: str,
-    channel: str,
-    auth_user_id: Optional[str] = None,
-) -> Optional[User]:
-    """Retrieve a user by channel-specific identifier."""
-    return await get_user_by_identifier(
-        db=db,
-        identifier=channel_user_id,
-        channel=channel,
-        auth_user_id=auth_user_id,
-    )
-
-
 async def create_user(
     db: AsyncSession,
     phone: Optional[str] = None,
@@ -207,13 +192,32 @@ async def get_or_create_user(
         user = await create_user(db, **defaults)
         return user, True
     except Exception as e:
-        # Handle race condition: another request might have created the user
-        # between our get_user_by_identifier check and create_user call
+        # Handle race condition or existing user with different auth_user_id
         await db.rollback()
 
-        # Try to get the user again
+        # Try to get the user again (first with auth_user_id filter)
         user = await get_user_by_identifier(db, identifier, channel, auth_user_id)
         if user:
+            return user, False
+
+        # If not found with auth_user_id filter, try without it
+        # This handles the case where user exists but with different/NULL auth_user_id
+        if channel == "whatsapp":
+            user = await get_user_by_phone(db, identifier, auth_user_id=None)
+        else:
+            query = select(User).where(
+                User.channel == channel,
+                User.channel_user_id == identifier
+            )
+            result = await db.execute(query)
+            user = result.scalar_one_or_none()
+
+        if user:
+            # Update auth_user_id if it's different/NULL
+            if user.auth_user_id != auth_user_id:
+                user.auth_user_id = auth_user_id
+                await db.commit()
+                await db.refresh(user)
             return user, False
 
         # If still not found, re-raise the original error
@@ -274,15 +278,6 @@ async def get_all_active_users(
     query = query.order_by(desc(User.last_message_at)).limit(limit).offset(offset)
 
     result = await db.execute(query)
-    return list(result.scalars().all())
-
-
-async def get_configs_by_key(
-    db: AsyncSession,
-    key: str,
-) -> List[Config]:
-    """Retrieve all config records for a given key."""
-    result = await db.execute(select(Config).where(Config.key == key))
     return list(result.scalars().all())
 
 
@@ -541,8 +536,6 @@ async def create_message(
     message_text: str,
     sender: str,
     metadata: Optional[Dict[str, Any]] = None,
-    channel: str = "whatsapp",
-    channel_message_id: Optional[str] = None,
 ) -> Message:
     """
     Create a new message.
@@ -557,14 +550,7 @@ async def create_message(
     Returns:
         Created Message object
     """
-    message = Message(
-        user_id=user_id,
-        message_text=message_text,
-        sender=sender,
-        message_metadata=metadata,
-        channel=channel,
-        channel_message_id=channel_message_id,
-    )
+    message = Message(user_id=user_id, message_text=message_text, sender=sender, message_metadata=metadata)
     db.add(message)
 
     # Update user's message count and last message time
@@ -917,7 +903,7 @@ async def create_deal(
         ValueError: If source is invalid
     """
     # Validate source
-    valid_sources = ["whatsapp", "instagram", "messenger", "web", "test"]
+    valid_sources = ["whatsapp", "instagram", "messenger", "test"]
     if source not in valid_sources:
         raise ValueError(f"Invalid source. Must be one of: {valid_sources}")
 

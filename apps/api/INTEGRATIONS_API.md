@@ -51,7 +51,7 @@ Configure Twilio credentials.
 **Request**:
 ```json
 {
-  "account_sid": "ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "account_sid": "<your_twilio_account_sid>",
   "auth_token": "your_auth_token_here",
   "whatsapp_number": "+1234567890"
 }

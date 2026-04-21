@@ -4,18 +4,18 @@ import { useEffect, useState, useRef } from "react"
 import type { Message } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { sendManualMessageByUserId } from "@/lib/api"
+import { sendManualMessage } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { Send, Paperclip, Mic, Smile } from "lucide-react"
 
 interface ChatViewProps {
-    userId: number
+    phone: string
     messages: Message[]
     conversationMode: string
     onMessageSent?: () => void
 }
 
-export function ChatView({ userId, messages, conversationMode, onMessageSent }: ChatViewProps) {
+export function ChatView({ phone, messages, conversationMode, onMessageSent }: ChatViewProps) {
     const [messageText, setMessageText] = useState("")
     const [sending, setSending] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -38,7 +38,7 @@ export function ChatView({ userId, messages, conversationMode, onMessageSent }: 
             setSending(true)
             setError(null)
 
-            await sendManualMessageByUserId(userId, messageText)
+            await sendManualMessage(phone, messageText)
 
             setMessageText("")
             onMessageSent?.()
@@ -101,7 +101,7 @@ export function ChatView({ userId, messages, conversationMode, onMessageSent }: 
                                             isBot ? "text-gray-500" : "text-blue-100"
                                         )}
                                     >
-                                        <span>{formatTime(message.timestamp || message.created_at)}</span>
+                                        <span>{formatTime(message.timestamp)}</span>
                                         {isManual && (
                                             <span className="text-xs">
                                                 • Manual ({message.message_metadata?.agent?.split("@")[0]})
@@ -194,7 +194,7 @@ export function ChatView({ userId, messages, conversationMode, onMessageSent }: 
 
                 {!isManualMode && (
                     <div className="text-xs text-gray-500 mt-2 text-center">
-                        💡 Haz clic en &quot;Tomar Control&quot; para activar el modo manual y enviar mensajes
+                        💡 Haz clic en "Tomar Control" para activar el modo manual y enviar mensajes
                     </div>
                 )}
             </div>

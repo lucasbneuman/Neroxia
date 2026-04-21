@@ -8,20 +8,11 @@ This module provides shared fixtures for all test files including:
 - Test data factories
 """
 
-import os
-import sys
-from pathlib import Path
-from typing import Dict, Generator
-
 import pytest
 from fastapi.testclient import TestClient
-
-# Force test-safe configuration before importing the app and DB modules.
-os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
-os.environ.setdefault("SUPABASE_DATABASE_URL", "sqlite+aiosqlite:///:memory:")
-os.environ.setdefault("SUPABASE_URL", "https://example.supabase.co")
-os.environ.setdefault("SUPABASE_ANON_KEY", "test-anon-key")
-os.environ.setdefault("SUPABASE_SERVICE_KEY", "test-service-key")
+from typing import Generator, Dict
+import sys
+from pathlib import Path
 
 # Add parent directory (apps/api) to Python path so 'src' can be imported as a package
 api_dir = Path(__file__).parent.parent
@@ -42,10 +33,6 @@ if str(shared_dir) not in sys.path:
 bot_engine_dir = Path(__file__).parent.parent.parent.parent / "apps" / "bot-engine" / "src"
 if str(bot_engine_dir) not in sys.path:
     sys.path.insert(0, str(bot_engine_dir))
-
-database_dir = project_root / "packages" / "database"
-if str(database_dir) not in sys.path:
-    sys.path.insert(0, str(database_dir))
 
 # Now import from src package
 from src.main import app
@@ -106,25 +93,17 @@ def mock_dependencies(monkeypatch):
     """
     from src.routers.auth import get_current_user
     from src.database import get_db
-    from datetime import datetime, timezone
-    from types import SimpleNamespace
-    from unittest.mock import AsyncMock, MagicMock
+    from unittest.mock import AsyncMock, MagicMock, patch
     from whatsapp_bot_database import crud
-    from fastapi import Header, HTTPException, Request, status
-    from src.routers import rag as rag_router
-    from src.routers import followups as followups_router
+    from fastapi import Header
     
     # Create a mock user object with proper attributes
     class MockUser:
         def __init__(self, phone="+1234567890"):
             self.id = "test-user-id-123"
             self.email = "test@example.com"
-            self.username = "test@example.com"
-            self.user_metadata = {}
             self.phone = phone
             self.name = "Test User"
-            self.channel = "whatsapp"
-            self.channel_user_id = None
             self.created_at = "2024-01-01T00:00:00Z"
             self.stage = "initial_contact"
             self.intent_score = 0.5
@@ -142,40 +121,21 @@ def mock_dependencies(monkeypatch):
             """Mimic dictionary [] access."""
             return getattr(self, key)
     
-    mock_current_user = MockUser()
-
-    async def mock_get_current_user(
-        request: Request,
-        authorization: str = Header(None),
-    ):
+    async def mock_get_current_user(authorization: str = Header(None)):
         """
         Mock user for testing - returns object with attributes.
-        Allows unauthenticated access only for the bot test-processing endpoint.
+        Now enforces authentication to fix permissive tests.
         """
-        anonymous_allowed_paths = {
-            "/bot/process",
-            "/integrations/facebook/connect",
-            "/integrations/facebook/disconnect",
-            "/integrations/list",
-        }
-
+        from fastapi import HTTPException, status
+        
+        # If no authorization header, raise 401 (mimic real behavior)
         if not authorization:
-            if request.url.path == "/integrations/facebook/connect":
-                return {"id": "user_123"}
-            if request.url.path in anonymous_allowed_paths:
-                return mock_current_user
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Missing authorization header",
             )
-
-        if authorization != "Bearer mock_test_token_for_api_tests":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid or expired token",
-            )
-
-        return mock_current_user
+            
+        return MockUser()
     
     async def mock_get_db():
         """Mock database session for testing."""
@@ -203,157 +163,38 @@ def mock_dependencies(monkeypatch):
             yield db
         finally:
             await db.close()
-
+    
+    # Mock CRUD operations to return proper objects
+    async def mock_get_user_by_phone(db, phone):
+        """Mock get_user_by_phone to return MockUser."""
+        return MockUser(phone=phone)
+    
+    async def mock_create_user(db, phone, **kwargs):
+        """Mock create_user to return MockUser."""
+        return MockUser(phone=phone)
+    
+    async def mock_get_user_messages(db, user_id, limit=20):
+        """Mock get_user_messages to return empty list."""
+        return []
+    
+    async def mock_create_message(db, user_id, message_text, sender):
+        """Mock create_message to return None."""
+        return None
+    
+    async def mock_update_user(db, user_id, **kwargs):
+        """Mock update_user to return None."""
+        return None
+    
+    # Stateful mock storage
     mock_db_state = {
-        "users": {},
-        "messages": {},
         "configs": {
             "system_prompt": "You are a helpful assistant",
             "product_name": "Test Product",
             "welcome_message": "Welcome!",
             "use_emojis": True,
             "text_audio_ratio": 50
-        },
-        "deals": {},
-        "notes": {},
-        "tags": {},
-        "user_tags": {},
-        "followups": {},
-        "integrations": [],
-        "counters": {
-            "user": 1,
-            "message": 1,
-            "deal": 1,
-            "note": 1,
-            "tag": 1,
-            "followup": 1,
-        },
-    }
-
-    def _now():
-        return datetime.now(timezone.utc)
-
-    def _ensure_user(identifier: str, channel="whatsapp", **overrides):
-        if identifier not in mock_db_state["users"]:
-            user_id = mock_db_state["counters"]["user"]
-            mock_db_state["counters"]["user"] += 1
-            mock_db_state["users"][identifier] = SimpleNamespace(
-                id=user_id,
-                auth_user_id=mock_current_user.id,
-                phone=overrides.get("phone", identifier if channel == "whatsapp" else None),
-                name=overrides.get("name", "Test User"),
-                email=overrides.get("email"),
-                channel=channel,
-                channel_user_id=overrides.get("channel_user_id", identifier if channel != "whatsapp" else None),
-                stage=overrides.get("stage", "initial_contact"),
-                sentiment=overrides.get("sentiment", "neutral"),
-                intent_score=overrides.get("intent_score", 0.5),
-                conversation_mode=overrides.get("conversation_mode", "AUTO"),
-                conversation_summary=overrides.get("conversation_summary", "Test conversation summary"),
-                last_message_at=overrides.get("last_message_at"),
-                created_at=_now(),
-                updated_at=_now(),
-                total_messages=0,
-                whatsapp_profile_name=None,
-                twilio_profile_name=None,
-            )
-            mock_db_state["messages"][user_id] = []
-        return mock_db_state["users"][identifier]
-
-    def _deal_to_dict(deal):
-        return {
-            "id": deal.id,
-            "user_id": deal.user_id,
-            "title": deal.title,
-            "value": deal.value,
-            "currency": deal.currency,
-            "stage": deal.stage,
-            "probability": deal.probability,
-            "source": deal.source,
-            "manually_qualified": deal.manually_qualified,
-            "expected_close_date": deal.expected_close_date.isoformat() if deal.expected_close_date else None,
-            "won_date": deal.won_date.isoformat() if deal.won_date else None,
-            "lost_date": deal.lost_date.isoformat() if deal.lost_date else None,
-            "lost_reason": deal.lost_reason,
-            "created_at": deal.created_at.isoformat(),
-            "updated_at": deal.updated_at.isoformat(),
-            "user": {
-                "id": deal.user.id,
-                "phone": deal.user.phone,
-                "name": deal.user.name,
-                "email": deal.user.email,
-            } if getattr(deal, "user", None) else None,
         }
-
-    async def mock_get_user_by_phone(db, phone, auth_user_id=None):
-        for user in mock_db_state["users"].values():
-            if user.phone == phone and (not auth_user_id or user.auth_user_id == auth_user_id):
-                return user
-        return None
-
-    async def mock_get_user_by_id(db, user_id, auth_user_id=None):
-        for user in mock_db_state["users"].values():
-            if user.id == user_id and (not auth_user_id or user.auth_user_id == auth_user_id):
-                return user
-        return None
-
-    async def mock_create_user(db, phone, auth_user_id=None, **kwargs):
-        channel = kwargs.get("channel", "whatsapp")
-        identifier = phone if channel == "whatsapp" else kwargs.get("channel_user_id", phone)
-        return _ensure_user(identifier, channel=channel, **kwargs)
-
-    async def mock_get_or_create_user(db, identifier, channel="whatsapp", auth_user_id=None, defaults=None):
-        user = mock_db_state["users"].get(identifier)
-        if user:
-            return user, False
-        defaults = defaults or {}
-        return _ensure_user(identifier, channel=channel, **defaults), True
-
-    async def mock_get_user_messages(db, user_id, limit=20):
-        return list(mock_db_state["messages"].get(user_id, []))[-limit:]
-
-    async def mock_create_message(db, user_id, message_text, sender, metadata=None, channel="whatsapp", channel_message_id=None):
-        message_id = mock_db_state["counters"]["message"]
-        mock_db_state["counters"]["message"] += 1
-        message = SimpleNamespace(
-            id=message_id,
-            user_id=user_id,
-            message_text=message_text,
-            sender=sender,
-            timestamp=_now(),
-            message_metadata=metadata or {},
-            channel=channel,
-            channel_message_id=channel_message_id,
-        )
-        mock_db_state["messages"].setdefault(user_id, []).append(message)
-        for user in mock_db_state["users"].values():
-            if user.id == user_id:
-                user.last_message_at = message.timestamp
-                user.total_messages = len(mock_db_state["messages"][user_id])
-                user.updated_at = _now()
-                break
-        return message
-
-    async def mock_update_user(db, user_id, **kwargs):
-        for user in mock_db_state["users"].values():
-            if user.id == user_id:
-                for key, value in kwargs.items():
-                    if value is not None:
-                        setattr(user, key, value)
-                user.updated_at = _now()
-                return user
-        return None
-
-    async def mock_get_all_active_users(db, limit=100, auth_user_id=None, channel=None, offset=0):
-        users = list(mock_db_state["users"].values())
-        if auth_user_id:
-            users = [user for user in users if user.auth_user_id == auth_user_id]
-        if channel:
-            users = [user for user in users if user.channel == channel]
-        return users[offset:offset + limit]
-
-    async def mock_get_recent_messages(db, user_id, count=1):
-        return list(mock_db_state["messages"].get(user_id, []))[-count:]
+    }
 
     async def mock_get_all_configs(db, user_id=None):
         """Mock get_all_configs to return stored config."""
@@ -390,180 +231,6 @@ def mock_dependencies(monkeypatch):
         if f"{integration_type}_config" in mock_db_state["configs"]:
             del mock_db_state["configs"][f"{integration_type}_config"]
         return True
-
-    async def mock_get_crm_metrics(db):
-        deals = list(mock_db_state["deals"].values())
-        active_deals = [d for d in deals if d.stage not in {"won", "lost"}]
-        won_deals = [d for d in deals if d.stage == "won"]
-        total_revenue = sum(d.value for d in won_deals)
-        conversion_rate = round((len(won_deals) / len(deals) * 100), 2) if deals else 0
-        return {
-            "total_active_deals": len(active_deals),
-            "total_won_deals": len(won_deals),
-            "total_revenue": total_revenue,
-            "conversion_rate": conversion_rate,
-        }
-
-    async def mock_create_deal(db, user_id, title, value=0.0, stage="new_lead", source="whatsapp", probability=10, expected_close_date=None):
-        if stage not in {"new_lead", "qualified", "in_conversation", "proposal_sent", "won", "lost"}:
-            raise HTTPException(status_code=400, detail="Invalid stage")
-        deal_id = mock_db_state["counters"]["deal"]
-        mock_db_state["counters"]["deal"] += 1
-        user = next((u for u in mock_db_state["users"].values() if u.id == user_id), None) or _ensure_user("+10000000000")
-        deal = SimpleNamespace(
-            id=deal_id,
-            user_id=user_id,
-            title=title,
-            value=value,
-            currency="USD",
-            stage=stage,
-            probability=probability,
-            source=source,
-            manually_qualified=False,
-            expected_close_date=expected_close_date,
-            won_date=None,
-            lost_date=None,
-            lost_reason=None,
-            created_at=_now(),
-            updated_at=_now(),
-            user=user,
-        )
-        mock_db_state["deals"][deal_id] = deal
-        return _deal_to_dict(deal)
-
-    async def mock_get_all_deals(db, stage=None, limit=100, offset=0):
-        deals = [_deal_to_dict(d) for d in mock_db_state["deals"].values()]
-        if stage:
-            deals = [d for d in deals if d["stage"] == stage]
-        return deals[offset:offset + limit]
-
-    async def mock_get_deal_by_id(db, deal_id):
-        deal = mock_db_state["deals"].get(deal_id)
-        return _deal_to_dict(deal) if deal else None
-
-    async def mock_update_deal(db, deal_id, **kwargs):
-        deal = mock_db_state["deals"].get(deal_id)
-        if not deal:
-            return None
-        if "stage" in kwargs and kwargs["stage"] not in {"new_lead", "qualified", "in_conversation", "proposal_sent", "won", "lost"}:
-            raise HTTPException(status_code=400, detail="Invalid stage")
-        for key, value in kwargs.items():
-            setattr(deal, key, value)
-        if "stage" in kwargs:
-            deal.manually_qualified = True
-        deal.updated_at = _now()
-        return _deal_to_dict(deal)
-
-    async def mock_mark_deal_won(db, deal_id):
-        deal = mock_db_state["deals"].get(deal_id)
-        if not deal:
-            return None
-        deal.stage = "won"
-        deal.probability = 100
-        deal.won_date = _now()
-        deal.updated_at = _now()
-        return _deal_to_dict(deal)
-
-    async def mock_mark_deal_lost(db, deal_id, reason):
-        deal = mock_db_state["deals"].get(deal_id)
-        if not deal:
-            return None
-        deal.stage = "lost"
-        deal.probability = 0
-        deal.lost_reason = reason
-        deal.lost_date = _now()
-        deal.updated_at = _now()
-        return _deal_to_dict(deal)
-
-    async def mock_delete_deal(db, deal_id):
-        return mock_db_state["deals"].pop(deal_id, None) is not None
-
-    async def mock_get_user_deals(db, user_id):
-        return [d for d in mock_db_state["deals"].values() if d.user_id == user_id]
-
-    async def mock_get_user_active_deal(db, user_id):
-        return next((d for d in mock_db_state["deals"].values() if d.user_id == user_id and d.stage not in {"won", "lost"}), None)
-
-    async def mock_create_note(db, user_id, content, created_by, deal_id=None, note_type="note"):
-        note_id = mock_db_state["counters"]["note"]
-        mock_db_state["counters"]["note"] += 1
-        note = {
-            "id": note_id,
-            "user_id": user_id,
-            "deal_id": deal_id,
-            "content": content,
-            "note_type": note_type,
-            "created_by": created_by,
-            "created_at": _now().isoformat(),
-        }
-        mock_db_state["notes"][note_id] = note
-        return note
-
-    async def mock_get_user_notes(db, user_id):
-        return [n for n in mock_db_state["notes"].values() if n["user_id"] == user_id]
-
-    async def mock_delete_note(db, note_id):
-        return mock_db_state["notes"].pop(note_id, None) is not None
-
-    async def mock_create_tag(db, name, color="#6B7280"):
-        tag_id = mock_db_state["counters"]["tag"]
-        mock_db_state["counters"]["tag"] += 1
-        tag = {"id": tag_id, "name": name, "color": color, "created_at": _now().isoformat()}
-        mock_db_state["tags"][tag_id] = tag
-        return tag
-
-    async def mock_get_all_tags(db):
-        return list(mock_db_state["tags"].values())
-
-    async def mock_get_user_tags(db, user_id):
-        tag_ids = mock_db_state["user_tags"].get(user_id, set())
-        return [mock_db_state["tags"][tag_id] for tag_id in tag_ids if tag_id in mock_db_state["tags"]]
-
-    async def mock_add_tag_to_user(db, user_id, tag_id):
-        if tag_id not in mock_db_state["tags"]:
-            raise HTTPException(status_code=404, detail="Tag not found")
-        mock_db_state["user_tags"].setdefault(user_id, set()).add(tag_id)
-        return {"status": "success"}
-
-    async def mock_remove_tag_from_user(db, user_id, tag_id):
-        tags = mock_db_state["user_tags"].setdefault(user_id, set())
-        if tag_id not in tags:
-            return False
-        tags.remove(tag_id)
-        return True
-
-    async def mock_create_follow_up(db, user_id, scheduled_time, message, job_id=None):
-        followup_id = mock_db_state["counters"]["followup"]
-        mock_db_state["counters"]["followup"] += 1
-        followup = SimpleNamespace(
-            id=followup_id,
-            user_id=user_id,
-            scheduled_time=scheduled_time,
-            message=message,
-            status="pending",
-            job_id=job_id,
-        )
-        mock_db_state["followups"][job_id or str(followup_id)] = followup
-        return followup
-
-    async def mock_get_tenant_follow_ups(db, auth_user_id):
-        return list(mock_db_state["followups"].values())
-
-    async def mock_create_channel_integration(db, auth_user_id, channel, page_id, page_access_token, page_name, instagram_account_id=None):
-        integration = SimpleNamespace(
-            auth_user_id=auth_user_id,
-            channel=channel,
-            page_id=page_id,
-            page_access_token=page_access_token,
-            page_name=page_name,
-            instagram_account_id=instagram_account_id,
-            is_active=True,
-        )
-        mock_db_state["integrations"].append(integration)
-        return integration
-
-    async def mock_get_channel_integrations_by_user(db, user_id):
-        return [i for i in mock_db_state["integrations"] if i.auth_user_id == user_id]
     
     # Mock bot workflow to avoid real LLM calls
     async def mock_process_message(user_phone, message, conversation_history, config, db_session, db_user):
@@ -580,44 +247,16 @@ def mock_dependencies(monkeypatch):
             "intent_score": 0.5,
             "sentiment": "neutral",
             "stage": "initial_contact",
-            "conversation_mode": "AUTO",
-            "channel": "whatsapp",
-            "user_identifier": user_phone,
+            "conversation_mode": "AUTO"
         }
     
     # Patch CRUD operations
     monkeypatch.setattr(crud, "get_user_by_phone", mock_get_user_by_phone)
-    monkeypatch.setattr(crud, "get_user_by_id", mock_get_user_by_id)
     monkeypatch.setattr(crud, "create_user", mock_create_user)
-    monkeypatch.setattr(crud, "get_or_create_user", mock_get_or_create_user)
     monkeypatch.setattr(crud, "get_user_messages", mock_get_user_messages)
     monkeypatch.setattr(crud, "create_message", mock_create_message)
     monkeypatch.setattr(crud, "update_user", mock_update_user)
     monkeypatch.setattr(crud, "get_all_configs", mock_get_all_configs)
-    monkeypatch.setattr(crud, "get_all_active_users", mock_get_all_active_users)
-    monkeypatch.setattr(crud, "get_recent_messages", mock_get_recent_messages)
-    monkeypatch.setattr(crud, "get_crm_metrics", mock_get_crm_metrics)
-    monkeypatch.setattr(crud, "create_deal", mock_create_deal)
-    monkeypatch.setattr(crud, "get_all_deals", mock_get_all_deals)
-    monkeypatch.setattr(crud, "get_deal_by_id", mock_get_deal_by_id)
-    monkeypatch.setattr(crud, "update_deal", mock_update_deal)
-    monkeypatch.setattr(crud, "mark_deal_won", mock_mark_deal_won)
-    monkeypatch.setattr(crud, "mark_deal_lost", mock_mark_deal_lost)
-    monkeypatch.setattr(crud, "delete_deal", mock_delete_deal)
-    monkeypatch.setattr(crud, "get_user_deals", mock_get_user_deals)
-    monkeypatch.setattr(crud, "get_user_active_deal", mock_get_user_active_deal)
-    monkeypatch.setattr(crud, "create_note", mock_create_note)
-    monkeypatch.setattr(crud, "get_user_notes", mock_get_user_notes)
-    monkeypatch.setattr(crud, "delete_note", mock_delete_note)
-    monkeypatch.setattr(crud, "create_tag", mock_create_tag)
-    monkeypatch.setattr(crud, "get_all_tags", mock_get_all_tags)
-    monkeypatch.setattr(crud, "get_user_tags", mock_get_user_tags)
-    monkeypatch.setattr(crud, "add_tag_to_user", mock_add_tag_to_user)
-    monkeypatch.setattr(crud, "remove_tag_from_user", mock_remove_tag_from_user)
-    monkeypatch.setattr(crud, "create_follow_up", mock_create_follow_up)
-    monkeypatch.setattr(crud, "get_tenant_follow_ups", mock_get_tenant_follow_ups)
-    monkeypatch.setattr(crud, "create_channel_integration", mock_create_channel_integration)
-    monkeypatch.setattr(crud, "get_channel_integrations_by_user", mock_get_channel_integrations_by_user)
     
     # Patch generic config methods if they exist (based on integrations.py usage)
     if hasattr(crud, "get_config"):
@@ -685,31 +324,12 @@ def mock_dependencies(monkeypatch):
     }
     mock_rag_service.clear_collection.return_value = 1
     
+    async def mock_get_rag_service():
+        return mock_rag_service
+        
     # Patch get_rag_service in the router
-    monkeypatch.setattr(rag_router, "get_rag_service", lambda: mock_rag_service)
-
-    class MockSchedulerService:
-        def __init__(self):
-            self.jobs = {}
-
-        async def add_follow_up_job(self, job_id, phone, message, scheduled_time, send_function):
-            self.jobs[job_id] = {
-                "id": job_id,
-                "phone": phone,
-                "message": message,
-                "next_run_time": scheduled_time,
-                "trigger": "date",
-            }
-
-        def cancel_follow_up_job(self, job_id):
-            return self.jobs.pop(job_id, None) is not None or job_id in mock_db_state["followups"]
-
-        def get_job_info(self, job_id):
-            return self.jobs.get(job_id)
-
-    scheduler_service = MockSchedulerService()
-    monkeypatch.setattr(followups_router, "SCHEDULER_AVAILABLE", True)
-    monkeypatch.setattr(followups_router, "get_scheduler_service", lambda: scheduler_service)
+    from src.routers import rag
+    monkeypatch.setattr(rag, "get_rag_service", mock_get_rag_service)
 
     # Replace the dependencies in the app
     from src.main import app

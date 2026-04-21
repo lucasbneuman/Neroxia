@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/components/ui/toast';
-import { getErrorMessage, updateUserProfile, updateOnboardingStep, completeOnboarding } from '@/lib/api';
-import { Check, ChevronRight, Building2, MapPin, Rocket } from 'lucide-react';
+import { updateUserProfile, updateOnboardingStep, completeOnboarding } from '@/lib/api';
+import { Check, ChevronRight, Building2, MapPin, Globe, Rocket } from 'lucide-react';
 
 const STEPS = [
     { id: 1, title: 'Información de empresa', icon: Building2 },
@@ -67,8 +67,8 @@ export default function OnboardingPage() {
             }
 
             setCurrentStep(currentStep + 1);
-        } catch (error) {
-            addToast(getErrorMessage(error, 'Error al guardar. Por favor intenta de nuevo.'), 'error');
+        } catch (error: any) {
+            addToast('Error al guardar. Por favor intenta de nuevo.', 'error');
         } finally {
             setLoading(false);
         }
@@ -80,8 +80,8 @@ export default function OnboardingPage() {
             await completeOnboarding();
             addToast('¡Configuración completada!', 'success');
             router.push('/dashboard');
-        } catch (error) {
-            addToast(getErrorMessage(error, 'Error al completar la configuración'), 'error');
+        } catch (error: any) {
+            addToast('Error al completar la configuración', 'error');
         } finally {
             setLoading(false);
         }

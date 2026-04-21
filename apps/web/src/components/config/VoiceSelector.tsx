@@ -13,12 +13,14 @@ const voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
 
 export function VoiceSelector({ value, onChange }: VoiceSelectorProps) {
     const [previewing, setPreviewing] = useState(false)
+    const [audioUrl, setAudioUrl] = useState<string | null>(null)
 
     const handlePreview = async () => {
         setPreviewing(true)
         try {
             const audioBlob = await previewVoice(value)
             const url = URL.createObjectURL(audioBlob)
+            setAudioUrl(url)
 
             // Auto-play
             const audio = new Audio(url)

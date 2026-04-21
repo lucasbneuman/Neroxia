@@ -1,7 +1,7 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
-import { Search, MoreHorizontal, Phone, Calendar } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Search, Filter, MoreHorizontal, Phone, Mail, Calendar } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -36,7 +36,11 @@ export default function ContactsPage() {
     const [stageFilter, setStageFilter] = useState<string>("all")
     const [channelFilter, setChannelFilter] = useState<string>("all")
 
-    const loadDeals = useCallback(async () => {
+    useEffect(() => {
+        loadDeals()
+    }, [stageFilter])
+
+    const loadDeals = async () => {
         setLoading(true)
         try {
             const stage = stageFilter === "all" ? undefined : stageFilter
@@ -47,11 +51,7 @@ export default function ContactsPage() {
         } finally {
             setLoading(false)
         }
-    }, [stageFilter])
-
-    useEffect(() => {
-        void loadDeals()
-    }, [loadDeals])
+    }
 
     const filteredDeals = deals.filter(deal => {
         // Search filter

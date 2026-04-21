@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/components/ui/toast';
-import { getErrorMessage, getUserProfile, updateUserProfile, uploadAvatar, changePassword, deleteAccount } from '@/lib/api';
+import { getUserProfile, updateUserProfile, uploadAvatar, changePassword, deleteAccount } from '@/lib/api';
 import { useUserStore } from '@/stores/user-store';
 import { User, Building2, Globe, MapPin, Lock, Trash2, Camera } from 'lucide-react';
 
@@ -29,7 +29,11 @@ export default function ProfilePage() {
         confirm_password: '',
     });
 
-    const loadProfile = useCallback(async () => {
+    useEffect(() => {
+        loadProfile();
+    }, []);
+
+    const loadProfile = async () => {
         try {
             const data = await getUserProfile();
             setProfile(data);
@@ -39,16 +43,12 @@ export default function ProfilePage() {
                 timezone: data.timezone || 'UTC',
                 language: data.language || 'es',
             });
-        } catch {
+        } catch (error) {
             addToast('Error al cargar perfil', 'error');
         } finally {
             setLoading(false);
         }
-    }, [addToast, setProfile]);
-
-    useEffect(() => {
-        void loadProfile();
-    }, [loadProfile]);
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         setFormData({
@@ -69,9 +69,9 @@ export default function ProfilePage() {
         try {
             await updateUserProfile(formData);
             addToast('Perfil actualizado exitosamente', 'success');
-            await loadProfile();
-        } catch (error) {
-            addToast(getErrorMessage(error, 'Error al guardar'), 'error');
+            loadProfile();
+        } catch (error: any) {
+            addToast(error.response?.data?.detail || 'Error al guardar', 'error');
         } finally {
             setSaving(false);
         }
@@ -93,8 +93,8 @@ export default function ProfilePage() {
             await changePassword(passwordData.current_password, passwordData.new_password);
             addToast('Contraseña cambiada exitosamente', 'success');
             setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
-        } catch (error) {
-            addToast(getErrorMessage(error, 'Error al cambiar contraseña'), 'error');
+        } catch (error: any) {
+            addToast(error.response?.data?.detail || 'Error al cambiar contraseña', 'error');
         } finally {
             setSaving(false);
         }
@@ -113,8 +113,8 @@ export default function ProfilePage() {
         try {
             await uploadAvatar(file);
             addToast('Avatar actualizado', 'success');
-            await loadProfile();
-        } catch {
+            loadProfile();
+        } catch (error) {
             addToast('Error al subir imagen', 'error');
         }
     };
@@ -135,8 +135,8 @@ export default function ProfilePage() {
             await deleteAccount();
             addToast('Cuenta eliminada', 'success');
             window.location.href = '/login';
-        } catch (error) {
-            addToast(getErrorMessage(error, 'Error al eliminar cuenta'), 'error');
+        } catch (error: any) {
+            addToast(error.response?.data?.detail || 'Error al eliminar cuenta', 'error');
         } finally {
             setSaving(false);
         }

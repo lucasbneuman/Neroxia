@@ -426,37 +426,6 @@ class TestIntegrationsEdgeCases:
         client.delete("/integrations/twilio", headers=auth_headers)
         client.delete("/integrations/hubspot", headers=auth_headers)
 
-    def test_web_widget_config_workflow(
-        self,
-        client: TestClient,
-        auth_headers: Dict[str, str]
-    ):
-        get_response = client.get("/integrations/web-widget", headers=auth_headers)
-        assert get_response.status_code == 200
-        initial = get_response.json()
-        assert initial["widget_id"]
-        assert "snippet" in initial
-
-        update_response = client.put(
-            "/integrations/web-widget",
-            headers=auth_headers,
-            json={
-                "enabled": True,
-                "allowed_origins": ["https://allowed.example", "https://app.allowed.example"],
-                "default_primary_color": "#111827",
-            },
-        )
-        assert update_response.status_code == 200
-        updated = update_response.json()
-        assert updated["enabled"] is True
-        assert updated["allowed_origins"] == ["https://allowed.example", "https://app.allowed.example"]
-        assert updated["default_primary_color"] == "#111827"
-
-        regenerate_response = client.post("/integrations/web-widget/regenerate", headers=auth_headers)
-        assert regenerate_response.status_code == 200
-        regenerated = regenerate_response.json()
-        assert regenerated["widget_id"] == updated["widget_id"]
-
 
 # Note: Full database validation tests would require:
 # 1. Verifying configurations are stored in database

@@ -1,12 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useToast } from '@/components/ui/toast';
-import { getHubSpotStatus, getTwilioStatus, getWebWidgetConfig, regenerateWebWidgetCredentials, updateWebWidgetConfig } from '@/lib/api';
-import type { WebWidgetConfig } from '@/types';
-import { CheckCircle2, XCircle, ExternalLink, Copy, Phone, Users, Instagram, Facebook, AlertCircle, Globe, RefreshCw } from 'lucide-react';
+import { getHubSpotStatus, getTwilioStatus } from '@/lib/api';
+import { CheckCircle2, XCircle, ExternalLink, Copy, Phone, Users, Instagram, Facebook, AlertCircle } from 'lucide-react';
 
 interface ChannelIntegration {
     channel: 'instagram' | 'messenger';
@@ -21,40 +20,13 @@ export default function IntegrationsPage() {
     const [hubspotConnected, setHubspotConnected] = useState(false);
     const [twilioConnected, setTwilioConnected] = useState(false);
     const [channelIntegrations, setChannelIntegrations] = useState<ChannelIntegration[]>([]);
-    const [webWidgetConfig, setWebWidgetConfig] = useState<WebWidgetConfig | null>(null);
-    const [allowedOriginsInput, setAllowedOriginsInput] = useState('');
-    const [primaryColorInput, setPrimaryColorInput] = useState('#7C3AED');
-    const [savingWidget, setSavingWidget] = useState(false);
-    const [regeneratingWidget, setRegeneratingWidget] = useState(false);
 
-    const loadStatus = useCallback(async () => {
-        setLoading(true);
-        try {
-            const [hubspot, twilio, channels, widget] = await Promise.all([
-                getHubSpotStatus().catch(() => ({ status: 'disconnected' })),
-                getTwilioStatus().catch(() => ({ status: 'disconnected' })),
-                fetch('/api/integrations/list', {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                }).then(res => res.json()).catch(() => [] as ChannelIntegration[]),
-                getWebWidgetConfig().catch(() => null)
-            ]);
-
-            setHubspotConnected(hubspot.status === 'active');
-            setTwilioConnected(twilio.status === 'active');
-            setChannelIntegrations(channels);
-            if (widget) {
-                setWebWidgetConfig(widget);
-                setAllowedOriginsInput(widget.allowed_origins.join('\n'));
-                setPrimaryColorInput(widget.default_primary_color);
-            }
-        } catch (error) {
-            console.error('Error loading integration status:', error);
-        } finally {
-            setLoading(false);
-        }
+    useEffect(() => {
+        loadStatus();
+        checkOAuthCallback();
     }, []);
 
-    const checkOAuthCallback = useCallback(() => {
+    const checkOAuthCallback = () => {
         const params = new URLSearchParams(window.location.search);
         const status = params.get('status');
 
@@ -66,12 +38,28 @@ export default function IntegrationsPage() {
             addToast('Error al conectar la cuenta', 'error');
             window.history.replaceState({}, '', '/dashboard/integrations');
         }
-    }, [addToast, loadStatus]);
+    };
 
-    useEffect(() => {
-        void loadStatus();
-        checkOAuthCallback();
-    }, [checkOAuthCallback, loadStatus]);
+    const loadStatus = async () => {
+        setLoading(true);
+        try {
+            const [hubspot, twilio, channels] = await Promise.all([
+                getHubSpotStatus().catch(() => ({ status: 'disconnected' })),
+                getTwilioStatus().catch(() => ({ status: 'disconnected' })),
+                fetch('/api/integrations/list', {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                }).then(res => res.json()).catch(() => [])
+            ]);
+
+            setHubspotConnected(hubspot.status === 'active');
+            setTwilioConnected(twilio.status === 'active');
+            setChannelIntegrations(channels);
+        } catch (error) {
+            console.error('Error loading integration status:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const connectChannel = async (channel: 'instagram' | 'messenger') => {
         try {
@@ -88,7 +76,7 @@ export default function IntegrationsPage() {
 
             const data = await response.json();
             window.location.href = data.oauth_url;
-        } catch {
+        } catch (error) {
             addToast('Error al iniciar la conexión', 'error');
         }
     };
@@ -96,45 +84,6 @@ export default function IntegrationsPage() {
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
         addToast('Copiado al portapapeles', 'success');
-    };
-
-    const refreshWebWidget = async () => {
-        const config = await getWebWidgetConfig();
-        setWebWidgetConfig(config);
-        setAllowedOriginsInput(config.allowed_origins.join('\n'));
-        setPrimaryColorInput(config.default_primary_color);
-    };
-
-    const saveWebWidgetConfig = async () => {
-        try {
-            setSavingWidget(true);
-            const config = await updateWebWidgetConfig({
-                enabled: true,
-                allowed_origins: allowedOriginsInput.split('\n').map((value) => value.trim()).filter(Boolean),
-                default_primary_color: primaryColorInput,
-            });
-            setWebWidgetConfig(config);
-            addToast('Widget web actualizado', 'success');
-        } catch {
-            addToast('No se pudo guardar el widget web', 'error');
-        } finally {
-            setSavingWidget(false);
-        }
-    };
-
-    const handleRegenerateWidget = async () => {
-        try {
-            setRegeneratingWidget(true);
-            const config = await regenerateWebWidgetCredentials();
-            setWebWidgetConfig(config);
-            setAllowedOriginsInput(config.allowed_origins.join('\n'));
-            setPrimaryColorInput(config.default_primary_color);
-            addToast('Credenciales del widget regeneradas', 'success');
-        } catch {
-            addToast('No se pudieron regenerar las credenciales', 'error');
-        } finally {
-            setRegeneratingWidget(false);
-        }
     };
 
     if (loading) {
@@ -274,133 +223,13 @@ export default function IntegrationsPage() {
                         <div>
                             <h3 className="font-bold text-purple-900 mb-2">Cómo conectar Instagram/Messenger</h3>
                             <ol className="space-y-2 text-sm text-purple-800">
-                                <li>1. Haz clic en &quot;Conectar Instagram&quot; o &quot;Conectar Messenger&quot;</li>
+                                <li>1. Haz clic en "Conectar Instagram" o "Conectar Messenger"</li>
                                 <li>2. Inicia sesión en Facebook</li>
                                 <li>3. Selecciona la página que deseas conectar</li>
                                 <li>4. Acepta los permisos solicitados</li>
                                 <li>5. Serás redirigido de vuelta aquí</li>
                                 <li>6. ¡Comienza a recibir mensajes automáticamente!</li>
                             </ol>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Web Widget Integration */}
-                <div className="bg-white dark:bg-gray-800 rounded-lg border-2 border-gray-200 dark:border-gray-700 p-6">
-                    <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
-                                <Globe className="w-6 h-6 text-amber-600" />
-                            </div>
-                            <div>
-                                <h2 className="text-xl font-bold text-black dark:text-white">Web Widget</h2>
-                                <p className="text-sm text-gray-600">Inserta tu chatbot en cualquier sitio o app web con un snippet.</p>
-                            </div>
-                        </div>
-                        {webWidgetConfig?.enabled ? (
-                            <div className="flex items-center gap-2 bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-semibold">
-                                <CheckCircle2 className="w-4 h-4" />
-                                Activo
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-2 bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-semibold">
-                                <XCircle className="w-4 h-4" />
-                                Inactivo
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="space-y-4">
-                        <p className="text-gray-700 dark:text-gray-300">
-                            El widget abre un chat flotante en la esquina inferior derecha, usa la configuración principal del bot y registra las conversaciones como canal web dentro del dashboard.
-                        </p>
-
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="block text-sm font-semibold text-gray-900 dark:text-white">Dominios permitidos</label>
-                                <textarea
-                                    value={allowedOriginsInput}
-                                    onChange={(event) => setAllowedOriginsInput(event.target.value)}
-                                    className="w-full min-h-36 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
-                                    placeholder={'https://mi-sitio.com\nhttps://app.mi-sitio.com'}
-                                />
-                                <p className="text-xs text-gray-500">Uno por línea. El widget sólo responderá desde estos orígenes.</p>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Color principal</label>
-                                    <div className="flex items-center gap-3">
-                                        <input
-                                            type="color"
-                                            value={primaryColorInput}
-                                            onChange={(event) => setPrimaryColorInput(event.target.value)}
-                                            className="h-11 w-14 rounded border border-gray-300 bg-white"
-                                        />
-                                        <input
-                                            type="text"
-                                            value={primaryColorInput}
-                                            onChange={(event) => setPrimaryColorInput(event.target.value)}
-                                            className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="rounded-2xl border border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900">
-                                    <p className="text-xs text-gray-500 mb-3">Preview rápido</p>
-                                    <div className="flex items-center justify-between rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-4 py-3">
-                                        <div>
-                                            <p className="font-semibold text-sm text-black dark:text-white">Asistente Web</p>
-                                            <p className="text-xs text-gray-500">Ventana flotante embebida</p>
-                                        </div>
-                                        <div
-                                            className="h-11 w-11 rounded-full shadow-lg"
-                                            style={{ backgroundColor: primaryColorInput }}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <p className="text-sm font-semibold text-gray-900 dark:text-white">Widget ID</p>
-                                    <div className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 bg-gray-50 dark:bg-gray-900">
-                                        <code className="flex-1 text-xs">{webWidgetConfig?.widget_id || 'Generando...'}</code>
-                                        {webWidgetConfig?.widget_id && (
-                                            <Button size="sm" variant="outline" onClick={() => copyToClipboard(webWidgetConfig.widget_id)}>
-                                                <Copy className="w-3 h-3 mr-1" />
-                                                Copiar
-                                            </Button>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between gap-3">
-                                <p className="text-sm font-semibold text-gray-900 dark:text-white">Snippet para pegar en tu sitio</p>
-                                {webWidgetConfig?.snippet && (
-                                    <Button variant="outline" onClick={() => copyToClipboard(webWidgetConfig.snippet)}>
-                                        <Copy className="w-4 h-4 mr-2" />
-                                        Copiar snippet
-                                    </Button>
-                                )}
-                            </div>
-                            <pre className="overflow-x-auto rounded-lg bg-gray-950 text-gray-100 p-4 text-xs">
-                                <code>{webWidgetConfig?.snippet || 'Cargando snippet...'}</code>
-                            </pre>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                            <Button onClick={saveWebWidgetConfig} disabled={savingWidget}>
-                                {savingWidget ? 'Guardando...' : 'Guardar Widget'}
-                            </Button>
-                            <Button variant="outline" onClick={handleRegenerateWidget} disabled={regeneratingWidget}>
-                                <RefreshCw className="w-4 h-4 mr-2" />
-                                {regeneratingWidget ? 'Regenerando...' : 'Regenerar credenciales'}
-                            </Button>
-                            <Button variant="outline" onClick={() => void refreshWebWidget()}>
-                                Actualizar
-                            </Button>
                         </div>
                     </div>
                 </div>
@@ -493,17 +322,16 @@ export default function IntegrationsPage() {
                         </div>
 
                         <div className="flex gap-2">
-                            <a
-                                href="https://www.twilio.com/docs/whatsapp/quickstart"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex"
-                            >
-                                <Button variant="outline">
+                            <Button variant="outline" asChild>
+                                <a
+                                    href="https://www.twilio.com/docs/whatsapp/quickstart"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
                                     <ExternalLink className="w-4 h-4 mr-2" />
                                     Ver documentación de Twilio
-                                </Button>
-                            </a>
+                                </a>
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -602,17 +430,16 @@ export default function IntegrationsPage() {
                         </div>
 
                         <div className="flex gap-2">
-                            <a
-                                href="https://developers.hubspot.com/docs/api/private-apps"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex"
-                            >
-                                <Button variant="outline">
+                            <Button variant="outline" asChild>
+                                <a
+                                    href="https://developers.hubspot.com/docs/api/private-apps"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
                                     <ExternalLink className="w-4 h-4 mr-2" />
                                     Ver documentación de HubSpot
-                                </Button>
-                            </a>
+                                </a>
+                            </Button>
                         </div>
                     </div>
                 </div>

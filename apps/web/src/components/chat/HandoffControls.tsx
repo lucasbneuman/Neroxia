@@ -4,7 +4,7 @@ import { useState } from "react"
 import type { User } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { takeControlByUserId, returnToBotByUserId, sendManualMessageByUserId } from "@/lib/api"
+import { takeControl, returnToBot, sendManualMessage } from "@/lib/api"
 
 interface HandoffControlsProps {
     user: User | null
@@ -30,10 +30,10 @@ export function HandoffControls({ user, onModeChange, onMessageSent }: HandoffCo
 
         try {
             if (isManualMode) {
-                await returnToBotByUserId(user.id)
+                await returnToBot(user.phone)
                 setStatus("🟢 Modo AUTO activado - El bot responderá automáticamente")
             } else {
-                await takeControlByUserId(user.id)
+                await takeControl(user.phone)
                 setStatus("🔴 Modo MANUAL activado - El bot no responderá")
             }
             onModeChange()
@@ -54,7 +54,7 @@ export function HandoffControls({ user, onModeChange, onMessageSent }: HandoffCo
         setStatus("")
 
         try {
-            await sendManualMessageByUserId(user.id, message)
+            await sendManualMessage(user.phone, message)
             setStatus("✅ Mensaje enviado")
             setMessage("")
             onMessageSent()

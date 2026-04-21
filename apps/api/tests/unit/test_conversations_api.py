@@ -180,37 +180,6 @@ class TestConversationsAPI:
         if response.status_code == 200:
             data = response.json()
             assert len(data) <= 5
-
-    def test_get_conversation_by_user_id(
-        self,
-        client: TestClient,
-        auth_headers: Dict[str, str],
-        test_phone: str
-    ):
-        client.post("/bot/process", json={"phone": test_phone, "message": "Hola"})
-        conversations = client.get("/conversations", headers=auth_headers)
-        assert conversations.status_code == 200
-        user_id = conversations.json()[0]["id"]
-
-        response = client.get(f"/conversations/id/{user_id}", headers=auth_headers)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["id"] == user_id
-        assert "channel" in data
-
-    def test_get_messages_by_user_id(
-        self,
-        client: TestClient,
-        auth_headers: Dict[str, str],
-        test_phone: str
-    ):
-        client.post("/bot/process", json={"phone": test_phone, "message": "Hola"})
-        conversations = client.get("/conversations", headers=auth_headers)
-        user_id = conversations.json()[0]["id"]
-
-        response = client.get(f"/conversations/id/{user_id}/messages", headers=auth_headers)
-        assert response.status_code == 200
-        assert isinstance(response.json(), list)
     
     def test_send_manual_message_requires_auth(self, client: TestClient):
         """Test that POST /conversations/{phone}/send requires authentication."""

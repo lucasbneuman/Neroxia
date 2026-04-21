@@ -2,7 +2,7 @@
 
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Header
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr
 
 from ..core.supabase import supabase, verify_supabase_token
 
@@ -12,12 +12,12 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # Pydantic models
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=1)
+    password: str
 
 
 class SignupRequest(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=1)
+    password: str
     name: Optional[str] = None
 
 
@@ -29,7 +29,7 @@ class TokenResponse(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str = Field(..., min_length=1)
+    refresh_token: str
 
 
 class UserResponse(BaseModel):
@@ -220,16 +220,11 @@ async def logout(current_user: dict = Depends(get_current_user)):
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(request: Optional[RefreshRequest] = None):
+async def refresh_token(request: RefreshRequest):
     """
     Refresh access token using refresh token.
     """
     try:
-        if request is None or not request.refresh_token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Refresh token required",
-            )
         response = supabase.auth.refresh_session(request.refresh_token)
         
         if not response.session or not response.user:
