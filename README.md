@@ -48,6 +48,7 @@ cd ../web && npm install
 ### Desarrollo
 
 ```bash
+cp .env.example .env
 ./scripts/start_dev.ps1
 ```
 

@@ -23,11 +23,10 @@ This guide covers deploying the WhatsApp Sales Bot to Coolify (self-hosted PaaS)
 
 ### 2. Configure Environment Variables
 
-In Coolify project settings, add all variables from `.env.prod.example`:
+In Coolify project settings, add all variables from `.env.example`:
 
 **Critical Variables:**
-- `DATABASE_URL` - Auto-configured by Coolify PostgreSQL service
-- `JWT_SECRET` - Generate with: `openssl rand -base64 32`
+- `SUPABASE_DATABASE_URL` - Supabase PostgreSQL connection string
 - `OPENAI_API_KEY` - From OpenAI platform
 - `SUPABASE_*` - From Supabase project settings
 - `FACEBOOK_*` - From Meta Developers Console
@@ -46,7 +45,7 @@ In Coolify project settings, add all variables from `.env.prod.example`:
 
 ### 4. Database Setup
 
-Coolify will auto-provision PostgreSQL. After first deployment:
+The database is the existing Supabase PostgreSQL project. After first deployment:
 
 ```bash
 # Access API container
@@ -59,12 +58,12 @@ cd packages/database/migrations
 
 Or use psql directly:
 ```bash
-psql $DATABASE_URL -f packages/database/migrations/001_initial_schema.sql
-psql $DATABASE_URL -f packages/database/migrations/002_add_crm_features.sql
-psql $DATABASE_URL -f packages/database/migrations/003_add_subscription_models.sql
-psql $DATABASE_URL -f packages/database/migrations/004_add_multi_tenant_support.sql
-psql $DATABASE_URL -f packages/database/migrations/005_add_messaging_channels.sql
-psql $DATABASE_URL -f packages/database/migrations/006_add_messaging_channels.sql
+psql $SUPABASE_DATABASE_URL -f packages/database/migrations/001_initial_schema.sql
+psql $SUPABASE_DATABASE_URL -f packages/database/migrations/002_add_crm_features.sql
+psql $SUPABASE_DATABASE_URL -f packages/database/migrations/003_add_subscription_models.sql
+psql $SUPABASE_DATABASE_URL -f packages/database/migrations/004_add_multi_tenant_support.sql
+psql $SUPABASE_DATABASE_URL -f packages/database/migrations/005_add_messaging_channels.sql
+psql $SUPABASE_DATABASE_URL -f packages/database/migrations/006_add_messaging_channels.sql
 ```
 
 ### 5. Configure Meta Webhooks
@@ -110,8 +109,6 @@ coolify logs api
 # Frontend logs
 coolify logs web
 
-# Database logs
-coolify logs postgres
 ```
 
 **Health Endpoints:**
@@ -151,8 +148,8 @@ services:
 - Check logs for startup errors
 
 **Database Connection Errors:**
-- Verify `DATABASE_URL` format
-- Ensure PostgreSQL service is healthy
+- Verify `SUPABASE_DATABASE_URL` format
+- Ensure the Supabase project is active
 - Check network connectivity between services
 
 **Meta Webhooks Not Working:**
@@ -164,11 +161,8 @@ services:
 ## Backup Strategy
 
 **Database Backups:**
-```bash
-# Automated daily backups (Coolify handles this)
-# Manual backup:
-coolify exec postgres pg_dump -U postgres whatsapp_bot > backup_$(date +%Y%m%d).sql
-```
+- Use Supabase project backups from the Supabase dashboard.
+- For manual exports, run `pg_dump` against `SUPABASE_DATABASE_URL` from a secure machine.
 
 **Volume Backups:**
 - `api_uploads` - RAG documents
@@ -178,8 +172,7 @@ coolify exec postgres pg_dump -U postgres whatsapp_bot > backup_$(date +%Y%m%d).
 ## Security Checklist
 
 - [ ] All environment variables use strong secrets
-- [ ] JWT_SECRET is randomly generated
-- [ ] Database password is strong
+- [ ] Supabase database password is strong
 - [ ] SSL/TLS enabled for all domains
 - [ ] Meta webhook signatures verified
 - [ ] Rate limiting enabled

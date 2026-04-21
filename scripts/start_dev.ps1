@@ -17,6 +17,26 @@ if (-not (Test-Path ".env")) {
     }
 }
 
+$webEnvPath = "apps/web/.env.local"
+if ((Test-Path ".env") -and (-not (Test-Path $webEnvPath))) {
+    Write-Host "Creating frontend env from root .env..." -ForegroundColor Yellow
+    $rootEnv = @{}
+    Get-Content ".env" | ForEach-Object {
+        $line = $_.Trim()
+        if ($line -and -not $line.StartsWith("#") -and $line.Contains("=")) {
+            $key, $value = $line.Split("=", 2)
+            $rootEnv[$key.Trim()] = $value.Trim()
+        }
+    }
+
+    $frontendEnv = @(
+        "NEXT_PUBLIC_API_URL=$($rootEnv["NEXT_PUBLIC_API_URL"])",
+        "NEXT_PUBLIC_SUPABASE_URL=$($rootEnv["NEXT_PUBLIC_SUPABASE_URL"])",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY=$($rootEnv["NEXT_PUBLIC_SUPABASE_ANON_KEY"])"
+    )
+    Set-Content -Path $webEnvPath -Value $frontendEnv
+}
+
 # Create data directory if it doesn't exist
 if (-not (Test-Path "data")) {
     Write-Host "Creating data directory..." -ForegroundColor Green

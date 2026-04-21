@@ -9,7 +9,7 @@ Este documento describe como esta implementado hoy el sistema y que decisiones t
 - Backend: Python 3.11+, FastAPI, SQLAlchemy async, Pydantic
 - Bot engine: LangGraph, LangChain, OpenAI GPT-4o y GPT-4o-mini, ChromaDB
 - Frontend: Next.js, React, TypeScript, Tailwind CSS, Zustand
-- Persistencia: SQLite en desarrollo y PostgreSQL/Supabase en produccion
+- Persistencia: Supabase PostgreSQL como base canonica en desarrollo y produccion
 - Integraciones: Twilio, HubSpot, OpenAI, Meta/Facebook segun configuracion
 
 ## Estructura de codigo
@@ -36,6 +36,7 @@ cd ../web && npm install
 ### Desarrollo
 
 ```bash
+cp .env.example .env
 ./scripts/start_dev.ps1
 ```
 
@@ -84,10 +85,17 @@ Nodos principales del bot:
 - necesidades y pain points: longitud minima y contenido concreto
 - presupuesto: referencia monetaria o numerica
 
+## Variables de entorno
+
+- `.env.example` es la unica plantilla canonica de variables de entorno.
+- El archivo real `.env` vive en la raiz y no debe commitearse.
+- El frontend puede usar `apps/web/.env.local`; `scripts/start_dev.ps1` lo crea desde `.env` cuando falta.
+- `SUPABASE_DATABASE_URL` es la variable canonica de conexion a base de datos.
+- `DATABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `HUBSPOT_API_KEY`, `JWT_SECRET` y `SECRET_KEY` son nombres heredados y no deben agregarse a nuevas configuraciones.
+
 ## Base de datos e integraciones
 
-- SQLite sigue presente para desarrollo local
-- PostgreSQL/Supabase es el destino productivo
+- Supabase PostgreSQL es la base de datos vigente para desarrollo y produccion
 - ChromaDB persiste embeddings para RAG
 - HubSpot sincroniza contactos, lifecycle stage y notas cuando esta configurado
 - Twilio gestiona el canal WhatsApp

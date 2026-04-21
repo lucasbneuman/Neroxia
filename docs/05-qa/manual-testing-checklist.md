@@ -12,12 +12,15 @@
 ### Environment Configuration
 - [ ] `.env` file has all required variables:
   - [ ] `OPENAI_API_KEY` configured
-  - [ ] `DATABASE_URL` accessible
+  - [ ] `SUPABASE_DATABASE_URL` accessible
+  - [ ] `SUPABASE_URL` configured
+  - [ ] `SUPABASE_ANON_KEY` configured
+  - [ ] `SUPABASE_SERVICE_KEY` configured
   - [ ] `FACEBOOK_APP_ID` configured
   - [ ] `FACEBOOK_APP_SECRET` configured
   - [ ] `FACEBOOK_VERIFY_TOKEN` configured
   - [ ] `HUBSPOT_ACCESS_TOKEN` configured (optional)
-- [ ] PostgreSQL/SQLite database accessible
+- [ ] Supabase PostgreSQL database accessible
 - [ ] Meta App created in Facebook Developers Console
 - [ ] Meta App has Instagram and Messenger products enabled
 - [ ] Webhook URLs configured in Meta App
