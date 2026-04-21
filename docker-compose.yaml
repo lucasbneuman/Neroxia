@@ -1,0 +1,4 @@
+# Compatibility entrypoint for platforms that default to /docker-compose.yaml.
+# The production deployment definition lives in docker-compose.prod.yml.
+include:
+  - docker-compose.prod.yml
