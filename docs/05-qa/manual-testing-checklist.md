@@ -233,11 +233,11 @@
 ## Phase 8: Deployment & Production
 
 ### Docker Compose Production
-- [ ] `docker-compose -f docker-compose.prod.yml build` succeeds
-- [ ] All services start: `docker-compose -f docker-compose.prod.yml up -d`
+- [ ] `docker compose build` succeeds
+- [ ] All app services start: `docker compose up -d`
 - [ ] API container running
 - [ ] Web container running
-- [ ] PostgreSQL container running
+- [ ] PostgreSQL container running when local profile is enabled: `docker compose --profile local up -d`
 - [ ] Health checks pass in containers
 
 ### Service Accessibility

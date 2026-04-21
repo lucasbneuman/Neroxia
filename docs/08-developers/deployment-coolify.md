@@ -119,7 +119,7 @@ coolify logs web
 
 **Horizontal Scaling:**
 ```yaml
-# In docker-compose.prod.yml
+# In docker-compose.yml
 services:
   api:
     deploy:

@@ -1,8 +1,8 @@
 {
   "name": "neroxia-bot",
   "type": "docker-compose",
-  "dockerComposeFile": "docker-compose.prod.yml",
-  "environmentFile": ".env.prod",
+  "dockerComposeFile": "docker-compose.yml",
+  "environmentFile": ".env",
   "domains": [
     {
       "service": "api",

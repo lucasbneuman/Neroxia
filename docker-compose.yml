@@ -1,120 +1,117 @@
-version: '3.8'
+version: "3.8"
 name: neroxia
 
 services:
-  # PostgreSQL Database for local development
   postgres:
+    profiles: ["local"]
     image: postgres:15-alpine
-    container_name: neroxia-postgres
     environment:
-      POSTGRES_USER: neroxia
-      POSTGRES_PASSWORD: neroxia_dev_password
-      POSTGRES_DB: neroxia
+      POSTGRES_DB: ${DB_NAME:-neroxia}
+      POSTGRES_USER: ${DB_USER:-neroxia}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-neroxia_dev_password}
     ports:
-      - '5432:5432'
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/supabase_schema.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - neroxia-network
+      - ./scripts/supabase_schema.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U neroxia"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-neroxia}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - app_network
+    restart: unless-stopped
 
-  # Backend API Service
   api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    container_name: neroxia-api
-    ports:
-      - '8000:8000'
     environment:
-      - DATABASE_URL=postgresql+asyncpg://neroxia:neroxia_dev_password@postgres:5432/neroxia
-      - SUPABASE_DATABASE_URL=postgresql+asyncpg://neroxia:neroxia_dev_password@postgres:5432/neroxia
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - HUBSPOT_ACCESS_TOKEN=${HUBSPOT_ACCESS_TOKEN}
-      - HUBSPOT_CLIENT_SECRET=${HUBSPOT_CLIENT_SECRET}
-      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
-      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
-      - TWILIO_WHATSAPP_NUMBER=${TWILIO_WHATSAPP_NUMBER}
-      - SUPABASE_URL=${SUPABASE_URL:-http://localhost:8000}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-dummy-key-for-local}
-      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-dummy-key-for-local}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - DEBUG=True
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://${DB_USER:-neroxia}:${DB_PASSWORD:-neroxia_dev_password}@postgres:5432/${DB_NAME:-neroxia}}
+      SUPABASE_DATABASE_URL: ${SUPABASE_DATABASE_URL:-postgresql+asyncpg://${DB_USER:-neroxia}:${DB_PASSWORD:-neroxia_dev_password}@postgres:5432/${DB_NAME:-neroxia}}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      TWILIO_WHATSAPP_NUMBER: ${TWILIO_WHATSAPP_NUMBER}
+      HUBSPOT_ACCESS_TOKEN: ${HUBSPOT_ACCESS_TOKEN}
+      HUBSPOT_CLIENT_SECRET: ${HUBSPOT_CLIENT_SECRET}
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET}
+      FACEBOOK_VERIFY_TOKEN: ${FACEBOOK_VERIFY_TOKEN}
+      FACEBOOK_OAUTH_REDIRECT_URI: ${FACEBOOK_OAUTH_REDIRECT_URI}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DEBUG: ${DEBUG:-false}
+    ports:
+      - "8000:8000"
     volumes:
-      - ./.env:/app/.env
-      - ./packages:/app/packages
-      - ./apps/api:/app/apps/api
-      - ./apps/bot-engine:/app/apps/bot-engine
-      - ./chroma_db:/app/chroma_db
-    networks:
-      - neroxia-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
+      - api_uploads:/app/rag_uploads
+      - api_chroma:/app/chroma_db
+      - api_avatars:/app/avatars
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
+    networks:
+      - app_network
+    restart: unless-stopped
 
-  # Frontend Web Service
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
-        - NEXT_PUBLIC_API_URL=http://localhost:8000
-        - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL:-http://localhost:8000}
-        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-dummy-key-for-local}
-    container_name: neroxia-web
-    ports:
-      - '3000:3000'
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-${SUPABASE_URL}}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-${SUPABASE_ANON_KEY}}
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-      - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL:-http://localhost:8000}
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-dummy-key-for-local}
-      - NODE_ENV=development
-    volumes:
-      - ./apps/web:/app/apps/web
-      - /app/apps/web/node_modules
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-${SUPABASE_URL}}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-${SUPABASE_ANON_KEY}}
+      NODE_ENV: ${NODE_ENV:-production}
+    ports:
+      - "3000:3000"
     depends_on:
       api:
         condition: service_healthy
-    networks:
-      - neroxia-network
-    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
-
-  # pgAdmin for database management (optional)
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: neroxia-pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@neroxia.local
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - '5050:80'
+      start_period: 40s
     networks:
-      - neroxia-network
-    depends_on:
-      - postgres
+      - app_network
     restart: unless-stopped
 
-networks:
-  neroxia-network:
-    driver: bridge
+  pgadmin:
+    profiles: ["local"]
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@neroxia.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app_network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+  api_uploads:
+  api_chroma:
+  api_avatars:
 
+networks:
+  app_network:
+    driver: bridge
