@@ -4,7 +4,7 @@
 # ============================================
 # Stage 1: Dependencies - Install packages
 # ============================================
-FROM node:18-alpine AS deps
+FROM node:20-alpine AS deps
 
 # Install libc6-compat for Alpine compatibility
 RUN apk add --no-cache libc6-compat
@@ -15,13 +15,13 @@ WORKDIR /app
 COPY apps/web/package*.json ./
 
 # Install all dependencies for the build stage.
-RUN npm ci && \
+RUN npm ci --include=dev && \
     npm cache clean --force
 
 # ============================================
 # Stage 2: Builder - Build the application
 # ============================================
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -48,7 +48,7 @@ RUN npm run build
 # ============================================
 # Stage 3: Runner - Minimal production image
 # ============================================
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 
 WORKDIR /app
 
