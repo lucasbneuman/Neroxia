@@ -7,7 +7,8 @@ This guide covers deploying the Neroxia to Coolify (self-hosted PaaS).
 - Coolify instance running (v4.x+)
 - Domain names configured:
   - `api.neroxia.tech` → API service
-  - `app.neroxia.tech` → Frontend
+  - `neroxia.tech` → Public marketing site
+  - `app.neroxia.tech` → SaaS application frontend
 - Git repository accessible to Coolify
 - Required API keys (OpenAI, Twilio, HubSpot, Facebook)
 
@@ -39,7 +40,7 @@ In Coolify project settings, add all variables from `.env.example`:
 - Health check: `/health`
 
 **Web Service:**
-- Domain: `app.neroxia.tech`
+- Domains: `https://neroxia.tech:3000,https://app.neroxia.tech:3000`
 - Internal port: 3000
 - Health check: `/api/health`
 
@@ -49,6 +50,19 @@ without conflicting with other applications on the server.
 The web service forces `PORT=3000` in Compose because global Coolify variables
 such as `PORT=7860` would otherwise make Next.js listen on the wrong internal
 port.
+
+Final public routing:
+- `https://neroxia.tech` serves marketing pages (`/`, `/platform`, `/pricing`)
+- `https://app.neroxia.tech` serves the SaaS app (`/login`, `/signup`, `/dashboard`)
+- `https://api.neroxia.tech` serves the backend API
+
+Recommended production URL variables:
+```env
+NEXT_PUBLIC_API_URL=https://api.neroxia.tech
+FRONTEND_URL=https://app.neroxia.tech
+ALLOWED_ORIGINS=https://neroxia.tech,https://app.neroxia.tech
+FACEBOOK_OAUTH_REDIRECT_URI=https://api.neroxia.tech/integrations/facebook/callback
+```
 
 ### 4. Database Setup
 
@@ -94,6 +108,7 @@ After deployment, configure Facebook webhooks:
 ```bash
 curl https://api.neroxia.tech/health
 curl https://app.neroxia.tech/api/health
+curl https://neroxia.tech
 ```
 
 **API Documentation:**
@@ -101,7 +116,8 @@ curl https://app.neroxia.tech/api/health
 - ReDoc: `https://api.neroxia.tech/redoc`
 
 **Frontend:**
-- Open `https://app.neroxia.tech`
+- Open `https://neroxia.tech` for public pages
+- Open `https://app.neroxia.tech/login` for the SaaS app
 - Sign up / Log in
 - Navigate to Integrations
 - Connect Facebook/Instagram

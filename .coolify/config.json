@@ -10,6 +10,10 @@
     },
     {
       "service": "web",
+      "domain": "neroxia.tech"
+    },
+    {
+      "service": "web",
       "domain": "app.neroxia.tech"
     }
   ],
