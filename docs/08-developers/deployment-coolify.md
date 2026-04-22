@@ -35,13 +35,17 @@ In Coolify project settings, add all variables from `.env.example`:
 
 **API Service:**
 - Domain: `api.neroxia.tech`
-- Port: 8000
+- Internal port: 8000
 - Health check: `/health`
 
 **Web Service:**
 - Domain: `app.neroxia.tech`
-- Port: 3000
+- Internal port: 3000
 - Health check: `/api/health`
+
+Do not publish service ports to the host in Coolify. The Docker Compose file uses
+`expose` for `api` and `web` so Coolify's proxy can route to the containers
+without conflicting with other applications on the server.
 
 ### 4. Database Setup
 
