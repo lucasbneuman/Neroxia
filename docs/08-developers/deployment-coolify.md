@@ -46,6 +46,9 @@ In Coolify project settings, add all variables from `.env.example`:
 Do not publish service ports to the host in Coolify. The Docker Compose file uses
 `expose` for `api` and `web` so Coolify's proxy can route to the containers
 without conflicting with other applications on the server.
+The web service forces `PORT=3000` in Compose because global Coolify variables
+such as `PORT=7860` would otherwise make Next.js listen on the wrong internal
+port.
 
 ### 4. Database Setup
 
