@@ -6,8 +6,8 @@ This guide covers deploying the Neroxia to Coolify (self-hosted PaaS).
 
 - Coolify instance running (v4.x+)
 - Domain names configured:
-  - `api.yourdomain.com` → API service
-  - `app.yourdomain.com` → Frontend
+  - `api.neroxia.tech` → API service
+  - `app.neroxia.tech` → Frontend
 - Git repository accessible to Coolify
 - Required API keys (OpenAI, Twilio, HubSpot, Facebook)
 
@@ -34,12 +34,12 @@ In Coolify project settings, add all variables from `.env.example`:
 ### 3. Configure Domains
 
 **API Service:**
-- Domain: `api.yourdomain.com`
+- Domain: `api.neroxia.tech`
 - Port: 8000
 - Health check: `/health`
 
 **Web Service:**
-- Domain: `app.yourdomain.com`
+- Domain: `app.neroxia.tech`
 - Port: 3000
 - Health check: `/api/health`
 
@@ -73,8 +73,8 @@ After deployment, configure Facebook webhooks:
 1. Go to Meta Developers Console
 2. Select your app
 3. Configure webhooks:
-   - **Instagram**: `https://api.yourdomain.com/webhook/instagram`
-   - **Messenger**: `https://api.yourdomain.com/webhook/messenger`
+   - **Instagram**: `https://api.neroxia.tech/webhook/instagram`
+   - **Messenger**: `https://api.neroxia.tech/webhook/messenger`
 4. Set verify token: Value from `FACEBOOK_VERIFY_TOKEN`
 5. Subscribe to events:
    - `messages`
@@ -85,16 +85,16 @@ After deployment, configure Facebook webhooks:
 
 **Health Checks:**
 ```bash
-curl https://api.yourdomain.com/health
-curl https://app.yourdomain.com/api/health
+curl https://api.neroxia.tech/health
+curl https://app.neroxia.tech/api/health
 ```
 
 **API Documentation:**
-- Swagger: `https://api.yourdomain.com/docs`
-- ReDoc: `https://api.yourdomain.com/redoc`
+- Swagger: `https://api.neroxia.tech/docs`
+- ReDoc: `https://api.neroxia.tech/redoc`
 
 **Frontend:**
-- Open `https://app.yourdomain.com`
+- Open `https://app.neroxia.tech`
 - Sign up / Log in
 - Navigate to Integrations
 - Connect Facebook/Instagram

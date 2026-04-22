@@ -6,11 +6,11 @@
   "domains": [
     {
       "service": "api",
-      "domain": "api.yourdomain.com"
+      "domain": "api.neroxia.tech"
     },
     {
       "service": "web",
-      "domain": "app.yourdomain.com"
+      "domain": "app.neroxia.tech"
     }
   ],
   "healthChecks": {
