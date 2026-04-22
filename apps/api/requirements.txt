@@ -7,6 +7,4 @@ supabase>=2.0.0
 asyncpg>=0.29.0
 twilio==9.4.0
 slowapi==0.1.9
--e ../../packages/database
--e ../../packages/shared
 

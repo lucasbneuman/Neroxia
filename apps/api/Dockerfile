@@ -30,11 +30,12 @@ COPY packages/shared/ packages/shared/
 COPY packages/database/ packages/database/
 COPY apps/bot-engine/ apps/bot-engine/
 
-RUN pip install --upgrade pip && \
-    pip install -e packages/shared && \
-    pip install -e packages/database && \
-    pip install -e apps/bot-engine && \
-    pip install --no-cache-dir -r apps/api/requirements.txt
+RUN python --version && pip --version
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir -e packages/shared
+RUN pip install --no-cache-dir -e packages/database
+RUN pip install --no-cache-dir -e apps/bot-engine
+RUN pip install --no-cache-dir --progress-bar off -r apps/api/requirements.txt
 
 # ============================================
 # Stage 2: Runtime - Minimal production image
