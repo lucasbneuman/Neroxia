@@ -101,8 +101,13 @@ async def root():
 
 @app.get("/health")
 async def health_check():
+    return {"status": "healthy", "service": "api", "version": "1.0.0"}
+
+
+@app.get("/health/details")
+async def detailed_health_check():
     """
-    Comprehensive health check endpoint.
+    Comprehensive health check endpoint for diagnostics.
     Returns overall status and individual service health.
     """
     from .database import get_db

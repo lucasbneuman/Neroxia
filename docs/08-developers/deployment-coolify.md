@@ -117,6 +117,7 @@ coolify logs web
 
 **Health Endpoints:**
 - API: `GET /health` → Returns 200 OK with status JSON
+- API diagnostics: `GET /health/details` → Checks database and bot engine
 - Web: `GET /api/health` → Returns 200 OK
 
 ## Scaling

@@ -23,6 +23,9 @@ DATABASE_URL = os.getenv(
     os.getenv("DATABASE_URL", "postgresql+asyncpg://localhost:5432/neroxia")
 )
 
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 # Create async engine with connection pooling where the driver supports it.
 engine_kwargs = {
     "echo": False,
